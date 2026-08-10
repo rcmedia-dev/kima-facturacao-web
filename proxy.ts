@@ -4,6 +4,7 @@ import { createKimaMiddleware } from '@rcmedia-dev/kima-sdk';
 export async function proxy(request: NextRequest) {
   return createKimaMiddleware({
     moduleKey: 'faturas',
+    appUrl: request.nextUrl.origin,
   })(request);
 }
 
