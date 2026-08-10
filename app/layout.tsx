@@ -1,7 +1,7 @@
 import { Analytics } from '@vercel/analytics/next'
 import type { Metadata, Viewport } from 'next'
+import { KimaEventListener } from '@rcmedia-dev/kima-sdk'
 import { LayoutClient } from './layout-client'
-import { KimaEventListener } from '../src/components/KimaEventListener'
 
 export const metadata: Metadata = {
   title: 'Kima Financeiro — Faturação para PME',
@@ -56,7 +56,7 @@ export default function RootLayout({
         suppressHydrationWarning
       >
         <LayoutClient>
-          <KimaEventListener />
+          <KimaEventListener moduleKey="faturas" />
           {children}
         </LayoutClient>
         {process.env.NODE_ENV === 'production' && <Analytics />}

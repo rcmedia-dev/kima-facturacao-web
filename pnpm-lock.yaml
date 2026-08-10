@@ -17,6 +17,9 @@ importers:
       '@hookform/resolvers':
         specifier: ^5.7.1
         version: 5.7.1(ajv@8.20.0)(react-hook-form@7.84.0(react@19.2.4))(zod@4.4.3)
+      '@rcmedia-dev/kima-sdk':
+        specifier: ^1.0.3
+        version: 1.0.3(@supabase/ssr@0.12.4(@supabase/supabase-js@2.112.1))(@supabase/supabase-js@2.112.1)(next@16.3.0(@babel/core@7.29.7)(@types/node@24.10.4)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       '@supabase/ssr':
         specifier: ^0.12.4
         version: 0.12.4(@supabase/supabase-js@2.112.1)
@@ -1159,6 +1162,15 @@ packages:
 
   '@open-draft/until@2.1.0':
     resolution: {integrity: sha512-U69T3ItWHvLwGg5eJ0n3I62nWuE6ilHlmz7zM0npLBRvPRd7e6NYmg54vvRtP5mZG7kZqZCFVdsTWo7BPtBujg==}
+
+  '@rcmedia-dev/kima-sdk@1.0.3':
+    resolution: {integrity: sha512-gi4VLTuzqdHhUoVPwdXLMTeW5rn9W7bJPvRpk6KhKBh4CtjLK11bf1RGJyBGMk8wdBwELofb1PHvjZfmKXZPaQ==, tarball: https://npm.pkg.github.com/download/@rcmedia-dev/kima-sdk/1.0.3/cbdbfd61cbe73fb5e7282476b095d629d9ce7bf5}
+    peerDependencies:
+      '@supabase/ssr': '>=0.4.0'
+      '@supabase/supabase-js': '>=2'
+      next: '>=14'
+      react: '>=18'
+      react-dom: '>=18'
 
   '@sec-ant/readable-stream@0.4.1':
     resolution: {integrity: sha512-831qok9r2t8AlxLko40y2ebgSDhenenCatLVeW/uBtnHPyhHOvG0C7TvfgecV+wHzIm5KUICgzmVpWS+IMEAeg==}
@@ -3671,6 +3683,14 @@ snapshots:
       outvariant: 1.4.3
 
   '@open-draft/until@2.1.0': {}
+
+  '@rcmedia-dev/kima-sdk@1.0.3(@supabase/ssr@0.12.4(@supabase/supabase-js@2.112.1))(@supabase/supabase-js@2.112.1)(next@16.3.0(@babel/core@7.29.7)(@types/node@24.10.4)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)':
+    dependencies:
+      '@supabase/ssr': 0.12.4(@supabase/supabase-js@2.112.1)
+      '@supabase/supabase-js': 2.112.1
+      next: 16.3.0(@babel/core@7.29.7)(@types/node@24.10.4)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      react: 19.2.4
+      react-dom: 19.2.4(react@19.2.4)
 
   '@sec-ant/readable-stream@0.4.1': {}
 
