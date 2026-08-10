@@ -1,5 +1,6 @@
 "use client";
 
+import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -13,8 +14,9 @@ import {
   PlusCircle,
   Database,
   Building2,
-  Receipt,
+  UserRound,
 } from "lucide-react";
+import { createBrowserSupabase } from "@rcmedia-dev/kima-sdk";
 import { cn } from "@/lib/utils";
 import { useAppStore } from "@/lib/store";
 
@@ -56,6 +58,39 @@ export function Sidebar({
 }: SidebarProps) {
   const pathname = usePathname();
   const store = useAppStore();
+  const [userName, setUserName] = React.useState("Utilizador");
+  const [userEmail, setUserEmail] = React.useState("");
+
+  React.useEffect(() => {
+    let cancelled = false;
+
+    createBrowserSupabase()
+      .auth.getUser()
+      .then(({ data }) => {
+        if (cancelled || !data.user) return;
+
+        const metadata = data.user.user_metadata as {
+          full_name?: string;
+          name?: string;
+          first_name?: string;
+          firstName?: string;
+        };
+        const name = metadata.full_name || metadata.name ||
+          [metadata.first_name, metadata.firstName].filter(Boolean).join(" ") ||
+          data.user.email?.split("@")[0] || "Utilizador";
+
+        setUserName(name);
+        setUserEmail(data.user.email || "");
+      })
+      .catch(() => undefined);
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const userInitial = userName.trim().charAt(0).toUpperCase() || "U";
+  const hubProfileUrl = `${(process.env.NEXT_PUBLIC_KIMA_HUB_URL || "https://kima-hub.vercel.app").replace(/\/$/, "")}/perfil`;
 
   return (
     <>
@@ -180,6 +215,33 @@ export function Sidebar({
 
         {/* ── RODAPÉ ─────────────────────────────────────── */}
         <div className="px-4 py-4 border-t border-slate-100 dark:border-slate-800 space-y-2">
+          {/* Perfil do utilizador autenticado no Kima Hub */}
+          <a
+            href={hubProfileUrl}
+            className={cn(
+              "flex items-center gap-3 px-3 py-2.5 rounded-xl border border-blue-100 dark:border-blue-900/50",
+              "bg-blue-50/70 dark:bg-blue-950/30 hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors",
+              collapsed && "justify-center px-0"
+            )}
+            title={collapsed ? `${userName} - Abrir perfil` : "Abrir perfil do utilizador"}
+            onClick={onCloseMobile}
+          >
+            <span className="flex items-center justify-center w-8 h-8 rounded-full bg-blue-600 text-white text-xs font-bold shrink-0">
+              {userInitial}
+            </span>
+            {!collapsed && (
+              <span className="min-w-0 flex-1">
+                <span className="block text-xs font-semibold text-slate-800 dark:text-slate-100 truncate">
+                  {userName}
+                </span>
+                <span className="block text-[10px] text-slate-500 dark:text-slate-400 truncate">
+                  {userEmail || "Abrir o meu perfil"}
+                </span>
+              </span>
+            )}
+            {!collapsed && <UserRound size={15} className="text-blue-500 shrink-0" />}
+          </a>
+
           {/* Info da empresa */}
           {!collapsed && (
             <div className="px-3 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 flex items-center gap-2.5">
