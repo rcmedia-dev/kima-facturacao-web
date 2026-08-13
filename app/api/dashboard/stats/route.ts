@@ -1,19 +1,19 @@
 import { NextResponse } from "next/server";
 import { obterDocumentos, obterClientes } from "@/db/queries";
+import { requireCompanyId } from "@/lib/company";
 
-const EMPRESA_ID_DEFAULT = "e1000000-0000-0000-0000-000000000001";
-
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    const documentos = await obterDocumentos(EMPRESA_ID_DEFAULT, "Fatura");
-    const clientes = await obterClientes(EMPRESA_ID_DEFAULT);
+    const companyId = requireCompanyId(request);
+    const documentos = await obterDocumentos(companyId);
+    const clientes = await obterClientes(companyId);
 
     const agora = new Date();
     const inicioMes = new Date(agora.getFullYear(), agora.getMonth(), 1);
     const fimMes = new Date(agora.getFullYear(), agora.getMonth() + 1, 0, 23, 59, 59, 999);
 
     const faturasValidas = documentos.filter((d) => d.status !== "Cancelado");
-    
+
     const faturasEsteMes = faturasValidas.filter((f) => {
       const dataEmissao = new Date(f.dataEmissao);
       return dataEmissao >= inicioMes && dataEmissao <= fimMes;
@@ -21,7 +21,7 @@ export async function GET() {
 
     const totalFaturadoMes = faturasEsteMes.reduce((sum, f) => sum + Number(f.total), 0);
     const faturasPendentes = faturasValidas.filter((f) => f.status === "Pendente");
-    
+
     const ultimasFaturas = [...faturasValidas]
       .sort((a, b) => new Date(b.dataEmissao).getTime() - new Date(a.dataEmissao).getTime())
       .slice(0, 6);
@@ -42,10 +42,9 @@ export async function GET() {
     return NextResponse.json(
       {
         success: false,
-        error: "Erro ao carregar estatísticas do dashboard",
-        message: error.message,
+        error: error.message || "Erro ao carregar estatísticas do dashboard",
       },
-      { status: 500 }
+      { status: error.status || 500 }
     );
   }
 }

@@ -1,0 +1,619 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Redesign — Drawer de Ver Cliente</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    background: #eef2f7;
+    color: #0f172a;
+  }
+
+  .topbar {
+    background: #0f172a; color: #fff; padding: 14px 24px;
+    display: flex; align-items: center; justify-content: space-between; gap: 16px;
+    position: sticky; top: 0; z-index: 60; box-shadow: 0 4px 20px rgba(15,23,42,.35);
+  }
+  .topbar-brand { display: flex; align-items: center; gap: 10px; }
+  .topbar-logo {
+    width: 30px; height: 30px; border-radius: 8px;
+    background: linear-gradient(135deg, #2563eb, #6366f1);
+    display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 13px;
+  }
+  .topbar-title { font-weight: 700; font-size: 14px; }
+  .topbar-sub { font-size: 11px; color: #94a3b8; }
+  .nav-controls { display: flex; align-items: center; gap: 14px; }
+  .nav-btn {
+    border: 1px solid #334155; background: #1e293b; color: #e2e8f0;
+    padding: 8px 16px; border-radius: 10px; font-size: 12.5px; font-weight: 600;
+    cursor: pointer; transition: all .15s;
+  }
+  .nav-btn:hover:not(:disabled) { background: #2b3b50; color: #fff; }
+  .nav-btn:disabled { opacity: .4; cursor: not-allowed; }
+  .nav-btn.primary { background: #2563eb; border-color: #2563eb; color: #fff; }
+  .nav-btn.primary:hover:not(:disabled) { background: #1d4ed8; }
+  .step-counter {
+    font-size: 12.5px; font-weight: 600; color: #cbd5e1;
+    background: #1e293b; padding: 6px 12px; border-radius: 999px;
+  }
+  .dots { display: flex; gap: 6px; }
+  .dot { width: 9px; height: 9px; border-radius: 999px; background: #334155; cursor: pointer; border: none; transition: all .2s; }
+  .dot.active { background: #2563eb; width: 26px; }
+
+  .stage { max-width: 1080px; margin: 26px auto 60px; }
+  .variation { display: none; }
+  .variation.active { display: block; animation: fade .35s ease; }
+  @keyframes fade { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+  .variation-head { margin-bottom: 16px; }
+  .variation-head h2 { font-size: 18px; font-weight: 800; }
+  .variation-head p { font-size: 12.5px; color: #64748b; margin-top: 4px; }
+
+  .mono { font-family: 'Cascadia Code', Consolas, 'Courier New', monospace; }
+
+  /* ── Mock do app atrás da drawer ── */
+  .app-mock {
+    background: #e9edf3; border: 1px solid #d8dee9; border-radius: 16px;
+    box-shadow: 0 8px 30px rgba(15,23,42,.08);
+    height: 660px; position: relative; overflow: hidden;
+  }
+  .mock-topbar {
+    background: #fff; border-bottom: 1px solid #e2e8f0;
+    padding: 12px 20px; display: flex; align-items: center; gap: 12px;
+  }
+  .mock-search {
+    flex: 1; max-width: 300px; height: 30px; border-radius: 8px;
+    background: #f1f5f9; border: 1px solid #e2e8f0;
+  }
+  .mock-bar { display: flex; gap: 8px; }
+  .mock-tab { font-size: 11.5px; color: #64748b; font-weight: 600; padding: 4px 10px; }
+  .mock-tab.on { color: #2563eb; border-bottom: 2px solid #2563eb; }
+  .mock-table { padding: 14px 20px; }
+  .mock-row {
+    background: #fff; border: 1px solid #e2e8f0; border-radius: 10px;
+    display: flex; align-items: center; gap: 12px; padding: 10px 14px; margin-bottom: 8px;
+    font-size: 12px; color: #64748b;
+  }
+  .mock-row .fname { font-weight: 700; color: #0f172a; flex: 1; }
+  .mock-row .fnif { width: 110px; }
+  .mock-row.hl { border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37,99,235,.12); }
+  .mock-chip { font-size: 10.5px; font-weight: 700; padding: 3px 9px; border-radius: 999px; }
+
+  /* ── Drawer genérica ── */
+  .drawer-shell {
+    position: absolute; top: 0; right: 0; height: 100%;
+    background: #fff; display: flex; flex-direction: column;
+    box-shadow: -18px 0 40px rgba(15,23,42,.14);
+    z-index: 20;
+  }
+  .drawer-inner { flex: 1; overflow-y: auto; }
+  .drawer-inner::-webkit-scrollbar { width: 8px; }
+  .drawer-inner::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 8px; }
+
+  .chip { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 999px; }
+  .chip::before { content: ""; width: 6px; height: 6px; border-radius: 999px; background: currentColor; }
+  .chip.txt::before { display: none; }
+  .chip.atv { background: #d1fae5; color: #047857; }
+  .chip.inatv { background: #fee2e2; color: #b91c1c; }
+  .chip.pj { background: #dbeafe; color: #1d4ed8; }
+  .chip.pf { background: #d1fae5; color: #047857; }
+
+  .lbl { font-size: 10.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: #94a3b8; }
+  .field-label { font-size: 10.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: #94a3b8; }
+  .field-val { font-size: 13.5px; font-weight: 600; color: #0f172a; word-break: break-word; }
+
+  .sec { border: 1px solid #e2e8f0; border-radius: 14px; }
+  .btn2 {
+    display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+    border-radius: 10px; font-size: 12.5px; font-weight: 700; padding: 9px 14px;
+    border: none; cursor: pointer; transition: all .15s;
+  }
+  .btn2-p { background: #2563eb; color: #fff; }
+  .btn2-p:hover { background: #1d4ed8; }
+  .btn2-o { background: #fff; border: 1px solid #cbd5e1; color: #475569; }
+  .btn2-o:hover { border-color: #2563eb; color: #2563eb; }
+  .btn2-g { background: #fff; border: 1px solid #d1d5db; color: #6b7280; }
+
+  .avatar { border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 800; color: #fff; }
+
+  /* ════ V1 · Perfil com Capa ════ */
+  .v1 .drawer-shell { width: 480px; }
+  .v1-cover {
+    background: linear-gradient(135deg, #1e3a8a, #4f46e5, #9333ea);
+    padding: 26px 22px 20px; color: #fff; position: relative; overflow: hidden;
+  }
+  .v1-cover::after {
+    content: ""; position: absolute; right: -50px; top: -60px; width: 200px; height: 200px;
+    background: rgba(255,255,255,.08); border-radius: 50%;
+  }
+  .v1-avatar {
+    width: 62px; height: 62px; border-radius: 18px; background: rgba(255,255,255,.16);
+    border: 1px solid rgba(255,255,255,.3); display: flex; align-items: center; justify-content: center;
+    font-size: 22px; font-weight: 800;
+  }
+  .v1-name { font-size: 17px; font-weight: 800; margin-top: 12px; }
+  .v1-sub { font-size: 12px; color: rgba(255,255,255,.75); margin-top: 2px; }
+  .v1-badges { display: flex; gap: 6px; margin-top: 10px; }
+  .chip.light { background: rgba(255,255,255,.16); color: #fff; }
+  .chip.light::before { background: #4ade80; }
+  .chip.light.blue::before { background: #93c5fd; }
+  .v1-close {
+    position: absolute; top: 14px; right: 14px; width: 30px; height: 30px; border-radius: 8px;
+    background: rgba(0,0,0,.2); color: #fff; border: none; cursor: pointer; font-size: 15px; font-weight: 700;
+  }
+  .v1-dash { border: none; border-top: 1px dashed rgba(255,255,255,.25); margin: 16px 22px 0; }
+  .v1-body { padding: 18px 22px 22px; display: grid; gap: 14px; }
+  .v1-icrow {
+    display: flex; align-items: center; gap: 12px; padding: 11px 14px;
+    background: #f8fafc; border: 1px solid #e8edf3; border-radius: 12px;
+  }
+  .v1-ic {
+    width: 34px; height: 34px; border-radius: 10px; background: #eff6ff; color: #2563eb;
+    display: flex; align-items: center; justify-content: center; font-size: 15px; flex-shrink: 0;
+  }
+  .v1-icrow .t { font-size: 11px; color: #94a3b8; }
+  .v1-icrow .d { font-size: 13px; font-weight: 700; color: #0f172a; }
+
+  /* ════ V2 · Dois Painéis ════ */
+  .v2 .drawer-shell { width: 720px; flex-direction: row; }
+  .v2-side {
+    width: 220px; background: linear-gradient(160deg, #0f172a, #1e293b); color: #fff;
+    display: flex; flex-direction: column; justify-content: space-between; padding: 20px;
+  }
+  .v2-mono {
+    width: 56px; height: 56px; border-radius: 16px; background: rgba(255,255,255,.12);
+    border: 1px solid rgba(255,255,255,.2); display: flex; align-items: center; justify-content: center;
+    font-size: 20px; font-weight: 800;
+  }
+  .v2-side .name { font-size: 15px; font-weight: 800; margin-top: 14px; line-height: 1.3; }
+  .v2-side .tag { font-size: 10.5px; color: #94a3b8; letter-spacing: .1em; text-transform: uppercase; margin: 16px 0 8px; }
+  .v2-kvrow { display: flex; justify-content: space-between; font-size: 12px; padding: 3px 0; }
+  .v2-kvrow .k { color: #94a3b8; }
+  .v2-kvrow .v { font-weight: 600; color: #e2e8f0; }
+  .v2-main { flex: 1; display: flex; flex-direction: column; }
+  .v2-top {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 22px; border-bottom: 1px solid #e2e8f0;
+  }
+  .v2-top .t { font-size: 13px; font-weight: 800; }
+  .v2-top .s { font-size: 11px; color: #94a3b8; }
+  .v2-body { flex: 1; overflow-y: auto; padding: 18px 22px; display: grid; gap: 14px; }
+  .v2-grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .v2-cell { background: #f8fafc; border: 1px solid #e8edf3; border-radius: 12px; padding: 12px; }
+  .v2-cell .v { font-size: 13px; font-weight: 700; color: #0f172a; margin-top: 4px; word-break: break-word; }
+  .v2-grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+  /* ════ V3 · Cartão de Perfil / Abas ════ */
+  .v3 .drawer-shell { width: 440px; }
+  .v3-head {
+    background: linear-gradient(180deg, #f8fafc, #eef2f7); border-bottom: 1px solid #e2e8f0;
+    padding: 22px 22px 16px; text-align: center; position: relative;
+  }
+  .v3-avatar { width: 74px; height: 74px; margin: 0 auto; background: linear-gradient(135deg, #2563eb, #6366f1); font-size: 26px; }
+  .v3-name { font-size: 16px; font-weight: 800; margin-top: 10px; }
+  .v3-tipo { display: flex; justify-content: center; gap: 6px; margin-top: 8px; }
+  .v3-tabs { display: flex; gap: 6px; padding: 12px 20px 0; border-bottom: 1px solid #e2e8f0; background: #fff; }
+  .v3-tab {
+    font-size: 12px; font-weight: 700; color: #94a3b8; padding: 7px 12px;
+    border: none; background: none; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px;
+  }
+  .v3-tab.on { color: #2563eb; border-color: #2563eb; }
+  .v3-panel { display: none; padding: 16px 22px; }
+  .v3-panel.on { display: block; animation: fade .2s ease; }
+  .v3-field { padding: 9px 0; border-bottom: 1px solid #f1f5f9; }
+  .v3-field .l { font-size: 10.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: #94a3b8; }
+  .v3-field .v { font-size: 13.5px; font-weight: 600; color: #0f172a; margin-top: 3px; word-break: break-word; }
+
+  /* ════ V4 · Grade de Cartões ════ */
+  .v4 .drawer-shell { width: 560px; }
+  .v4-head {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 16px 20px; border-bottom: 1px solid #e2e8f0; background: #fff;
+  }
+  .v4-head-l { display: flex; align-items: center; gap: 12px; }
+  .v4-avatar { width: 44px; height: 44px; border-radius: 12px; background: #eff6ff; color: #2563eb; font-weight: 800; font-size: 15px; }
+  .v4-name { font-size: 14px; font-weight: 800; }
+  .v4-sub { font-size: 11px; color: #94a3b8; }
+  .v4-body { padding: 18px 20px; display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+  .v4-cardv { background: #f8fafc; border: 1px solid #e8edf3; border-radius: 14px; padding: 13px 14px; }
+  .v4-cardv.span2 { grid-column: span 2; }
+  .v4-cardv .ic { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+  .v4-cardv .ic .i { font-size: 16px; }
+  .v4-cardv .l { font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: #94a3b8; }
+  .v4-cardv .v { font-size: 14px; font-weight: 700; color: #0f172a; margin-top: 5px; word-break: break-word; }
+
+  /* ════ V5 · Minimal + sticky footer ════ */
+  .v5 .drawer-shell { width: 400px; }
+  .v5-head {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 18px; border-bottom: 1px solid #f1f5f9;
+  }
+  .v5-head-l { display: flex; align-items: center; gap: 10px; }
+  .v5-avatar { width: 38px; height: 38px; border-radius: 12px; background: linear-gradient(135deg, #2563eb, #6366f1); font-weight: 800; font-size: 13px; }
+  .v5-head .name { font-size: 13px; font-weight: 800; }
+  .v5-head .sub { font-size: 11px; color: #94a3b8; }
+  .v5-hero {
+    background: #0f172a; color: #fff; margin: 14px 16px; border-radius: 16px; padding: 14px 18px;
+    display: flex; align-items: center; justify-content: space-between; position: relative; overflow: hidden;
+  }
+  .v5-hero::after {
+    content: ""; position: absolute; right: -24px; top: -30px; width: 120px; height: 120px;
+    background: radial-gradient(circle, rgba(96,165,250,.3), transparent 70%);
+  }
+  .v5-hero .l { font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: #94a3b8; }
+  .v5-hero .v { font-size: 18px; font-weight: 800; margin-top: 2px; }
+  .v5-hero .nif { font-size: 11px; color: #64748b; }
+  .v5-acc { padding: 0 16px 12px; }
+  .v5-acc-item { border: 1px solid #e2e8f0; border-radius: 12px; margin-bottom: 8px; overflow: hidden; }
+  .v5-acc-head {
+    display: flex; align-items: center; justify-content: space-between; padding: 11px 14px;
+    cursor: pointer; background: #fff; font-size: 12.5px; font-weight: 700; color: #334155;
+    border: none; width: 100%; text-align: left;
+  }
+  .v5-acc-head .arrow { transition: transform .2s; color: #94a3b8; font-size: 10px; }
+  .v5-acc-item.open .arrow { transform: rotate(90deg); }
+  .v5-acc-body { display: none; padding: 0 14px 12px; }
+  .v5-acc-item.open .v5-acc-body { display: block; animation: fade .2s ease; }
+  .v5-foot {
+    display: flex; gap: 10px; padding: 14px 16px;
+    border-top: 1px solid #e2e8f0; background: #fff;
+  }
+</style>
+</head>
+<body>
+
+  <div class="topbar">
+    <div class="topbar-brand">
+      <div class="topbar-logo">K</div>
+      <div>
+        <div class="topbar-title">Redesign — Drawer de Ver Cliente</div>
+        <div class="topbar-sub">5 variações · navegue com ← → ou botões</div>
+      </div>
+    </div>
+    <div class="nav-controls">
+      <button class="nav-btn" id="prevVar">← Anterior</button>
+      <span class="step-counter" id="varCounter">1 / 5</span>
+      <button class="nav-btn primary" id="nextVar">Próximo →</button>
+      <div class="dots" id="dots"></div>
+    </div>
+  </div>
+
+  <div class="stage">
+
+    <!-- ════════════════ V1 · Perfil com Capa ════════════════ -->
+    <div class="variation v1">
+      <div class="variation-head">
+        <h2>1. Perfil com Capa em Gradiente</h2>
+        <p>Cabeçalho tipo "perfil de rede social": capa em gradiente, avatar grande, nome e badges. Contactos em linhas com ícones.</p>
+      </div>
+
+      <div class="app-mock">
+        <div class="mock-topbar">
+          <div class="mock-search"></div>
+          <div class="mock-bar"><span class="mock-tab">Todos</span><span class="mock-tab on">Ativos</span><span class="mock-tab">Inativos</span></div>
+        </div>
+        <div class="mock-table">
+          <div class="mock-row"><span class="fname">Angola Telecom, SA</span><span class="fnif mono">5417001234</span><span class="mock-chip pj" style="background:#dbeafe;color:#1d4ed8;">PJ</span><span class="mock-chip atv" style="background:#d1fae5;color:#047857;">Ativo</span></div>
+          <div class="mock-row hl"><span class="fname">Edições Novembro, Lda</span><span class="fnif mono">5417005678</span><span class="mock-chip pj" style="background:#dbeafe;color:#1d4ed8;">PJ</span><span class="mock-chip atv" style="background:#d1fae5;color:#047857;">Ativo</span></div>
+          <div class="mock-row"><span class="fname">Carlos Mendes</span><span class="fnif mono">003456789012</span><span class="mock-chip pf" style="background:#d1fae5;color:#047857;">PF</span><span class="mock-chip atv" style="background:#d1fae5;color:#047857;">Ativo</span></div>
+        </div>
+
+        <div class="drawer-shell">
+          <div class="v1-cover">
+            <button class="v1-close">✕</button>
+            <div class="v1-avatar">AT</div>
+            <div class="v1-name">Angola Telecom, SA</div>
+            <div class="v1-sub">NIF 5417001234 · desde janeiro de 2024</div>
+            <div class="v1-badges">
+              <span class="chip light">● Ativo</span>
+              <span class="chip light blue">Pessoa Jurídica</span>
+            </div>
+            <hr class="v1-dash" />
+          </div>
+          <div class="drawer-inner v1-body">
+            <div class="v1-icrow"><div class="v1-ic">👤</div><div><div class="t">Responsável</div><div class="d">Maria dos Santos</div></div></div>
+            <div class="v1-icrow"><div class="v1-ic">📄</div><div><div class="t">Inscrição Social</div><div class="d mono">123456789</div></div></div>
+            <div class="v1-icrow"><div class="v1-ic">📞</div><div><div class="t">Telefone</div><div class="d">+244 923 456 789</div></div></div>
+            <div class="v1-icrow"><div class="v1-ic">✉️</div><div><div class="t">Email</div><div class="d">financas@angolatelecom.ao</div></div></div>
+            <div class="v1-icrow"><div class="v1-ic">📍</div><div><div class="t">Morada</div><div class="d">Rua Amílcar Cabral 12, Luanda</div></div></div>
+            <div class="v1-icrow"><div class="v1-ic">🗓️</div><div><div class="t">Criado em</div><div class="d">12 de janeiro de 2024</div></div></div>
+            <div class="v1-icrow"><div class="v1-ic">✏️</div><div><div class="t">Última atualização</div><div class="d">02 de agosto de 2026</div></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ════════════════ V2 · Dois Painéis ════════════════ -->
+    <div class="variation v2">
+      <div class="variation-head">
+        <h2>2. Dois Painéis — Resumo fixo + detalhes</h2>
+        <p>Drawer larga: sidebar escura com monograma, estado e NIF sempre visíveis; à direita os dados em grelha de células.</p>
+      </div>
+
+      <div class="app-mock">
+        <div class="mock-topbar">
+          <div class="mock-search"></div>
+          <div class="mock-bar"><span class="mock-tab">Todos</span><span class="mock-tab on">Ativos</span><span class="mock-tab">Inativos</span></div>
+        </div>
+        <div class="mock-table">
+          <div class="mock-row"><span class="fname">Angola Telecom, SA</span><span class="fnif mono">5417001234</span><span class="mock-chip pj" style="background:#dbeafe;color:#1d4ed8;">PJ</span><span class="mock-chip atv" style="background:#d1fae5;color:#047857;">Ativo</span></div>
+          <div class="mock-row hl"><span class="fname">Edições Novembro, Lda</span><span class="fnif mono">5417005678</span><span class="mock-chip pj" style="background:#dbeafe;color:#1d4ed8;">PJ</span><span class="mock-chip atv" style="background:#d1fae5;color:#047857;">Ativo</span></div>
+          <div class="mock-row"><span class="fname">Carlos Mendes</span><span class="fnif mono">003456789012</span><span class="mock-chip pf" style="background:#d1fae5;color:#047857;">PF</span><span class="mock-chip atv" style="background:#d1fae5;color:#047857;">Ativo</span></div>
+        </div>
+
+        <div class="drawer-shell">
+          <div class="v2-side">
+            <div>
+              <div class="v2-mono">EN</div>
+              <div class="name">Edições Novembro, Lda</div>
+              <div style="margin-top:10px;display:flex;gap:6px;">
+                <span class="chip atv">Ativo</span>
+                <span class="chip pj">PJ</span>
+              </div>
+              <div class="tag">Identificação</div>
+              <div class="v2-kvrow"><span class="k">NIF</span><span class="v mono">5417005678</span></div>
+              <div class="v2-kvrow"><span class="k">Tipo</span><span class="v">Pessoa Jurídica</span></div>
+              <div class="tag">Registo</div>
+              <div class="v2-kvrow"><span class="k">Criado</span><span class="v">12/01/2024</span></div>
+              <div class="v2-kvrow"><span class="k">Atualizado</span><span class="v">02/08/2026</span></div>
+            </div>
+            <button class="btn2 btn2-g" style="background:#1e293b;border-color:#334155;color:#cbd5e1;">✕ Fechar</button>
+          </div>
+          <div class="v2-main">
+            <div class="v2-top">
+              <div>
+                <div class="t">Ficha do Cliente</div>
+                <div class="s">Dados pessoais / empresa e contactos</div>
+              </div>
+              <button class="btn2 btn2-o">✎ Editar</button>
+            </div>
+            <div class="v2-body">
+              <div class="sec" style="padding:14px;">
+                <div class="lbl" style="margin-bottom:12px;">Documentos &amp; Empresa</div>
+                <div class="v2-grid3">
+                  <div class="v2-cell"><div class="lbl">Responsável</div><div class="v">Maria dos Santos</div></div>
+                  <div class="v2-cell"><div class="lbl">Inscrição Social</div><div class="v mono">123456789</div></div>
+                  <div class="v2-cell"><div class="lbl">NIF</div><div class="v mono">5417005678</div></div>
+                </div>
+              </div>
+              <div class="sec" style="padding:14px;">
+                <div class="lbl" style="margin-bottom:12px;">Contactos</div>
+                <div class="v2-grid3">
+                  <div class="v2-cell"><div class="lbl">Telefone</div><div class="v">+244 923 456 789</div></div>
+                  <div class="v2-cell"><div class="lbl">Email</div><div class="v">contato@elinovembro.ao</div></div>
+                  <div class="v2-cell"><div class="lbl">Morada</div><div class="v">Av. 4 de Fevereiro 88, Luanda</div></div>
+                </div>
+              </div>
+              <div class="v2-grid2">
+                <div class="v2-cell"><div class="lbl">Data de criação</div><div class="v">12 de janeiro de 2024</div></div>
+                <div class="v2-cell"><div class="lbl">Última atualização</div><div class="v">02 de agosto de 2026</div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ════════════════ V3 · Cartão de Perfil / Abas ════════════════ -->
+    <div class="variation v3">
+      <div class="variation-head">
+        <h2>3. Cartão de Perfil com Abas</h2>
+        <p>Avatar centralizado estilo cartão de visita, com abas para Dados, Contactos e Registo. Leve e organizado.</p>
+      </div>
+
+      <div class="app-mock">
+        <div class="mock-topbar">
+          <div class="mock-search"></div>
+          <div class="mock-bar"><span class="mock-tab">Todos</span><span class="mock-tab on">Ativos</span><span class="mock-tab">Inativos</span></div>
+        </div>
+        <div class="mock-table">
+          <div class="mock-row"><span class="fname">Angola Telecom, SA</span><span class="fnif mono">5417001234</span><span class="mock-chip pj" style="background:#dbeafe;color:#1d4ed8;">PJ</span><span class="mock-chip atv" style="background:#d1fae5;color:#047857;">Ativo</span></div>
+          <div class="mock-row"><span class="fname">Edições Novembro, Lda</span><span class="fnif mono">5417005678</span><span class="mock-chip pj" style="background:#dbeafe;color:#1d4ed8;">PJ</span><span class="mock-chip atv" style="background:#d1fae5;color:#047857;">Ativo</span></div>
+          <div class="mock-row hl"><span class="fname">Carlos Mendes</span><span class="fnif mono">003456789012</span><span class="mock-chip pf" style="background:#d1fae5;color:#047857;">PF</span><span class="mock-chip atv" style="background:#d1fae5;color:#047857;">Ativo</span></div>
+        </div>
+
+        <div class="drawer-shell">
+          <div class="v3-head">
+            <button class="v1-close">✕</button>
+            <div class="v3-avatar avatar">CM</div>
+            <div class="v3-name">Carlos Mendes</div>
+            <div class="v3-tipo">
+              <span class="chip pf">Pessoa Física</span>
+              <span class="chip atv">Ativo</span>
+            </div>
+          </div>
+          <div class="v3-tabs">
+            <button class="v3-tab on" data-tab="1">Dados</button>
+            <button class="v3-tab" data-tab="2">Contactos</button>
+            <button class="v3-tab" data-tab="3">Registo</button>
+          </div>
+          <div class="drawer-inner">
+            <div class="v3-panel on" data-panel="1">
+              <div class="v3-field"><div class="l">Nome completo</div><div class="v">Carlos Mendes</div></div>
+              <div class="v3-field"><div class="l">NIF</div><div class="v mono">003456789012</div></div>
+              <div class="v3-field"><div class="l">Tipo</div><div class="v">Pessoa Física</div></div>
+              <div class="v3-field"><div class="l">Documento de identificação</div><div class="v">—</div></div>
+            </div>
+            <div class="v3-panel" data-panel="2">
+              <div class="v3-field"><div class="l">Telefone</div><div class="v">+244 921 555 123</div></div>
+              <div class="v3-field"><div class="l">Email</div><div class="v">carlos.mendes@email.ao</div></div>
+              <div class="v3-field"><div class="l">Morada</div><div class="v">Rua João de Barros 4, Luanda</div></div>
+            </div>
+            <div class="v3-panel" data-panel="3">
+              <div class="v3-field"><div class="l">Data de criação</div><div class="v">20 de março de 2025</div></div>
+              <div class="v3-field"><div class="l">Última atualização</div><div class="v">11 de julho de 2026</div></div>
+              <div class="v3-field"><div class="l">Estado</div><div class="v"><span class="chip atv">Ativo</span></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ════════════════ V4 · Grade de Cartões ════════════════ -->
+    <div class="variation v4">
+      <div class="variation-head">
+        <h2>4. Grade de Cartões Destacados</h2>
+        <p>Todos os dados em pequenos cartões com ícones, em grelha de duas colunas. Escaneável e rápido de consultar.</p>
+      </div>
+
+      <div class="app-mock">
+        <div class="mock-topbar">
+          <div class="mock-search"></div>
+          <div class="mock-bar"><span class="mock-tab">Todos</span><span class="mock-tab on">Ativos</span><span class="mock-tab">Inativos</span></div>
+        </div>
+        <div class="mock-table">
+          <div class="mock-row"><span class="fname">Angola Telecom, SA</span><span class="fnif mono">5417001234</span><span class="mock-chip pj" style="background:#dbeafe;color:#1d4ed8;">PJ</span><span class="mock-chip atv" style="background:#d1fae5;color:#047857;">Ativo</span></div>
+          <div class="mock-row hl"><span class="fname">Edições Novembro, Lda</span><span class="fnif mono">5417005678</span><span class="mock-chip pj" style="background:#dbeafe;color:#1d4ed8;">PJ</span><span class="mock-chip atv" style="background:#d1fae5;color:#047857;">Ativo</span></div>
+          <div class="mock-row"><span class="fname">Carlos Mendes</span><span class="fnif mono">003456789012</span><span class="mock-chip pf" style="background:#d1fae5;color:#047857;">PF</span><span class="mock-chip atv" style="background:#d1fae5;color:#047857;">Ativo</span></div>
+        </div>
+
+        <div class="drawer-shell">
+          <div class="v4-head">
+            <div class="v4-head-l">
+              <div class="v4-avatar avatar">EN</div>
+              <div>
+                <div class="v4-name">Edições Novembro, Lda</div>
+                <div class="v4-sub">Cliente desde 12/01/2024</div>
+              </div>
+            </div>
+            <div style="display:flex;gap:6px;">
+              <span class="chip pj">PJ</span>
+              <span class="chip atv">Ativo</span>
+            </div>
+          </div>
+          <div class="drawer-inner v4-body">
+            <div class="v4-cardv span2"><div class="ic"><span class="l">Identificação</span><span class="i">🪪</span></div><div class="v">NIF · 5417005678</div><div style="font-size:12px;color:#64748b;margin-top:3px;">Pessoa Jurídica</div></div>
+            <div class="v4-cardv"><div class="ic"><span class="l">Responsável</span><span class="i">👤</span></div><div class="v">Maria dos Santos</div></div>
+            <div class="v4-cardv"><div class="ic"><span class="l">Inscrição Social</span><span class="i">📄</span></div><div class="v mono">123456789</div></div>
+            <div class="v4-cardv"><div class="ic"><span class="l">Telefone</span><span class="i">📞</span></div><div class="v">+244 923 456 789</div></div>
+            <div class="v4-cardv"><div class="ic"><span class="l">Email</span><span class="i">✉️</span></div><div class="v">contato@elinovembro.ao</div></div>
+            <div class="v4-cardv span2"><div class="ic"><span class="l">Morada</span><span class="i">📍</span></div><div class="v">Av. 4 de Fevereiro 88, Luanda</div></div>
+            <div class="v4-cardv"><div class="ic"><span class="l">Criado em</span><span class="i">🗓️</span></div><div class="v">12/01/2024</div></div>
+            <div class="v4-cardv"><div class="ic"><span class="l">Atualizado</span><span class="i">✏️</span></div><div class="v">02/08/2026</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ════════════════ V5 · Minimal + sticky footer ════════════════ -->
+    <div class="variation v5">
+      <div class="variation-head">
+        <h2>5. Minimalista com Acordeão e Barra Fixa</h2>
+        <p>Drawer compacta com resumo no topo, seções em acordeão e barra de ações fixa no rodapé.</p>
+      </div>
+
+      <div class="app-mock">
+        <div class="mock-topbar">
+          <div class="mock-search"></div>
+          <div class="mock-bar"><span class="mock-tab">Todos</span><span class="mock-tab on">Ativos</span><span class="mock-tab">Inativos</span></div>
+        </div>
+        <div class="mock-table">
+          <div class="mock-row"><span class="fname">Angola Telecom, SA</span><span class="fnif mono">5417001234</span><span class="mock-chip pj" style="background:#dbeafe;color:#1d4ed8;">PJ</span><span class="mock-chip atv" style="background:#d1fae5;color:#047857;">Ativo</span></div>
+          <div class="mock-row hl"><span class="fname">Edições Novembro, Lda</span><span class="fnif mono">5417005678</span><span class="mock-chip pj" style="background:#dbeafe;color:#1d4ed8;">PJ</span><span class="mock-chip atv" style="background:#d1fae5;color:#047857;">Ativo</span></div>
+          <div class="mock-row"><span class="fname">Carlos Mendes</span><span class="fnif mono">003456789012</span><span class="mock-chip pf" style="background:#d1fae5;color:#047857;">PF</span><span class="mock-chip atv" style="background:#d1fae5;color:#047857;">Ativo</span></div>
+        </div>
+
+        <div class="drawer-shell">
+          <div class="v5-head">
+            <div class="v5-head-l">
+              <div class="v5-avatar avatar">EN</div>
+              <div>
+                <div class="name">Edições Novembro, Lda</div>
+                <div class="sub">Pessoa Jurídica</div>
+              </div>
+            </div>
+            <span class="chip atv">Ativo</span>
+          </div>
+          <div class="drawer-inner" style="padding-bottom:8px;">
+            <div class="v5-hero">
+              <div><div class="l">NIF</div><div class="v mono">5417005678</div></div>
+              <div style="text-align:right;"><div class="l">Desde</div><div class="v">2024</div></div>
+            </div>
+            <div class="v5-acc">
+              <div class="v5-acc-item open">
+                <button class="v5-acc-head" onclick="toggleAcc(this)">Dados da Empresa <span class="arrow">▶</span></button>
+                <div class="v5-acc-body">
+                  <div style="display:flex;justify-content:space-between;font-size:12.5px;padding:4px 0;"><span style="color:#94a3b8;">Responsável</span><b>Maria dos Santos</b></div>
+                  <div style="display:flex;justify-content:space-between;font-size:12.5px;padding:4px 0;"><span style="color:#94a3b8;">Inscrição Social</span><b class="mono">123456789</b></div>
+                  <div style="display:flex;justify-content:space-between;font-size:12.5px;padding:4px 0;"><span style="color:#94a3b8;">Tipo</span><b>Pessoa Jurídica</b></div>
+                </div>
+              </div>
+              <div class="v5-acc-item">
+                <button class="v5-acc-head" onclick="toggleAcc(this)">Contactos <span class="arrow">▶</span></button>
+                <div class="v5-acc-body">
+                  <div style="display:flex;justify-content:space-between;font-size:12.5px;padding:4px 0;"><span style="color:#94a3b8;">Telefone</span><b>+244 923 456 789</b></div>
+                  <div style="display:flex;justify-content:space-between;font-size:12.5px;padding:4px 0;"><span style="color:#94a3b8;">Email</span><b>contato@elinovembro.ao</b></div>
+                  <div style="display:flex;justify-content:space-between;font-size:12.5px;padding:4px 0;"><span style="color:#94a3b8;">Morada</span><b>Av. 4 de Fevereiro 88, Luanda</b></div>
+                </div>
+              </div>
+              <div class="v5-acc-item">
+                <button class="v5-acc-head" onclick="toggleAcc(this)">Registo <span class="arrow">▶</span></button>
+                <div class="v5-acc-body">
+                  <div style="display:flex;justify-content:space-between;font-size:12.5px;padding:4px 0;"><span style="color:#94a3b8;">Data de criação</span><b>12/01/2024</b></div>
+                  <div style="display:flex;justify-content:space-between;font-size:12.5px;padding:4px 0;"><span style="color:#94a3b8;">Última atualização</span><b>02/08/2026</b></div>
+                  <div style="display:flex;justify-content:space-between;font-size:12.5px;padding:4px 0;"><span style="color:#94a3b8;">Estado</span><b><span class="chip atv">Ativo</span></b></div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="v5-foot">
+            <button class="btn2 btn2-o" style="flex:1;">✎ Editar</button>
+            <button class="btn2 btn2-p" style="flex:1;">Fechar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+<script>
+  const variations = Array.from(document.querySelectorAll('.variation'));
+  const dotsWrap = document.getElementById('dots');
+  let currentV = 0;
+
+  variations.forEach((_, i) => {
+    const d = document.createElement('button');
+    d.className = 'dot';
+    d.addEventListener('click', () => showVariation(i));
+    dotsWrap.appendChild(d);
+  });
+  const dots = Array.from(dotsWrap.children);
+
+  function showVariation(i) {
+    currentV = Math.max(0, Math.min(variations.length - 1, i));
+    variations.forEach((el, idx) => el.classList.toggle('active', idx === currentV));
+    dots.forEach((d, idx) => d.classList.toggle('active', idx === currentV));
+    document.getElementById('varCounter').textContent = (currentV + 1) + ' / ' + variations.length;
+    document.getElementById('prevVar').disabled = currentV === 0;
+    document.getElementById('nextVar').disabled = currentV === variations.length - 1;
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  // Abas da V3
+  document.querySelectorAll('.v3-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      const root = tab.closest('.v3');
+      root.querySelectorAll('.v3-tab').forEach(t => t.classList.toggle('on', t === tab));
+      root.querySelectorAll('.v3-panel').forEach(p => p.classList.toggle('on', p.dataset.panel === tab.dataset.tab));
+    });
+  });
+
+  // Acordeão da V5
+  function toggleAcc(head) {
+    head.closest('.v5-acc-item').classList.toggle('open');
+  }
+  window.toggleAcc = toggleAcc;
+
+  document.getElementById('prevVar').addEventListener('click', () => showVariation(currentV - 1));
+  document.getElementById('nextVar').addEventListener('click', () => showVariation(currentV + 1));
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowRight') showVariation(currentV + 1);
+    if (e.key === 'ArrowLeft') showVariation(currentV - 1);
+  });
+
+  showVariation(0);
+</script>
+</body>
+</html>

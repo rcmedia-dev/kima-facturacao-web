@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Redesign — Tela de Visualizar & Baixar Fatura</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    background: #f1f5f9;
+    color: #0f172a;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .topbar {
+    background: #0f172a; color: #fff; padding: 14px 24px;
+    display: flex; align-items: center; justify-content: space-between; gap: 16px;
+    position: sticky; top: 0; z-index: 60; box-shadow: 0 4px 20px rgba(15,23,42,.35);
+  }
+  .topbar-brand { display: flex; align-items: center; gap: 10px; }
+  .topbar-logo {
+    width: 32px; height: 32px; border-radius: 8px;
+    background: linear-gradient(135deg, #2563eb, #6366f1);
+    display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 14px; color: #fff;
+  }
+  .topbar-title { font-weight: 700; font-size: 14px; }
+  .topbar-sub { font-size: 11px; color: #94a3b8; }
+  .nav-controls { display: flex; align-items: center; gap: 14px; }
+  .nav-btn {
+    border: 1px solid #334155; background: #1e293b; color: #e2e8f0;
+    padding: 8px 16px; border-radius: 10px; font-size: 12.5px; font-weight: 600;
+    cursor: pointer; transition: all .15s;
+  }
+  .nav-btn:hover:not(:disabled) { background: #2b3b50; color: #fff; }
+  .nav-btn:disabled { opacity: .4; cursor: not-allowed; }
+  .nav-btn.primary { background: #2563eb; border-color: #2563eb; color: #fff; }
+  .nav-btn.primary:hover:not(:disabled) { background: #1d4ed8; }
+  .step-counter {
+    font-size: 12.5px; font-weight: 600; color: #cbd5e1;
+    background: #1e293b; padding: 6px 12px; border-radius: 999px;
+  }
+  .dots { display: flex; gap: 6px; }
+  .dot { width: 9px; height: 9px; border-radius: 999px; background: #334155; cursor: pointer; border: none; transition: all .2s; }
+  .dot.active { background: #2563eb; width: 26px; }
+
+  .stage { max-width: 1080px; margin: 24px auto 60px; padding: 0 16px; }
+  .variation { display: none; }
+  .variation.active { display: block; animation: fade .35s ease; }
+  @keyframes fade { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+  
+  .variation-head { margin-bottom: 16px; }
+  .variation-head h2 { font-size: 19px; font-weight: 800; color: #0f172a; }
+  .variation-head p { font-size: 13px; color: #64748b; margin-top: 4px; }
+
+  .mono { font-family: 'JetBrains Mono', monospace; }
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    padding: 9px 16px; border-radius: 10px; font-size: 13px; font-weight: 600;
+    cursor: pointer; border: 1px solid transparent; transition: all .15s; text-decoration: none;
+  }
+  .btn-primary { background: #2563eb; color: #fff; }
+  .btn-primary:hover { background: #1d4ed8; }
+  .btn-secondary { background: #f1f5f9; color: #334155; border-color: #cbd5e1; }
+  .btn-secondary:hover { background: #e2e8f0; color: #0f172a; }
+  .btn-outline { background: #fff; border-color: #cbd5e1; color: #475569; }
+  .btn-outline:hover { border-color: #2563eb; color: #2563eb; background: #eff6ff; }
+  .btn-success { background: #10b981; color: #fff; }
+  .btn-success:hover { background: #059669; }
+  .btn-dark { background: #0f172a; color: #fff; }
+  .btn-dark:hover { background: #1e293b; }
+
+  .badge {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 4px 10px; border-radius: 999px; font-size: 11.5px; font-weight: 700;
+  }
+  .badge-pago { background: #dcfce7; color: #15803d; border: 1px solid #bbf7d0; }
+  .badge-pendente { background: #fef3c7; color: #b45309; border: 1px solid #fde68a; }
+  .badge-cancelado { background: #fee2e2; color: #b91c1c; border: 1px solid #fca5a5; }
+
+  table { border-collapse: collapse; width: 100%; font-size: 13px; }
+  th, td { padding: 12px 14px; text-align: left; }
+  th { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: #64748b; background: #f8fafc; }
+  td { border-bottom: 1px solid #f1f5f9; }
+
+  /* ==================== V1: DOCUMENT PREVIEW A4 ==================== */
+  .v1-toolbar {
+    background: #fff; border: 1px solid #e2e8f0; border-radius: 14px; padding: 14px 20px;
+    display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;
+    margin-bottom: 20px; box-shadow: 0 2px 10px rgba(15,23,42,.04);
+  }
+  .v1-paper {
+    background: #fff; border: 1px solid #e2e8f0; border-radius: 16px; padding: 36px 40px;
+    box-shadow: 0 10px 40px rgba(15,23,42,.08); max-width: 860px; margin: 0 auto; position: relative; overflow: hidden;
+  }
+  .v1-watermark {
+    position: absolute; top: 40%; left: 50%; transform: translate(-50%, -50%) rotate(-25deg);
+    font-size: 80px; font-weight: 900; color: rgba(245, 158, 11, 0.06); text-transform: uppercase;
+    pointer-events: none; select: none; white-space: nowrap;
+  }
+
+  /* ==================== V2: SPLIT SCREEN ==================== */
+  .v2-grid { display: grid; grid-template-columns: 340px 1fr; gap: 20px; align-items: start; }
+  .v2-aside { background: #fff; border: 1px solid #e2e8f0; border-radius: 16px; padding: 20px; box-shadow: 0 4px 20px rgba(15,23,42,.04); }
+  .v2-main { background: #fff; border: 1px solid #e2e8f0; border-radius: 16px; padding: 28px; box-shadow: 0 4px 20px rgba(15,23,42,.04); }
+
+  /* ==================== V3: MODERN CARDS GRID ==================== */
+  .v3-header { background: #fff; border: 1px solid #e2e8f0; border-radius: 16px; padding: 20px; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 14px; }
+  .v3-metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; margin-bottom: 16px; }
+  .v3-card { background: #fff; border: 1px solid #e2e8f0; border-radius: 14px; padding: 18px; }
+
+  /* ==================== V4: DARK EXECUTIVE MODE ==================== */
+  .v4-shell { background: #0f172a; color: #f8fafc; border-radius: 20px; padding: 28px; border: 1px solid #1e293b; box-shadow: 0 20px 50px rgba(0,0,0,.3); }
+  .v4-card { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.08); border-radius: 14px; padding: 20px; }
+  .v4-table th { background: rgba(15, 23, 42, 0.6); color: #94a3b8; }
+  .v4-table td { border-bottom-color: rgba(255,255,255,0.06); }
+
+  /* ==================== V5: TICKET / RECEIPT HUB ==================== */
+  .v5-wrap { max-width: 680px; margin: 0 auto; }
+  .v5-ticket { background: #fff; border: 1px solid #e2e8f0; border-radius: 20px; overflow: hidden; box-shadow: 0 12px 40px rgba(15,23,42,.08); }
+  .v5-head { background: linear-gradient(135deg, #1e1b4b, #312e81); color: #fff; padding: 28px; text-align: center; }
+  .v5-body { padding: 24px; }
+  .v5-format-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 16px; }
+  .v5-format-btn { border: 1px solid #e2e8f0; border-radius: 12px; padding: 12px; text-align: center; cursor: pointer; background: #fff; transition: all .15s; }
+  .v5-format-btn:hover { border-color: #2563eb; background: #eff6ff; }
+  .v5-format-btn.active { border-color: #2563eb; background: #eff6ff; font-weight: 700; color: #2563eb; }
+
+  @media (max-width: 860px) {
+    .v2-grid { grid-template-columns: 1fr; }
+    .v1-paper { padding: 20px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-brand">
+    <div class="topbar-logo">K</div>
+    <div>
+      <div class="topbar-title">Kima Faturas — Redesign Baixar Fatura</div>
+      <div class="topbar-sub">Escolha e aprove a melhor variação visual</div>
+    </div>
+  </div>
+  <div class="nav-controls">
+    <button class="nav-btn" id="prevVar">‹ Anterior</button>
+    <span class="step-counter" id="varCounter">1 / 5</span>
+    <button class="nav-btn primary" id="nextVar">Seguinte ›</button>
+  </div>
+</div>
+
+<div class="stage">
+  <div style="display:flex; justify-content:center; margin-bottom:20px;">
+    <div class="dots" id="dots"></div>
+  </div>
+
+  <!-- ════════════════ VARIAÇÃO 1 ════════════════ -->
+  <div class="variation v1">
+    <div class="variation-head">
+      <h2>1. Visualização em Documento Real (Paper Preview & Actions Bar)</h2>
+      <p>Barra superior flutuante de ações rápidas + folha de documento A4 central com pré-visualização fiel.</p>
+    </div>
+
+    <div class="v1-toolbar">
+      <div style="display:flex; align-items:center; gap:12px;">
+        <button class="btn btn-secondary">← Voltar</button>
+        <div>
+          <b style="font-weight:800; font-size:15px;">FT A/2026/042</b>
+          <span class="badge badge-pendente" style="margin-left:8px;">Pendente</span>
+        </div>
+      </div>
+      <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+        <button class="btn btn-outline">🖨️ Imprimir</button>
+        <button class="btn btn-outline">✉️ Enviar por Email</button>
+        <button class="btn btn-outline">💳 Registar Pagamento</button>
+        <button class="btn btn-primary">⬇️ Baixar PDF</button>
+      </div>
+    </div>
+
+    <div class="v1-paper">
+      <div class="v1-watermark">PENDENTE</div>
+      
+      <!-- Cabeçalho Fatura -->
+      <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:30px; border-bottom:2px solid #f1f5f9; padding-bottom:20px;">
+        <div>
+          <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px;">
+            <div style="width:28px; height:28px; background:#2563eb; color:#fff; border-radius:6px; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:13px;">K</div>
+            <b style="font-size:18px; color:#0f172a;">KIMA SOLUÇÕES, LDA</b>
+          </div>
+          <p style="font-size:12px; color:#64748b;">NIF: 5417082910 · Luanda, Angola</p>
+          <p style="font-size:12px; color:#64748b;">Email: contacto@kima.ao · Tel: +244 923 000 111</p>
+        </div>
+        <div style="text-align:right;">
+          <h2 style="font-size:22px; color:#2563eb; font-weight:900;">FATURA</h2>
+          <p class="mono" style="font-size:14px; font-weight:700; color:#0f172a; margin-top:2px;">FT A/2026/042</p>
+          <p style="font-size:12px; color:#64748b; margin-top:4px;">Data: <strong>12 de Agosto de 2026</strong></p>
+          <p style="font-size:12px; color:#64748b;">Vencimento: <strong>11 de Setembro de 2026</strong></p>
+        </div>
+      </div>
+
+      <!-- Dados do Cliente -->
+      <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px; padding:16px; margin-bottom:24px; display:grid; grid-template-columns:1fr 1fr; gap:16px;">
+        <div>
+          <p style="font-size:11px; font-weight:700; text-transform:uppercase; color:#94a3b8; letter-spacing:.05em;">Faturado A</p>
+          <b style="font-size:14px; color:#0f172a; display:block; margin-top:4px;">Angola Telecom, SA</b>
+          <p style="font-size:12px; color:#475569; margin-top:2px;">NIF: <span class="mono">5417001234</span></p>
+          <p style="font-size:12px; color:#475569;">Rua Rainha Ginga, nº 12, Luanda</p>
+        </div>
+        <div>
+          <p style="font-size:11px; font-weight:700; text-transform:uppercase; color:#94a3b8; letter-spacing:.05em;">Condições</p>
+          <p style="font-size:12.5px; color:#475569; margin-top:4px;">Pagamento: <strong>Transferência Bancária</strong></p>
+          <p style="font-size:12.5px; color:#475569;">Moeda: <strong>Kwanza (AOA)</strong></p>
+          <p style="font-size:12.5px; color:#475569;">Estado: <span class="badge badge-pendente">Pendente</span></p>
+        </div>
+      </div>
+
+      <!-- Tabela de Itens -->
+      <div style="border:1px solid #e2e8f0; border-radius:12px; overflow:hidden; margin-bottom:24px;">
+        <table>
+          <thead>
+            <tr>
+              <th>Descrição</th>
+              <th style="text-align:center;">Qtd</th>
+              <th style="text-align:right;">Preço Unit.</th>
+              <th style="text-align:center;">Taxa IVA</th>
+              <th style="text-align:right;">Total c/ IVA</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><b>Cartucho HP 305 Black</b><br><span style="font-size:11px; color:#94a3b8;">Consumível de Impressão</span></td>
+              <td style="text-align:center;" class="mono">3</td>
+              <td style="text-align:right;" class="mono">15 000,00 Kz</td>
+              <td style="text-align:center;"><span style="background:#eff6ff; color:#1d4ed8; padding:2px 8px; border-radius:999px; font-size:11px; font-weight:700;">14%</span></td>
+              <td style="text-align:right;" class="mono"><strong>51 300,00 Kz</strong></td>
+            </tr>
+            <tr>
+              <td><b>Serviço de Manutenção Anual</b><br><span style="font-size:11px; color:#94a3b8;">Contrato de Suporte TI</span></td>
+              <td style="text-align:center;" class="mono">1</td>
+              <td style="text-align:right;" class="mono">120 000,00 Kz</td>
+              <td style="text-align:center;"><span style="background:#fffbeb; color:#b45309; padding:2px 8px; border-radius:999px; font-size:11px; font-weight:700;">7%</span></td>
+              <td style="text-align:right;" class="mono"><strong>128 400,00 Kz</strong></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Totais -->
+      <div style="display:flex; justify-content:flex-end; margin-bottom:30px;">
+        <div style="width:280px; font-size:13px;">
+          <div style="display:flex; justify-content:space-between; padding:4px 0; color:#64748b;"><span>Subtotal</span><span class="mono">165 000,00 Kz</span></div>
+          <div style="display:flex; justify-content:space-between; padding:4px 0; color:#64748b;"><span>Total IVA</span><span class="mono">14 700,00 Kz</span></div>
+          <div style="display:flex; justify-content:space-between; padding:10px 0; margin-top:6px; border-top:2px solid #0f172a; font-weight:800; font-size:16px; color:#0f172a;">
+            <span>TOTAL A PAGAR</span>
+            <span class="mono" style="color:#2563eb;">179 700,00 Kz</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Rodapé legal AGT -->
+      <div style="border-top:1px dashed #cbd5e1; padding-top:16px; margin-top:20px; font-size:11px; color:#94a3b8; display:flex; justify-content:space-between; align-items:center;">
+        <p>Processado por programa certificado nº 999/AGT/2026 · Kima Facturação</p>
+        <p class="mono">Hash: a8f9-2c41-9901-kima</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════════════ VARIAÇÃO 2 ════════════════ -->
+  <div class="variation v2">
+    <div class="variation-head">
+      <h2>2. Tela Dividida (Sidebar de Ações & Resumo + Canvas do PDF)</h2>
+      <p>Coluna da esquerda com ações diretas (Baixar, Pagar, Enviar) e metadados. Coluna da direita com o documento.</p>
+    </div>
+
+    <div class="v2-grid">
+      <!-- Painel de Ações à esquerda -->
+      <div class="v2-aside">
+        <button class="btn btn-outline" style="width:100%; margin-bottom:16px;">← Voltar à lista</button>
+        
+        <div style="margin-bottom:16px;">
+          <span class="badge badge-pendente" style="margin-bottom:6px;">Documento Pendente</span>
+          <h2 class="mono" style="font-size:20px; font-weight:800;">FT A/2026/042</h2>
+          <p style="font-size:12px; color:#64748b;">Emitido a 12 de Agosto de 2026</p>
+        </div>
+
+        <div style="background:#0f172a; color:#fff; border-radius:14px; padding:16px; margin-bottom:18px;">
+          <p style="font-size:11px; color:#94a3b8; text-transform:uppercase; font-weight:700;">Valor Total</p>
+          <p class="mono" style="font-size:22px; font-weight:800; color:#60a5fa; margin-top:2px;">179 700,00 Kz</p>
+          <p style="font-size:11.5px; color:#94a3b8; margin-top:4px;">Vence a 11 de Setembro de 2026</p>
+        </div>
+
+        <!-- Botão principal de download -->
+        <button class="btn btn-primary" style="width:100%; padding:12px; font-size:14px; margin-bottom:10px;">
+          ⬇️ Baixar Fatura em PDF
+        </button>
+
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:18px;">
+          <button class="btn btn-outline" style="font-size:12px;">🖨️ Imprimir</button>
+          <button class="btn btn-outline" style="font-size:12px;">✉️ Enviar Email</button>
+        </div>
+
+        <button class="btn btn-success" style="width:100%; padding:10px; font-size:13px; margin-bottom:18px;">
+          💳 Registar Pagamento
+        </button>
+
+        <div style="border-top:1px solid #f1f5f9; padding-top:14px;">
+          <p style="font-size:11px; font-weight:700; text-transform:uppercase; color:#94a3b8; margin-bottom:8px;">Cliente</p>
+          <b style="font-size:13px; color:#0f172a;">Angola Telecom, SA</b>
+          <p style="font-size:12px; color:#64748b; margin-top:2px;">NIF 5417001234</p>
+        </div>
+      </div>
+
+      <!-- Canvas do documento à direita -->
+      <div class="v2-main">
+        <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:2px solid #f1f5f9; margin-bottom:20px; padding-bottom:16px;">
+          <div>
+            <b style="font-size:16px;">KIMA SOLUÇÕES, LDA</b>
+            <p style="font-size:12px; color:#64748b;">NIF 5417082910</p>
+          </div>
+          <div style="text-align:right;">
+            <span style="font-size:12px; font-weight:700; color:#2563eb;">FATURA</span>
+            <p class="mono" style="font-size:14px; font-weight:700;">FT A/2026/042</p>
+          </div>
+        </div>
+
+        <div style="margin-bottom:20px; font-size:13px;">
+          <p style="color:#64748b;">Cliente: <strong style="color:#0f172a;">Angola Telecom, SA</strong> (NIF 5417001234)</p>
+          <p style="color:#64748b;">Vencimento: <strong style="color:#0f172a;">11 de Setembro de 2026</strong></p>
+        </div>
+
+        <div style="border:1px solid #e2e8f0; border-radius:10px; overflow:hidden; margin-bottom:20px;">
+          <table>
+            <thead>
+              <tr><th>Item</th><th style="text-align:center;">Qtd</th><th style="text-align:right;">Total c/ IVA</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Cartucho HP 305 Black</td><td style="text-align:center;" class="mono">3</td><td style="text-align:right;" class="mono">51 300,00 Kz</td></tr>
+              <tr><td>Serviço de Manutenção Anual</td><td style="text-align:center;" class="mono">1</td><td style="text-align:right;" class="mono">128 400,00 Kz</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div style="background:#f8fafc; border-radius:10px; padding:14px; display:flex; justify-content:space-between; align-items:center;">
+          <span style="font-size:13px; font-weight:700;">TOTAL A PAGAR</span>
+          <span class="mono" style="font-size:18px; font-weight:800; color:#2563eb;">179 700,00 Kz</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════════════ VARIAÇÃO 3 ════════════════ -->
+  <div class="variation v3">
+    <div class="variation-head">
+      <h2>3. Dashboard Deck Moderno (Cards de Métricas + Ações em Topbar)</h2>
+      <p>Organização modular com cartões de valores, blocos de informação e botão hero de download.</p>
+    </div>
+
+    <!-- Topbar com Ações -->
+    <div class="v3-header">
+      <div>
+        <div style="display:flex; align-items:center; gap:10px;">
+          <h2 class="mono" style="font-size:22px; font-weight:800;">FT A/2026/042</h2>
+          <span class="badge badge-pendente">Pendente</span>
+        </div>
+        <p style="font-size:12px; color:#64748b; margin-top:2px;">Fatura para Angola Telecom, SA · Emitida a 12 de Agosto de 2026</p>
+      </div>
+      <div style="display:flex; gap:10px;">
+        <button class="btn btn-outline">← Voltar</button>
+        <button class="btn btn-outline">✉️ Partilhar</button>
+        <button class="btn btn-primary" style="padding:10px 20px; font-size:14px;">⬇️ Baixar Fatura PDF</button>
+      </div>
+    </div>
+
+    <!-- Métricas -->
+    <div class="v3-metrics">
+      <div class="v3-card">
+        <p style="font-size:11px; font-weight:700; color:#64748b; text-transform:uppercase;">Subtotal (sem IVA)</p>
+        <p class="mono" style="font-size:20px; font-weight:800; color:#0f172a; margin-top:4px;">165 000,00 Kz</p>
+      </div>
+      <div class="v3-card">
+        <p style="font-size:11px; font-weight:700; color:#64748b; text-transform:uppercase;">Total Imposto IVA</p>
+        <p class="mono" style="font-size:20px; font-weight:800; color:#d97706; margin-top:4px;">14 700,00 Kz</p>
+      </div>
+      <div class="v3-card" style="background:#0f172a; color:#fff;">
+        <p style="font-size:11px; font-weight:700; color:#94a3b8; text-transform:uppercase;">Total Geral a Pagar</p>
+        <p class="mono" style="font-size:22px; font-weight:800; color:#60a5fa; margin-top:4px;">179 700,00 Kz</p>
+      </div>
+    </div>
+
+    <!-- Detalhes do Cliente e Itens -->
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px;">
+      <div class="v3-card">
+        <h3 style="font-size:14px; font-weight:700; margin-bottom:10px;">Dados do Cliente</h3>
+        <p style="font-size:13px;"><strong>Angola Telecom, SA</strong></p>
+        <p style="font-size:12px; color:#64748b; margin-top:2px;">NIF: 5417001234</p>
+        <p style="font-size:12px; color:#64748b;">Morada: Rua Rainha Ginga, nº 12, Luanda</p>
+      </div>
+      <div class="v3-card">
+        <h3 style="font-size:14px; font-weight:700; margin-bottom:10px;">Condições e Vencimento</h3>
+        <p style="font-size:13px;">Pagamento: <strong>Transferência Bancária</strong></p>
+        <p style="font-size:12px; color:#64748b; margin-top:2px;">Data de Vencimento: <strong>11 de Setembro de 2026</strong></p>
+        <p style="font-size:12px; color:#059669; margin-top:4px;">✓ Documento pronto para transferência</p>
+      </div>
+    </div>
+
+    <div class="v3-card">
+      <h3 style="font-size:14px; font-weight:700; margin-bottom:12px;">Linhas do Documento</h3>
+      <div style="border:1px solid #e2e8f0; border-radius:10px; overflow:hidden;">
+        <table>
+          <thead>
+            <tr><th>Descrição</th><th style="text-align:center;">Qtd</th><th style="text-align:right;">Preço Unit.</th><th style="text-align:center;">IVA</th><th style="text-align:right;">Total</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Cartucho HP 305 Black</td><td style="text-align:center;" class="mono">3</td><td style="text-align:right;" class="mono">15 000,00 Kz</td><td style="text-align:center;">14%</td><td style="text-align:right;" class="mono"><strong>51 300,00 Kz</strong></td></tr>
+            <tr><td>Serviço de Manutenção Anual</td><td style="text-align:center;" class="mono">1</td><td style="text-align:right;" class="mono">120 000,00 Kz</td><td style="text-align:center;">7%</td><td style="text-align:right;" class="mono"><strong>128 400,00 Kz</strong></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════════════ VARIAÇÃO 4 ════════════════ -->
+  <div class="variation v4">
+    <div class="variation-head">
+      <h2>4. Dark Mode Executivo & Glassmorphic</h2>
+      <p>Design moderno em tom escuro elegante, cards translúcidos, botões de ação rápida e contraste premium.</p>
+    </div>
+
+    <div class="v4-shell">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:24px; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:16px;">
+        <div>
+          <span class="badge badge-pendente" style="margin-bottom:6px;">Pendente</span>
+          <h2 class="mono" style="font-size:26px; font-weight:800; color:#fff;">FT A/2026/042</h2>
+          <p style="font-size:12.5px; color:#94a3b8; margin-top:2px;">Faturado a Angola Telecom, SA · 12 de Agosto de 2026</p>
+        </div>
+        <div style="display:flex; gap:10px;">
+          <button class="btn btn-dark" style="border:1px solid #334155;">← Voltar</button>
+          <button class="btn btn-primary" style="background:linear-gradient(135deg, #2563eb, #6366f1); border:none; padding:12px 22px; font-size:14px;">
+            ⬇️ Baixar Fatura PDF
+          </button>
+        </div>
+      </div>
+
+      <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:14px; margin-bottom:20px;">
+        <div class="v4-card">
+          <p style="font-size:11px; color:#94a3b8; font-weight:700; text-transform:uppercase;">Subtotal</p>
+          <p class="mono" style="font-size:18px; font-weight:700; color:#e2e8f0; margin-top:4px;">165 000,00 Kz</p>
+        </div>
+        <div class="v4-card">
+          <p style="font-size:11px; color:#94a3b8; font-weight:700; text-transform:uppercase;">Imposto IVA</p>
+          <p class="mono" style="font-size:18px; font-weight:700; color:#fbbf24; margin-top:4px;">14 700,00 Kz</p>
+        </div>
+        <div class="v4-card" style="background:rgba(37,99,235,0.2); border-color:rgba(37,99,235,0.4);">
+          <p style="font-size:11px; color:#93c5fd; font-weight:700; text-transform:uppercase;">Total a Pagar</p>
+          <p class="mono" style="font-size:22px; font-weight:800; color:#60a5fa; margin-top:4px;">179 700,00 Kz</p>
+        </div>
+      </div>
+
+      <div class="v4-card" style="margin-bottom:20px;">
+        <h3 style="font-size:14px; font-weight:700; color:#fff; margin-bottom:12px;">Itens da Fatura</h3>
+        <div style="overflow-x-auto;">
+          <table class="v4-table">
+            <thead>
+              <tr><th>Descrição</th><th style="text-align:center;">Qtd</th><th style="text-align:right;">Preço</th><th style="text-align:right;">Total</th></tr>
+            </thead>
+            <tbody>
+              <tr><td style="color:#f8fafc;">Cartucho HP 305 Black</td><td style="text-align:center; color:#cbd5e1;" class="mono">3</td><td style="text-align:right; color:#cbd5e1;" class="mono">15 000,00 Kz</td><td style="text-align:right; color:#60a5fa;" class="mono"><strong>51 300,00 Kz</strong></td></tr>
+              <tr><td style="color:#f8fafc;">Serviço de Manutenção Anual</td><td style="text-align:center; color:#cbd5e1;" class="mono">1</td><td style="text-align:right; color:#cbd5e1;" class="mono">120 000,00 Kz</td><td style="text-align:right; color:#60a5fa;" class="mono"><strong>128 400,00 Kz</strong></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════════════ VARIAÇÃO 5 ════════════════ -->
+  <div class="variation v5">
+    <div class="variation-head">
+      <h2>5. Ticket Hub de Descarregamento (Formatos PDF, A4 e Térmica)</h2>
+      <p>Design estilo comprovativo fiscal / recibo com escolha de formatos de impressão (PDF A4, POS 80mm e Email).</p>
+    </div>
+
+    <div class="v5-wrap">
+      <div class="v5-ticket">
+        <div class="v5-head">
+          <span style="background:rgba(255,255,255,0.15); padding:4px 12px; border-radius:999px; font-size:11px; font-weight:700; text-transform:uppercase;">Fatura Emitida</span>
+          <h2 class="mono" style="font-size:24px; font-weight:800; margin-top:8px;">FT A/2026/042</h2>
+          <p style="font-size:13px; color:#c7d2fe; margin-top:4px;">Angola Telecom, SA</p>
+          <div style="margin-top:16px; padding-top:16px; border-top:1px solid rgba(255,255,255,0.15); font-size:26px; font-weight:900;" class="mono">
+            179 700,00 Kz
+          </div>
+        </div>
+
+        <div class="v5-body">
+          <p style="font-size:12px; font-weight:700; color:#64748b; text-transform:uppercase; letter-spacing:.05em; text-align:center;">Selecione o formato para baixar ou imprimir</p>
+          
+          <div class="v5-format-grid">
+            <div class="v5-format-btn active">
+              <div style="font-size:20px; margin-bottom:4px;">📄</div>
+              <b style="font-size:12.5px; display:block;">PDF A4 Padrão</b>
+              <span style="font-size:11px; color:#64748b;">Para arquivo e envio</span>
+            </div>
+            <div class="v5-format-btn">
+              <div style="font-size:20px; margin-bottom:4px;">🧾</div>
+              <b style="font-size:12.5px; display:block;">Talão 80mm</b>
+              <span style="font-size:11px; color:#64748b;">Impressora térmica</span>
+            </div>
+            <div class="v5-format-btn">
+              <div style="font-size:20px; margin-bottom:4px;">✉️</div>
+              <b style="font-size:12.5px; display:block;">Enviar por Email</b>
+              <span style="font-size:11px; color:#64748b;">Envio direto em PDF</span>
+            </div>
+          </div>
+
+          <button class="btn btn-primary" style="width:100%; padding:14px; font-size:15px; border-radius:12px; margin-top:20px;">
+            🚀 Descarregar Fatura Agora (PDF A4)
+          </button>
+
+          <div style="margin-top:20px; text-align:center; font-size:12px; color:#94a3b8; border-top:1px solid #f1f5f9; padding-top:14px;">
+            <p>Hash AGT: a8f9-2c41-9901-kima · Vencimento: 11/09/2026</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const variations = Array.from(document.querySelectorAll('.variation'));
+  const dotsWrap = document.getElementById('dots');
+  let currentV = 0;
+
+  variations.forEach((_, i) => {
+    const d = document.createElement('button');
+    d.className = 'dot';
+    d.addEventListener('click', () => showVariation(i));
+    dotsWrap.appendChild(d);
+  });
+  const dots = Array.from(dotsWrap.children);
+
+  function showVariation(i) {
+    currentV = Math.max(0, Math.min(variations.length - 1, i));
+    variations.forEach((el, idx) => el.classList.toggle('active', idx === currentV));
+    dots.forEach((d, idx) => d.classList.toggle('active', idx === currentV));
+    document.getElementById('varCounter').textContent = (currentV + 1) + ' / ' + variations.length;
+    document.getElementById('prevVar').disabled = currentV === 0;
+    document.getElementById('nextVar').disabled = currentV === variations.length - 1;
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  document.getElementById('prevVar').addEventListener('click', () => showVariation(currentV - 1));
+  document.getElementById('nextVar').addEventListener('click', () => showVariation(currentV + 1));
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowRight') showVariation(currentV + 1);
+    if (e.key === 'ArrowLeft') showVariation(currentV - 1);
+  });
+
+  showVariation(0);
+</script>
+</body>
+</html>

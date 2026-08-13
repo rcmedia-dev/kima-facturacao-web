@@ -1,28 +1,28 @@
 import { NextResponse } from "next/server";
 import { clienteSchema } from "@/lib/schemas";
 import { obterClientes, criarCliente } from "@/db/queries";
+import { requireCompanyId } from "@/lib/company";
 
-// ID fixo da empresa default do MVP
-const EMPRESA_ID_DEFAULT = "e1000000-0000-0000-0000-000000000001";
-
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    const clientes = await obterClientes(EMPRESA_ID_DEFAULT);
+    const companyId = requireCompanyId(request);
+    const clientes = await obterClientes(companyId);
     return NextResponse.json({ success: true, data: clientes });
   } catch (error: any) {
     return NextResponse.json(
       { success: false, error: error.message || "Erro ao obter clientes" },
-      { status: 500 }
+      { status: error.status || 500 }
     );
   }
 }
 
 export async function POST(request: Request) {
   try {
+    const companyId = requireCompanyId(request);
     const body = await request.json();
     const validatedData = clienteSchema.parse(body);
 
-    const novoCliente = await criarCliente(EMPRESA_ID_DEFAULT, {
+    const novoCliente = await criarCliente(companyId, {
       nome: validatedData.nome,
       nif: validatedData.nif,
       morada: validatedData.morada,

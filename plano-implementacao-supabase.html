@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Plano de Implementação — Integração Supabase (kima_facturas)</title>
+<style>
+  :root {
+    --bg: #0b1120;
+    --card: #111a2e;
+    --border: #1e2a44;
+    --text: #e2e8f0;
+    --muted: #94a3b8;
+    --accent: #38bdf8;
+    --green: #34d399;
+    --amber: #fbbf24;
+    --red: #f87171;
+    --violet: #a78bfa;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    line-height: 1.6;
+    padding: 2rem 1rem;
+  }
+  .container { max-width: 1080px; margin: 0 auto; }
+  header { text-align: center; margin-bottom: 2.5rem; }
+  header h1 { font-size: 2rem; font-weight: 800; background: linear-gradient(90deg, var(--accent), var(--violet)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  header p { color: var(--muted); margin-top: .5rem; }
+  .badge-row { display: flex; gap: .5rem; justify-content: center; flex-wrap: wrap; margin-top: 1rem; }
+  .badge { font-size: .75rem; padding: .3rem .7rem; border-radius: 999px; border: 1px solid var(--border); background: var(--card); color: var(--muted); }
+  .badge.green { color: var(--green); border-color: #14532d; }
+  .badge.amber { color: var(--amber); border-color: #78350f; }
+  .badge.sky { color: var(--accent); border-color: #075985; }
+
+  section { background: var(--card); border: 1px solid var(--border); border-radius: .75rem; padding: 1.5rem; margin-bottom: 1.5rem; }
+  h2 { font-size: 1.25rem; font-weight: 700; margin-bottom: 1rem; display: flex; align-items: center; gap: .5rem; }
+  h2 .num { background: var(--accent); color: #082f49; width: 1.6rem; height: 1.6rem; border-radius: .4rem; display: inline-flex; align-items: center; justify-content: center; font-size: .9rem; font-weight: 800; }
+  h3 { font-size: 1rem; font-weight: 600; margin: 1.25rem 0 .5rem; color: var(--accent); }
+  p, li { color: var(--text); }
+  ul { padding-left: 1.25rem; }
+  li { margin: .35rem 0; }
+  code { background: #0b1120; border: 1px solid var(--border); border-radius: .3rem; padding: .1rem .4rem; font-size: .85em; color: var(--accent); }
+  pre { background: #0b1120; border: 1px solid var(--border); border-radius: .5rem; padding: 1rem; overflow-x: auto; font-size: .82rem; line-height: 1.5; margin: .5rem 0; }
+  pre code { background: none; border: none; padding: 0; color: #a5f3fc; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: .75rem; margin: 1rem 0; }
+  .stat { background: #0b1120; border: 1px solid var(--border); border-radius: .5rem; padding: .9rem; }
+  .stat .v { font-size: 1.3rem; font-weight: 700; color: var(--accent); }
+  .stat .l { font-size: .75rem; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+
+  table { width: 100%; border-collapse: collapse; margin: .75rem 0; font-size: .85rem; }
+  th { text-align: left; color: var(--muted); text-transform: uppercase; font-size: .7rem; letter-spacing: .05em; padding: .5rem; border-bottom: 1px solid var(--border); }
+  td { padding: .5rem; border-bottom: 1px solid #16233d; vertical-align: top; }
+  tr:last-child td { border-bottom: none; }
+  td code { white-space: nowrap; }
+  .tag { font-size: .7rem; padding: .1rem .45rem; border-radius: .3rem; }
+  .tag.pk { background: #312e81; color: #c7d2fe; }
+  .tag.fk { background: #164e63; color: #a5f3fc; }
+  .tag.rls { background: #3b0764; color: #e9d5ff; }
+  .tag.uq { background: #78350f; color: #fde68a; }
+
+  .check { display: flex; align-items: center; gap: .6rem; padding: .6rem .75rem; border: 1px solid var(--border); border-radius: .5rem; margin: .4rem 0; cursor: pointer; }
+  .check input { width: 1.1rem; height: 1.1rem; accent-color: var(--green); }
+  .check span { font-size: .92rem; }
+
+  .alert { border-left: 3px solid var(--amber); background: #1a1608; padding: .8rem 1rem; border-radius: .4rem; margin: .75rem 0; }
+  .alert.green { border-left-color: var(--green); background: #0d1f17; }
+  .alert.red { border-left-color: var(--red); background: #200f12; }
+  .alert p { font-size: .9rem; }
+  .alert strong { color: var(--amber); }
+  .alert.green strong { color: var(--green); }
+  .alert.red strong { color: var(--red); }
+
+  .approve-box { background: linear-gradient(135deg, #062a2a, #0b1120); border: 1px solid #14532d; border-radius: .75rem; padding: 1.5rem; text-align: center; margin-top: 1rem; }
+  .approve-box h3 { color: var(--green); margin: 0 0 .5rem; }
+  .approve-box p { color: var(--muted); font-size: .9rem; }
+  footer { text-align: center; color: var(--muted); font-size: .8rem; margin-top: 2rem; }
+  @media print { body { background: #fff; color: #111; } section { background: #fff; border-color: #ccc; } }
+</style>
+</head>
+<body>
+<div class="container">
+
+<header>
+  <h1>Plano de Implementação — Supabase (schema <code style="background:transparent;border-color:var(--accent);color:var(--accent)">kima_facturas</code>)</h1>
+  <p>Kima Facturação Web · Integração de dados + isolamento multitenant (empresas/pessoas)</p>
+  <div class="badge-row">
+    <span class="badge sky">Projeto: hpdesbvqqmdhxoksrvij</span>
+    <span class="badge green">Módulo: faturas</span>
+    <span class="badge">Schema destino: kima_facturas</span>
+    <span class="badge amber">Aguardando aprovação</span>
+  </div>
+</header>
+
+<section>
+  <h2><span class="num">1</span>Análise do estado atual</h2>
+  <h3>1.1 O que o app precisa (domínio)</h3>
+  <p>O módulo faturação gere: <strong>clientes, fornecedores, artigos (com stock), documentos (faturas/recibos/orçamentos…), linhas de documento, movimentos de stock, séries de numeração, logs de auditoria e configuração da empresa</strong>. Hoje tudo roda em <code>localStorage</code> (<code>lib/store.ts</code>) com dados mockados (<code>lib/mock-data.ts</code>).</p>
+  <div class="grid">
+    <div class="stat"><div class="v">9</div><div class="l">Entidades de domínio</div></div>
+    <div class="stat"><div class="v">7</div><div class="l">Tipos de documento</div></div>
+    <div class="stat"><div class="v">3</div><div class="l">Taxas de IVA (0/7/14)</div></div>
+    <div class="stat"><div class="v">1</div><div class="l">Empresa ativa (cookie)</div></div>
+  </div>
+
+  <h3>1.2 O que já existe no Supabase (verificado)</h3>
+  <table>
+    <thead><tr><th>Schema</th><th>Tabelas</th><th>Papel</th></tr></thead>
+    <tbody>
+      <tr><td><code>auth</code></td><td><code>users</code>, <code>identities</code>, <code>sessions</code>, …</td><td>Autenticação central (hub)</td></tr>
+      <tr><td><code>public</code></td><td><code>companies</code>, <code>profiles</code>, <code>memberships</code>, <code>modules</code>, <code>company_modules</code>, <code>audit_logs</code>, <code>notifications</code>, …</td><td>Compartilhado / Hub (já populado: 8 empresas, 6 memberships, 7 módulos)</td></tr>
+      <tr><td><code>kima_rh</code></td><td><code>employees</code>, <code>departments</code>, <code>positions</code>, <code>company_settings</code>, <code>activity_log</code>, …</td><td>Módulo RH (padrão de referência p/ multitenancy)</td></tr>
+      <tr><td><code>rh</code></td><td><code>candidates</code>, <code>jobs</code>, <code>interviews</code>, …</td><td>Recrutamento (legado)</td></tr>
+    </tbody>
+  </table>
+  <div class="alert green"><p><strong>Conclusão:</strong> as tabelas de identidade/organização já existem e <strong>não devem ser recriadas</strong>. O schema <code>kima_facturas</code> foi criado (vazio) e já está exposto na API PostgREST.</p></div>
+</section>
+
+<section>
+  <h2><span class="num">2</span>Modelo multitenant (isolamento empresa/pessoa)</h2>
+  <h3>2.1 Como o isolamento funciona hoje (padrão kima_rh)</h3>
+  <ul>
+    <li><strong>Usuário</strong> = <code>auth.users</code> → perfil humano em <code>public.profiles</code> (id = <code>auth.uid()</code>)</li>
+    <li><strong>Organização ou Pessoa</strong> = <code>public.companies</code> (campo <code>org_type</code>: <code>'company'</code> | <code>'person'</code>)</li>
+    <li><strong>Vínculo</strong> = <code>public.memberships</code> (user_id → company_id, com <code>role</code> e <code>status</code>)</li>
+    <li><strong>Licença</strong> = <code>public.company_modules</code> (company_id → module_key, <code>status</code>='Ativo')</li>
+  </ul>
+  <h3>2.2 Funções de segurança compartilhadas (reutilizadas)</h3>
+  <p>Já existem no <code>public</code> (security definer) e serão usadas nas políticas RLS do módulo:</p>
+  <pre><code>public.is_company_member(company_id uuid)   → boolean
+public.is_company_admin(company_id uuid)     → boolean
+public.has_active_module(company_id, 'faturas') → boolean</code></pre>
+  <p>Módulo <strong>faturas</strong> confirmado no catálogo <code>public.modules</code> (<em>Kima Faturas</em>).</p>
+
+  <h3>2.3 Regra de isolamento (a aplicar em TODAS as tabelas)</h3>
+  <pre><code>-- Cada tabela do módulo terá:
+company_id  uuid NOT NULL REFERENCES public.companies(id) ON DELETE CASCADE
+created_by  uuid REFERENCES auth.users(id)   -- quem criou
+updated_by  uuid REFERENCES auth.users(id)   -- última alteração
+
+-- RLS habilitado com 4 políticas por tabela:
+SELECT  → USING (is_company_member(company_id))
+INSERT  → WITH CHECK (is_company_member(company_id) AND has_active_module(company_id, 'faturas'))
+UPDATE  → USING (is_company_member(company_id))
+           WITH CHECK (is_company_member(company_id) AND has_active_module(company_id, 'faturas'))
+DELETE  → USING (is_company_admin(company_id))</code></pre>
+  <div class="alert"><p><strong>Efeito prático:</strong> cada empresa/pessoa só enxerga e altera os seus próprios registos. Admin pode apagar; membro com licença ativa cria/edita; qualquer membro vê. Ninguém acede a dados de outra organização.</p></div>
+</section>
+
+<section>
+  <h2><span class="num">3</span>Tabelas a criar em <code>kima_facturas</code></h2>
+  <p>Todas seguem o padrão da secção 2.3 (coluna <code>company_id</code> + auditoria + RLS). Tipos: <code>uuid</code>, <code>text</code>, <code>numeric</code>, <code>smallint</code>, <code>boolean</code>, <code>jsonb</code>, <code>timestamptz</code>.</p>
+
+  <table>
+    <thead><tr><th>Tabela</th><th>Colunas principais</th><th>Destaques</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><code>clientes</code></td>
+        <td><code>id</code> <span class="tag pk">PK</span>, <code>company_id</code> <span class="tag fk">FK</span>, <code>nome</code>, <code>tipo</code> (PF|PJ), <code>nif</code>, <code>morada</code>, <code>telefone</code>, <code>email</code>, <code>responsavel</code>, <code>inscricao_social</code>, <code>ativo</code>, <code>created_by/updated_by</code>, <code>created_at/updated_at</code></td>
+        <td><span class="tag uq">UNIQUE (company_id, nif)</span></td>
+      </tr>
+      <tr>
+        <td><code>fornecedores</code></td>
+        <td><code>id</code> <span class="tag pk">PK</span>, <code>company_id</code> <span class="tag fk">FK</span>, <code>nome</code>, <code>nif</code>, <code>morada</code>, <code>telefone</code>, <code>email</code>, <code>bancaria</code>, <code>ativo</code>, auditoria</td>
+        <td><span class="tag uq">UNIQUE (company_id, nif)</span></td>
+      </tr>
+      <tr>
+        <td><code>artigos</code></td>
+        <td><code>id</code> <span class="tag pk">PK</span>, <code>company_id</code> <span class="tag fk">FK</span>, <code>codigo</code>, <code>descricao</code>, <code>categoria</code>, <code>tipo</code> (Produto|Serviço), <code>unidade_medida</code>, <code>preco</code> numeric(10,2), <code>taxa_iva</code> (0|7|14), <code>stock</code>, <code>stock_minimo</code>, <code>fornecedor_id</code> <span class="tag fk">FK</span>, <code>ativo</code>, auditoria</td>
+        <td><span class="tag uq">UNIQUE (company_id, codigo)</span></td>
+      </tr>
+      <tr>
+        <td><code>documentos</code></td>
+        <td><code>id</code> <span class="tag pk">PK</span>, <code>company_id</code> <span class="tag fk">FK</span>, <code>tipo</code> (7 tipos), <code>serie</code>, <code>numero</code>, <code>numero_completo</code>, <code>cliente_id</code> <span class="tag fk">FK</span>, <code>fornecedor_id</code> <span class="tag fk">FK</span>, <code>data_emissao</code>, <code>data_vencimento</code>, <code>forma_pagamento</code>, <code>status</code>, <code>observacoes</code>, <code>subtotal/total_iva/total</code> numeric(12,2), <code>data_pagamento</code>, <code>documento_referenciado</code>, <code>motivo</code>, auditoria</td>
+        <td><span class="tag uq">UNIQUE (company_id, tipo, serie, numero)</span> · índice status/data</td>
+      </tr>
+      <tr>
+        <td><code>documento_linhas</code></td>
+        <td><code>id</code> <span class="tag pk">PK</span>, <code>company_id</code> <span class="tag fk">FK</span>, <code>documento_id</code> <span class="tag fk">FK</span> ON DELETE CASCADE, <code>artigo_id</code> <span class="tag fk">FK</span>, <code>descricao</code>, <code>quantidade</code> numeric(10,3), <code>preco</code>, <code>taxa_iva</code>, <code>unidade_medida</code>, <code>total</code></td>
+        <td>Índice <code>documento_id</code></td>
+      </tr>
+      <tr>
+        <td><code>movimentos_stock</code></td>
+        <td><code>id</code> <span class="tag pk">PK</span>, <code>company_id</code> <span class="tag fk">FK</span>, <code>artigo_id</code> <span class="tag fk">FK</span> ON DELETE CASCADE, <code>tipo</code> (Entrada|Saída|Ajuste), <code>quantidade</code>, <code>referencia</code>, <code>observacoes</code>, <code>data</code>, <code>created_by</code></td>
+        <td>Índice <code>artigo_id</code></td>
+      </tr>
+      <tr>
+        <td><code>series_numeracao</code></td>
+        <td><code>id</code> <span class="tag pk">PK</span>, <code>company_id</code> <span class="tag fk">FK</span>, <code>serie</code>, <code>tipo_documento</code>, <code>proximo_numero</code>, <code>ultimo_numero_utilizado</code></td>
+        <td><span class="tag uq">UNIQUE (company_id, serie, tipo_documento)</span></td>
+      </tr>
+      <tr>
+        <td><code>logs_auditoria</code></td>
+        <td><code>id</code> <span class="tag pk">PK</span>, <code>company_id</code> <span class="tag fk">FK</span>, <code>user_id</code> <span class="tag fk">FK</span> (auth.users), <code>acao</code>, <code>entidade</code>, <code>entidade_id</code>, <code>alteracoes_anteriores</code> jsonb, <code>alteracoes_novas</code> jsonb, <code>endereco</code>, <code>created_at</code></td>
+        <td>Índice <code>(company_id, created_at)</code></td>
+      </tr>
+      <tr>
+        <td><code>company_settings</code></td>
+        <td><code>id</code> <span class="tag pk">PK</span>, <code>company_id</code> <span class="tag fk">FK</span> <span class="tag uq">UNIQUE</span>, <code>settings</code> jsonb (logo_url, conta_bancaria, banco, inscricao_social, nif_regional, dias_vencimento_padrao…), <code>updated_by</code>, <code>updated_at</code></td>
+        <td>Mesmo padrão do <code>kima_rh.company_settings</code></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="alert"><p><strong>Decisão de nomenclatura:</strong> as tabelas do ecossistema usam inglês <em>snake_case</em> (<code>company_id</code>, <code>created_at</code>…). O schema atual em <code>db/schema.ts</code> usa português (<code>empresa_id</code>, <code>criado_em</code>). <strong>Proponho alinhar ao padrão do ecossistema</strong> (inglês snake_case) para consistência com <code>public</code> e <code>kima_rh</code>.</p></div>
+</section>
+
+<section>
+  <h2><span class="num">4</span>Integração no código</h2>
+  <h3>4.1 Cliente Supabase apontando para o schema</h3>
+  <pre><code>// lib/supabase.ts (client)
+export const supabase = createClient(url, anonKey, {
+  db: { schema: 'kima_facturas' },   // isola o módulo
+  auth: { persistSession: true, autoRefreshToken: true },
+})</code></pre>
+  <h3>4.2 Reescrita de <code>db/queries.ts</code> (PostgREST)</h3>
+  <p>Hoje usa <code>drizzle.query(...)</code> sobre o cliente supabase-js, o que não funciona. Será reescrito com a API nativa do supabase-js (<code>.from('clientes')</code>) mantendo os mesmos nomes de função. A <strong>RLS garante o isolamento</strong> automaticamente — nenhum <code>WHERE company_id</code> manual vaza dados.</p>
+  <h3>4.3 Company ativa vinda do cookie (fim do ID fixo)</h3>
+  <pre><code>// Antes (hardcoded nos route handlers):
+const EMPRESA_ID_DEFAULT = "e1000000-0000-0000-0000-000000000001";
+
+// Depois (cookie global do hub):
+const companyId = request.cookies.get('kima-company-id')?.value;
+if (!companyId) → 401/redirect</code></pre>
+  <h3>4.4 Store e UI</h3>
+  <ul>
+    <li><code>lib/store.ts</code> passa a consumir as API routes (fetch) em vez de <code>localStorage</code></li>
+    <li>Seeding inicial: script opcional que importa os mock-data para o Supabase da empresa logada</li>
+    <li>Manter compatibilidade: fallback para localStorage até migração total (fase 3)</li>
+  </ul>
+</section>
+
+<section>
+  <h2><span class="num">5</span>Fases de implementação</h2>
+  <table>
+    <thead><tr><th>Fase</th><th>Entregável</th><th>Verificação</th></tr></thead>
+    <tbody>
+      <tr><td><strong>F0 · Database</strong></td><td>SQL de criação: 9 tabelas + enums + índices + RLS em <code>kima_facturas</code></td><td>Consultas via PostgREST com <code>Accept-Profile: kima_facturas</code>; políticas <code>pg_policies</code></td></tr>
+      <tr><td><strong>F1 · Data layer</strong></td><td><code>lib/supabase.ts</code> com schema · <code>db/client.ts</code> · reescrita de <code>db/queries.ts</code></td><td><code>pnpm build</code> + testes manuais das API routes</td></tr>
+      <tr><td><strong>F2 · Company context</strong></td><td>API routes lendo <code>kima-company-id</code> (remover ID fixo) + proteção sem cookie</td><td>Login no hub → redireciona → dados da empresa ativa</td></tr>
+      <tr><td><strong>F3 · UI + seed</strong></td><td>Store consome API · remoção gradual do localStorage · import de dados mock</td><td>CRUD completo por empresa; teste com 2 contas/empresas (isolamento)</td></tr>
+    </tbody>
+  </table>
+  <div class="alert red"><p><strong>Validação de isolamento obrigatória (F3):</strong> criar dados com a empresa A e confirmar que a empresa B <strong>não</strong> os vê (SELECT, UPDATE, DELETE negados).</p></div>
+</section>
+
+<section>
+  <h2><span class="num">6</span>Riscos &amp; decisões a confirmar</h2>
+  <ul>
+    <li><strong>Nomenclatura:</strong> adoptar inglês snake_case (padrão ecossistema) — requer ajustar <code>db/schema.ts</code> / tipos</li>
+    <li><strong>Driver:</strong> usar apenas PostgREST/supabase-js (RLS nativa) vs. Drizzle+postgres com <code>DATABASE_URL</code>. Recomendo supabase-js para aproveitar RLS.</li>
+    <li><strong>Company config:</strong> dados fiscais/bancários vão em <code>company_settings</code> (jsonb), dados base em <code>public.companies</code> — sem duplicação</li>
+    <li><strong>Numeração concorrente:</strong> <code>series_numeracao</code> pode ter corrida de números; recomendo reservar o número numa transação/CTE antes de inserir</li>
+    <li><strong>Serviço para criar empresas:</strong> criação de <code>companies</code>/<code>memberships</code> continua no Hub (fora do escopo deste módulo)</li>
+  </ul>
+</section>
+
+<section>
+  <h2><span class="num">7</span>Aprovação</h2>
+  <div class="check"><input type="checkbox" id="c1"><span>Aprovar criação das <strong>9 tabelas</strong> em <code>kima_facturas</code> com RLS (padrão kima_rh)</span></div>
+  <div class="check"><input type="checkbox" id="c2"><span>Aprovar isolamento via <code>is_company_member / is_company_admin / has_active_module('faturas')</code></span></div>
+  <div class="check"><input type="checkbox" id="c3"><span>Aprovar nomenclatura em inglês snake_case (ex.: <code>company_id</code> em vez de <code>empresa_id</code>)</span></div>
+  <div class="check"><input type="checkbox" id="c4"><span>Aprovar driver <strong>supabase-js + PostgREST</strong> (RLS nativa) para o data layer</span></div>
+  <div class="check"><input type="checkbox" id="c5"><span>Aprovar leitura da empresa ativa via cookie <code>kima-company-id</code> (remover ID fixo)</span></div>
+
+  <div class="approve-box">
+    <h3>Próximo passo após aprovação</h3>
+    <p>Executo a <strong>Fase 0</strong> (SQL de criação via Management API) e depois sigo para F1–F3 conforme validação do check-up. Posso executar tudo ou parar a cada fase para revisão.</p>
+  </div>
+</section>
+
+<footer>Kima Enterprise Ecosystem · Plano gerado em 2026-08-13 · Projeto kima-facturacao-web</footer>
+</div>
+</body>
+</html>

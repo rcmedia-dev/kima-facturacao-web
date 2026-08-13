@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Pré-visualização de Tabelas</title>
+<style>
+  :root {
+    --bg: #f1f5f9;
+    --card: #ffffff;
+    --border: #e2e8f0;
+    --text: #0f172a;
+    --muted: #64748b;
+    --accent: #2563eb;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    padding: 32px 24px 64px;
+  }
+  .page-title {
+    text-align: center;
+    margin-bottom: 6px;
+    font-size: 24px;
+    font-weight: 700;
+  }
+  .page-sub {
+    text-align: center;
+    color: var(--muted);
+    margin-bottom: 40px;
+    font-size: 13px;
+  }
+  .variant {
+    max-width: 960px;
+    margin: 0 auto 48px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0,0,0,.06);
+  }
+  .variant-head {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 20px;
+    border-bottom: 1px solid #eef2f7;
+    background: #f8fafc;
+  }
+  .variant-num {
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--accent);
+    color: #fff;
+    font-size: 13px;
+    font-weight: 700;
+  }
+  .variant-title { font-size: 15px; font-weight: 600; }
+  .variant-desc { font-size: 12px; color: var(--muted); }
+  .table-wrap { padding: 20px; overflow-x: auto; }
+
+  table { border-collapse: collapse; width: 100%; font-size: 13.5px; }
+
+  .cell-name { font-weight: 600; }
+  .cell-nif { font-family: Consolas, monospace; font-size: 12.5px; }
+  .cell-muted { color: var(--muted); }
+
+  .badge {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 3px 10px;
+    border-radius: 999px;
+    letter-spacing: .02em;
+  }
+  .badge-pj { background:#e0f2fe; color:#0369a1; }
+  .badge-pf { background:#d1fae5; color:#047857; }
+
+  .dots-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--muted);
+    padding: 6px;
+    border-radius: 8px;
+    display: inline-flex;
+  }
+  .dots-btn:hover { background:#eff6ff; color: var(--accent); }
+
+  /* ── V1. Header sólido azul ─────────────────── */
+  .v1 th {
+    background: var(--accent);
+    color: #fff;
+    text-align: left;
+    font-size: 11.5px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    padding: 12px 16px;
+  }
+  .v1 td {
+    padding: 12px 16px;
+    border-bottom: 1px solid #f1f5f9;
+  }
+  .v1 tbody tr:hover { background: #f8faff; }
+  .v1 th:last-child, .v1 td:last-child { text-align: right; }
+
+  /* ── V2. Header claro + acento ───────────────── */
+  .v2 th {
+    background: #f1f5f9;
+    color: #475569;
+    text-align: left;
+    font-size: 11.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    padding: 12px 16px;
+    border-bottom: 2px solid var(--accent);
+  }
+  .v2 td {
+    padding: 12px 16px;
+    border-bottom: 1px solid #f1f5f9;
+  }
+  .v2 tbody tr:hover { background: #f0f9ff; }
+  .v2 th:last-child, .v2 td:last-child { text-align: right; }
+
+  /* ── V3. Zebra com header escuro ─────────────── */
+  .v3 th {
+    background: #1e293b;
+    color: #e2e8f0;
+    text-align: left;
+    font-size: 11.5px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    padding: 12px 16px;
+  }
+  .v3 td {
+    padding: 12px 16px;
+    border-bottom: 1px solid #f1f5f9;
+  }
+  .v3 tbody tr:nth-child(even) { background: #f8fafc; }
+  .v3 tbody tr:hover { background: #eff6ff; }
+  .v3 th:last-child, .v3 td:last-child { text-align: right; }
+
+  /* ── V4. Minimalista sem cor no header ───────── */
+  .v4 th {
+    background: transparent;
+    color: #94a3b8;
+    text-align: left;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .08em;
+    padding: 10px 16px;
+    border-bottom: 1px solid #e2e8f0;
+  }
+  .v4 td {
+    padding: 13px 16px;
+    border-bottom: 1px solid #eef2f7;
+  }
+  .v4 tbody tr { transition: background .15s; }
+  .v4 tbody tr:hover { background: #f8fafc; }
+  .v4 .cell-name { color: var(--text); }
+  .v4 th:last-child, .v4 td:last-child { text-align: right; }
+
+  /* ── V5. Cards em grade (rows em cartão) ─────── */
+  .v5 .table-wrap { padding: 20px; }
+  .v5 tr {
+    display: grid;
+    grid-template-columns: 2fr 1.2fr 1.4fr 1.6fr .5fr;
+    gap: 8px;
+    align-items: center;
+    margin-bottom: 10px;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    background: #fff;
+    transition: box-shadow .15s, transform .15s;
+  }
+  .v5 tbody tr:hover {
+    box-shadow: 0 4px 14px rgba(37,99,235,.12);
+    transform: translateY(-1px);
+    background: #fff;
+  }
+  .v5 th {
+    text-align: left;
+    font-size: 10.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .07em;
+    color: #94a3b8;
+    padding: 0 14px 6px;
+    border-bottom: 1px solid #e2e8f0;
+  }
+  .v5 td {
+    padding: 10px 14px;
+    font-size: 13px;
+  }
+  .v5 th:last-child, .v5 td:last-child { text-align: right; }
+
+  @media (max-width: 640px) {
+    .v5 tr { grid-template-columns: repeat(2, 1fr); }
+  }
+</style>
+</head>
+<body>
+
+  <h1 class="page-title">Tabelas de Clientes — 5 Estilos</h1>
+  <p class="page-sub">Escolha o estilo que prefere. Todos usam os mesmos dados de exemplo.</p>
+
+  <!-- V1 -->
+  <div class="variant">
+    <div class="variant-head">
+      <div class="variant-num">1</div>
+      <div>
+        <div class="variant-title">Header sólido azul</div>
+        <div class="variant-desc">Header em azul escuro com texto branco — é o estilo atual em Faturas</div>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table class="v1">
+        <thead>
+          <tr>
+            <th>Nome</th><th>NIF</th><th>Telefone</th><th>Email</th><th>Estado</th><th></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="cell-name">Angola Telecom, SA</td>
+            <td class="cell-nif">5417001234</td>
+            <td class="cell-muted">+244 923 456 789</td>
+            <td class="cell-muted">geral@angolatelecom.ao</td>
+            <td><span class="badge badge-pj">PJ</span></td>
+            <td><button class="dots-btn">⋮</button></td>
+          </tr>
+          <tr>
+            <td class="cell-name">Maria dos Santos</td>
+            <td class="cell-nif">005432198LA042</td>
+            <td class="cell-muted">+244 912 345 678</td>
+            <td class="cell-muted">maria.santos@email.ao</td>
+            <td><span class="badge badge-pf">PF</span></td>
+            <td><button class="dots-btn">⋮</button></td>
+          </tr>
+          <tr>
+            <td class="cell-name">Supermercado Kikolo</td>
+            <td class="cell-nif">5001234567</td>
+            <td class="cell-muted">+244 934 567 890</td>
+            <td class="cell-muted">contactos@kikolo.ao</td>
+            <td><span class="badge badge-pj">PJ</span></td>
+            <td><button class="dots-btn">⋮</button></td>
+          </tr>
+          <tr>
+            <td class="cell-name">João Baptista</td>
+            <td class="cell-nif">008765432LA101</td>
+            <td class="cell-muted">+244 945 678 901</td>
+            <td class="cell-muted">joao.baptista@email.ao</td>
+            <td><span class="badge badge-pf">PF</span></td>
+            <td><button class="dots-btn">⋮</button></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- V2 -->
+  <div class="variant">
+    <div class="variant-head">
+      <div class="variant-num">2</div>
+      <div>
+        <div class="variant-title">Header claro com acento azul</div>
+        <div class="variant-desc">Fundo cinza-claro, texto upper-case e sublinhado azul — look moderno e leve</div>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table class="v2">
+        <thead>
+          <tr>
+            <th>Nome</th><th>NIF</th><th>Telefone</th><th>Email</th><th>Estado</th><th></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="cell-name">Angola Telecom, SA</td>
+            <td class="cell-nif">5417001234</td>
+            <td class="cell-muted">+244 923 456 789</td>
+            <td class="cell-muted">geral@angolatelecom.ao</td>
+            <td><span class="badge badge-pj">PJ</span></td>
+            <td><button class="dots-btn">⋮</button></td>
+          </tr>
+          <tr>
+            <td class="cell-name">Maria dos Santos</td>
+            <td class="cell-nif">005432198LA042</td>
+            <td class="cell-muted">+244 912 345 678</td>
+            <td class="cell-muted">maria.santos@email.ao</td>
+            <td><span class="badge badge-pf">PF</span></td>
+            <td><button class="dots-btn">⋮</button></td>
+          </tr>
+          <tr>
+            <td class="cell-name">Supermercado Kikolo</td>
+            <td class="cell-nif">5001234567</td>
+            <td class="cell-muted">+244 934 567 890</td>
+            <td class="cell-muted">contactos@kikolo.ao</td>
+            <td><span class="badge badge-pj">PJ</span></td>
+            <td><button class="dots-btn">⋮</button></td>
+          </tr>
+          <tr>
+            <td class="cell-name">João Baptista</td>
+            <td class="cell-nif">008765432LA101</td>
+            <td class="cell-muted">+244 945 678 901</td>
+            <td class="cell-muted">joao.baptista@email.ao</td>
+            <td><span class="badge badge-pf">PF</span></td>
+            <td><button class="dots-btn">⋮</button></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- V3 -->
+  <div class="variant">
+    <div class="variant-head">
+      <div class="variant-num">3</div>
+      <div>
+        <div class="variant-title">Header escuro zebra</div>
+        <div class="variant-desc">Header quase-preto + linhas alternadas (zebra) — boa legibilidade em listas longas</div>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table class="v3">
+        <thead>
+          <tr>
+            <th>Nome</th><th>NIF</th><th>Telefone</th><th>Email</th><th>Estado</th><th></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="cell-name">Angola Telecom, SA</td>
+            <td class="cell-nif">5417001234</td>
+            <td class="cell-muted">+244 923 456 789</td>
+            <td class="cell-muted">geral@angolatelecom.ao</td>
+            <td><span class="badge badge-pj">PJ</span></td>
+            <td><button class="dots-btn">⋮</button></td>
+          </tr>
+          <tr>
+            <td class="cell-name">Maria dos Santos</td>
+            <td class="cell-nif">005432198LA042</td>
+            <td class="cell-muted">+244 912 345 678</td>
+            <td class="cell-muted">maria.santos@email.ao</td>
+            <td><span class="badge badge-pf">PF</span></td>
+            <td><button class="dots-btn">⋮</button></td>
+          </tr>
+          <tr>
+            <td class="cell-name">Supermercado Kikolo</td>
+            <td class="cell-nif">5001234567</td>
+            <td class="cell-muted">+244 934 567 890</td>
+            <td class="cell-muted">contactos@kikolo.ao</td>
+            <td><span class="badge badge-pj">PJ</span></td>
+            <td><button class="dots-btn">⋮</button></td>
+          </tr>
+          <tr>
+            <td class="cell-name">João Baptista</td>
+            <td class="cell-nif">008765432LA101</td>
+            <td class="cell-muted">+244 945 678 901</td>
+            <td class="cell-muted">joao.baptista@email.ao</td>
+            <td><span class="badge badge-pf">PF</span></td>
+            <td><button class="dots-btn">⋮</button></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- V4 -->
+  <div class="variant">
+    <div class="variant-head">
+      <div class="variant-num">4</div>
+      <div>
+        <div class="variant-title">Minimalista sem cor</div>
+        <div class="variant-desc">Apenas tipografia e linhas suaves — muito limpo, destaque só no hover</div>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table class="v4">
+        <thead>
+          <tr>
+            <th>Nome</th><th>NIF</th><th>Telefone</th><th>Email</th><th>Estado</th><th></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="cell-name">Angola Telecom, SA</td>
+            <td class="cell-nif">5417001234</td>
+            <td class="cell-muted">+244 923 456 789</td>
+            <td class="cell-muted">geral@angolatelecom.ao</td>
+            <td><span class="badge badge-pj">PJ</span></td>
+            <td><button class="dots-btn">⋮</button></td>
+          </tr>
+          <tr>
+            <td class="cell-name">Maria dos Santos</td>
+            <td class="cell-nif">005432198LA042</td>
+            <td class="cell-muted">+244 912 345 678</td>
+            <td class="cell-muted">maria.santos@email.ao</td>
+            <td><span class="badge badge-pf">PF</span></td>
+            <td><button class="dots-btn">⋮</button></td>
+          </tr>
+          <tr>
+            <td class="cell-name">Supermercado Kikolo</td>
+            <td class="cell-nif">5001234567</td>
+            <td class="cell-muted">+244 934 567 890</td>
+            <td class="cell-muted">contactos@kikolo.ao</td>
+            <td><span class="badge badge-pj">PJ</span></td>
+            <td><button class="dots-btn">⋮</button></td>
+          </tr>
+          <tr>
+            <td class="cell-name">João Baptista</td>
+            <td class="cell-nif">008765432LA101</td>
+            <td class="cell-muted">+244 945 678 901</td>
+            <td class="cell-muted">joao.baptista@email.ao</td>
+            <td><span class="badge badge-pf">PF</span></td>
+            <td><button class="dots-btn">⋮</button></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- V5 -->
+  <div class="variant">
+    <div class="variant-head">
+      <div class="variant-num">5</div>
+      <div>
+        <div class="variant-title">Linhas em cartão</div>
+        <div class="variant-desc">Cada registo num cartão separado com sombra no hover — mais 'dashboards modernos'</div>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table class="v5">
+        <thead>
+          <tr style="display:none">
+            <th>Nome</th><th>NIF</th><th>Telefone</th><th>Email</th><th>Estado</th><th></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="cell-name">Angola Telecom, SA</td>
+            <td class="cell-nif">5417001234</td>
+            <td class="cell-muted">+244 923 456 789</td>
+            <td class="cell-muted">geral@angolatelecom.ao</td>
+            <td><span class="badge badge-pj">PJ</span></td>
+            <td><button class="dots-btn">⋮</button></td>
+          </tr>
+          <tr>
+            <td class="cell-name">Maria dos Santos</td>
+            <td class="cell-nif">005432198LA042</td>
+            <td class="cell-muted">+244 912 345 678</td>
+            <td class="cell-muted">maria.santos@email.ao</td>
+            <td><span class="badge badge-pf">PF</span></td>
+            <td><button class="dots-btn">⋮</button></td>
+          </tr>
+          <tr>
+            <td class="cell-name">Supermercado Kikolo</td>
+            <td class="cell-nif">5001234567</td>
+            <td class="cell-muted">+244 934 567 890</td>
+            <td class="cell-muted">contactos@kikolo.ao</td>
+            <td><span class="badge badge-pj">PJ</span></td>
+            <td><button class="dots-btn">⋮</button></td>
+          </tr>
+          <tr>
+            <td class="cell-name">João Baptista</td>
+            <td class="cell-nif">008765432LA101</td>
+            <td class="cell-muted">+244 945 678 901</td>
+            <td class="cell-muted">joao.baptista@email.ao</td>
+            <td><span class="badge badge-pf">PF</span></td>
+            <td><button class="dots-btn">⋮</button></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</body>
+</html>

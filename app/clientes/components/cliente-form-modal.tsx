@@ -2,27 +2,17 @@
 
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog as DialogPrimitive } from "@base-ui/react/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { X, Users, UserPlus, Building2, UserCircle2, Phone, Tag } from "lucide-react";
 import { Cliente } from "@/lib/types";
 import { clienteSchema, ClienteFormData, ClienteFormInput } from "@/lib/schemas";
 import { validarNIFAngolano } from "@/lib/utils";
 import { useState, useEffect } from "react";
 import { useToastContext } from "@/components/ui/toast";
 import { useAppStore } from "@/lib/store";
+import { cn } from "@/lib/utils";
 
 interface ClienteFormModalProps {
   cliente?: Cliente;
@@ -81,7 +71,7 @@ export function ClienteFormModal({
     }
   }, [nif, setError, clearErrors]);
 
-  const onSubmit = (data: ClienteFormInput) => {
+  const onSubmit = async (data: ClienteFormInput) => {
     setIsSaving(true);
     const clienteData: ClienteFormData = {
       nome: data.nome ?? "",
@@ -96,144 +86,212 @@ export function ClienteFormModal({
     };
     try {
       if (cliente) {
-        store.updateCliente(cliente.id, clienteData);
+        await store.updateCliente(cliente.id, clienteData);
         success("Sucesso", "Cliente atualizado com sucesso.");
       } else {
-        store.addCliente(clienteData);
+        await store.addCliente(clienteData);
         success("Sucesso", "Cliente criado com sucesso.");
       }
       onSave();
     } catch (e) {
-      error("Erro", "Falha ao salvar cliente.");
+      error("Erro", `Falha ao salvar cliente: ${(e as Error).message}`);
     } finally {
         setIsSaving(false);
     }
   };
 
+  const CardHeader = ({ icon, label }: { icon: React.ReactNode; label: string }) => (
+    <div className="flex items-center gap-2 border-b border-slate-100 bg-slate-50/60 px-4 py-2.5 dark:border-slate-800 dark:bg-slate-800/40">
+      <span className="text-blue-600 dark:text-blue-400">{icon}</span>
+      <span className="text-[12.5px] font-bold text-slate-700 dark:text-slate-200">{label}</span>
+    </div>
+  );
+
+  const Label = ({ children, required }: { children: React.ReactNode; required?: boolean }) => (
+    <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+      {children}
+      {required && <span className="text-red-500"> *</span>}
+    </label>
+  );
+
   return (
-    <Dialog open={true} onOpenChange={onClose}>
-      <DialogContent className="max-w-lg">
-        <DialogHeader>
-          <DialogTitle>
-            {cliente ? "Editar Cliente" : "Novo Cliente"}
-          </DialogTitle>
-        </DialogHeader>
-
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="text-sm font-medium">Tipo</label>
-              <Select
-                value={tipo}
-                onValueChange={(v) => setValue("tipo", v as "PF" | "PJ")}
-              >
-                <SelectTrigger className="mt-1">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="PJ">Pessoa Jurídica</SelectItem>
-                  <SelectItem value="PF">Pessoa Física</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <label className="text-sm font-medium">NIF Angolano</label>
-              <Input
-                {...register("nif")}
-                placeholder={tipo === "PJ" ? "Ex: 5417001234 (10 dígitos)" : "Ex: 005432198LA042 (BI)"}
-                className="mt-1"
-              />
-              {errors.nif ? (
-                <p className="text-red-500 text-xs mt-1">{errors.nif.message}</p>
-              ) : (
-                <p className="text-gray-400 text-xs mt-1">
-                  {tipo === "PJ" ? "Empresa: 10 dígitos numéricos" : "Pessoa Física: BI (14 chars) ou 10 dígitos"}
+    <DialogPrimitive.Root open onOpenChange={(o) => { if (!o) onClose(); }}>
+      <DialogPrimitive.Portal>
+        <DialogPrimitive.Backdrop
+          className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:fade-out-0"
+          onClick={onClose}
+        />
+        <DialogPrimitive.Popup
+          className="fixed right-0 top-0 z-50 flex h-full w-full max-w-lg flex-col bg-white dark:bg-slate-900 shadow-2xl outline-none transition-transform duration-300 ease-in-out translate-x-full data-open:translate-x-0 data-closed:translate-x-full"
+          aria-label={cliente ? "Editar Cliente" : "Novo Cliente"}
+        >
+          {/* Cabeçalho */}
+          <div className="flex items-center justify-between gap-3 border-b border-slate-100 dark:border-slate-800 px-6 py-4">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-900/30 shrink-0">
+                {cliente ? (
+                  <Users size={18} className="text-blue-600 dark:text-blue-400" />
+                ) : (
+                  <UserPlus size={18} className="text-blue-600 dark:text-blue-400" />
+                )}
+              </div>
+              <div className="min-w-0">
+                <p className="text-base font-bold text-slate-900 dark:text-white">
+                  {cliente ? "Editar Cliente" : "Novo Cliente"}
                 </p>
-              )}
-            </div>
-          </div>
-
-          <div>
-            <label className="text-sm font-medium">Nome</label>
-            <Input
-              {...register("nome")}
-              placeholder="Nome do cliente"
-              className="mt-1"
-            />
-            {errors.nome && (
-              <p className="text-red-500 text-sm mt-1">{errors.nome.message}</p>
-            )}
-          </div>
-
-          {tipo === "PJ" && (
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="text-sm font-medium">Responsável</label>
-                <Input
-                  {...register("responsavel")}
-                  placeholder="Nome do responsável"
-                  className="mt-1"
-                />
-              </div>
-              <div>
-                <label className="text-sm font-medium">Inscrição Social</label>
-                <Input
-                  {...register("inscricaoSocial")}
-                  placeholder="IS-2024-001"
-                  className="mt-1"
-                />
+                <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
+                  Preencha os dados abaixo para {cliente ? "atualizar" : "registar"} o cliente.
+                </p>
               </div>
             </div>
-          )}
+            <Button variant="ghost" size="icon-sm" onClick={onClose} aria-label="Fechar">
+              <X className="w-4 h-4" />
+            </Button>
+          </div>
 
-          <div>
-            <label className="text-sm font-medium">Morada</label>
-            <Input
-              {...register("morada")}
-              placeholder="Morada do cliente"
-              className="mt-1"
-            />
-            {errors.morada && (
-              <p className="text-red-500 text-sm mt-1">{errors.morada.message}</p>
+          {/* Abas PJ / PF */}
+          <div className="border-b border-slate-100 dark:border-slate-800 px-6 pt-4 pb-0">
+            <div className="flex gap-1 rounded-xl bg-slate-100 p-1 dark:bg-slate-800">
+              <button
+                type="button"
+                onClick={() => setValue("tipo", "PJ")}
+                className={cn(
+                  "flex flex-1 items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-[13px] font-bold transition-all",
+                  tipo === "PJ"
+                    ? "bg-white text-blue-700 shadow-sm dark:bg-slate-900 dark:text-blue-300"
+                    : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+                )}
+              >
+                <Building2 size={15} /> Pessoa Jurídica
+              </button>
+              <button
+                type="button"
+                onClick={() => setValue("tipo", "PF")}
+                className={cn(
+                  "flex flex-1 items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-[13px] font-bold transition-all",
+                  tipo === "PF"
+                    ? "bg-white text-blue-700 shadow-sm dark:bg-slate-900 dark:text-blue-300"
+                    : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+                )}
+              >
+                <UserCircle2 size={15} /> Pessoa Física
+              </button>
+            </div>
+          </div>
+
+          {/* Corpo scrollável */}
+          <form id="cliente-form" onSubmit={handleSubmit(onSubmit)} className="flex-1 overflow-y-auto p-6 space-y-3.5">
+            {/* Identificação */}
+            <div className="overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800">
+              <CardHeader icon={<Tag size={15} />} label="Identificação" />
+              <div className="grid grid-cols-2 gap-4 p-4">
+                <div className="space-y-1.5 col-span-2">
+                  <Label required>Nome</Label>
+                  <Input
+                    {...register("nome")}
+                    placeholder={tipo === "PJ" ? "Nome da empresa" : "Nome completo"}
+                    className="h-10"
+                  />
+                  {errors.nome && (
+                    <p className="text-red-500 text-sm mt-1">{errors.nome.message}</p>
+                  )}
+                </div>
+                <div className="space-y-1.5 col-span-2">
+                  <Label required>NIF Angolano</Label>
+                  <Input
+                    {...register("nif")}
+                    placeholder={tipo === "PJ" ? "Ex: 5417001234 (10 dígitos)" : "Ex: 005432198LA042 (BI)"}
+                    className="h-10"
+                  />
+                  {errors.nif ? (
+                    <p className="text-red-500 text-xs mt-1">{errors.nif.message}</p>
+                  ) : (
+                    <p className="text-gray-400 text-xs mt-1">
+                      {tipo === "PJ" ? "Empresa: 10 dígitos numéricos" : "Pessoa Física: BI (14 chars) ou 10 dígitos"}
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Contactos */}
+            <div className="overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800">
+              <CardHeader icon={<Phone size={15} />} label="Contactos" />
+              <div className="grid grid-cols-2 gap-4 p-4">
+                <div className="space-y-1.5">
+                  <Label required>Telefone</Label>
+                  <Input
+                    {...register("telefone")}
+                    placeholder="+244 923 000 000"
+                    className="h-10"
+                  />
+                  {errors.telefone && (
+                    <p className="text-red-500 text-sm mt-1">{errors.telefone.message}</p>
+                  )}
+                </div>
+                <div className="space-y-1.5">
+                  <Label required>Email</Label>
+                  <Input
+                    {...register("email")}
+                    type="email"
+                    placeholder="email@empresa.ao"
+                    className="h-10"
+                  />
+                  {errors.email && (
+                    <p className="text-red-500 text-sm mt-1">{errors.email.message}</p>
+                  )}
+                </div>
+                <div className="space-y-1.5 col-span-2">
+                  <Label required>Morada</Label>
+                  <Input
+                    {...register("morada")}
+                    placeholder="Morada do cliente"
+                    className="h-10"
+                  />
+                  {errors.morada && (
+                    <p className="text-red-500 text-sm mt-1">{errors.morada.message}</p>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Dados da Empresa (apenas PJ) */}
+            {tipo === "PJ" && (
+              <div className="overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800">
+                <CardHeader icon={<Building2 size={15} />} label="Dados da Empresa" />
+                <div className="grid grid-cols-2 gap-4 p-4">
+                  <div className="space-y-1.5">
+                    <Label>Responsável</Label>
+                    <Input
+                      {...register("responsavel")}
+                      placeholder="Nome do responsável"
+                      className="h-10"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Inscrição Social</Label>
+                    <Input
+                      {...register("inscricaoSocial")}
+                      placeholder="IS-2024-001"
+                      className="h-10"
+                    />
+                  </div>
+                </div>
+              </div>
             )}
-          </div>
+          </form>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="text-sm font-medium">Telefone</label>
-              <Input
-                {...register("telefone")}
-                placeholder="+244 923 000 000"
-                className="mt-1"
-              />
-              {errors.telefone && (
-                <p className="text-red-500 text-sm mt-1">{errors.telefone.message}</p>
-              )}
-            </div>
-            <div>
-              <label className="text-sm font-medium">Email</label>
-              <Input
-                {...register("email")}
-                type="email"
-                placeholder="email@empresa.ao"
-                className="mt-1"
-              />
-              {errors.email && (
-                <p className="text-red-500 text-sm mt-1">{errors.email.message}</p>
-              )}
-            </div>
-          </div>
-
-          <div className="flex gap-3 justify-end pt-4">
+          {/* Rodapé */}
+          <footer className="flex items-center justify-end gap-3 border-t border-slate-100 dark:border-slate-800 px-6 py-4">
             <Button disabled={isSaving} variant="outline" type="button" onClick={onClose}>
               Cancelar
             </Button>
-            <Button disabled={isSaving} type="submit">
-              {isSaving ? "Salvando..." : cliente ? "Atualizar" : "Criar"}
+            <Button disabled={isSaving} type="submit" form="cliente-form">
+              {isSaving ? "Salvando..." : cliente ? "Salvar Alterações" : "Criar Cliente"}
             </Button>
-          </div>
-        </form>
-      </DialogContent>
-    </Dialog>
+          </footer>
+        </DialogPrimitive.Popup>
+      </DialogPrimitive.Portal>
+    </DialogPrimitive.Root>
   );
 }

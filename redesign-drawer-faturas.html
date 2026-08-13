@@ -1,0 +1,717 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Redesign — Drawer de Ver Fatura</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    background: #eef2f7;
+    color: #0f172a;
+  }
+
+  .topbar {
+    background: #0f172a; color: #fff; padding: 14px 24px;
+    display: flex; align-items: center; justify-content: space-between; gap: 16px;
+    position: sticky; top: 0; z-index: 60; box-shadow: 0 4px 20px rgba(15,23,42,.35);
+  }
+  .topbar-brand { display: flex; align-items: center; gap: 10px; }
+  .topbar-logo {
+    width: 30px; height: 30px; border-radius: 8px;
+    background: linear-gradient(135deg, #2563eb, #6366f1);
+    display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 13px;
+  }
+  .topbar-title { font-weight: 700; font-size: 14px; }
+  .topbar-sub { font-size: 11px; color: #94a3b8; }
+  .nav-controls { display: flex; align-items: center; gap: 14px; }
+  .nav-btn {
+    border: 1px solid #334155; background: #1e293b; color: #e2e8f0;
+    padding: 8px 16px; border-radius: 10px; font-size: 12.5px; font-weight: 600;
+    cursor: pointer; transition: all .15s;
+  }
+  .nav-btn:hover:not(:disabled) { background: #2b3b50; color: #fff; }
+  .nav-btn:disabled { opacity: .4; cursor: not-allowed; }
+  .nav-btn.primary { background: #2563eb; border-color: #2563eb; color: #fff; }
+  .nav-btn.primary:hover:not(:disabled) { background: #1d4ed8; }
+  .step-counter {
+    font-size: 12.5px; font-weight: 600; color: #cbd5e1;
+    background: #1e293b; padding: 6px 12px; border-radius: 999px;
+  }
+  .dots { display: flex; gap: 6px; }
+  .dot { width: 9px; height: 9px; border-radius: 999px; background: #334155; cursor: pointer; border: none; transition: all .2s; }
+  .dot.active { background: #2563eb; width: 26px; }
+
+  .stage { max-width: 1080px; margin: 26px auto 60px; }
+  .variation { display: none; }
+  .variation.active { display: block; animation: fade .35s ease; }
+  @keyframes fade { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+  .variation-head { margin-bottom: 16px; }
+  .variation-head h2 { font-size: 18px; font-weight: 800; }
+  .variation-head p { font-size: 12.5px; color: #64748b; margin-top: 4px; }
+
+  .mono { font-family: 'Cascadia Code', Consolas, 'Courier New', monospace; }
+
+  /* ── Mock do app atrás da drawer ── */
+  .app-mock {
+    background: #e9edf3; border: 1px solid #d8dee9; border-radius: 16px;
+    box-shadow: 0 8px 30px rgba(15,23,42,.08);
+    height: 660px; position: relative; overflow: hidden;
+  }
+  .mock-topbar {
+    background: #fff; border-bottom: 1px solid #e2e8f0;
+    padding: 12px 20px; display: flex; align-items: center; gap: 12px;
+  }
+  .mock-search {
+    flex: 1; max-width: 300px; height: 30px; border-radius: 8px;
+    background: #f1f5f9; border: 1px solid #e2e8f0;
+  }
+  .mock-bar { display: flex; gap: 8px; }
+  .mock-tab { font-size: 11.5px; color: #64748b; font-weight: 600; padding: 4px 10px; }
+  .mock-tab.on { color: #2563eb; border-bottom: 2px solid #2563eb; }
+  .mock-table { padding: 14px 20px; }
+  .mock-row {
+    background: #fff; border: 1px solid #e2e8f0; border-radius: 10px;
+    display: flex; align-items: center; gap: 12px; padding: 10px 14px; margin-bottom: 8px;
+    font-size: 12px; color: #64748b;
+  }
+  .mock-row .fnum { font-weight: 700; color: #0f172a; width: 90px; }
+  .mock-row .fcli { flex: 1; }
+  .mock-row .fval { font-weight: 700; color: #0f172a; }
+  .mock-row.hl { border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37,99,235,.12); }
+  .mock-chip { font-size: 10.5px; font-weight: 700; padding: 3px 9px; border-radius: 999px; }
+
+  /* ── Drawer genérica ── */
+  .drawer-shell {
+    position: absolute; top: 0; right: 0; height: 100%;
+    background: #fff; display: flex; flex-direction: column;
+    box-shadow: -18px 0 40px rgba(15,23,42,.14);
+    z-index: 20;
+  }
+  .drawer-inner { flex: 1; overflow-y: auto; }
+  .drawer-inner::-webkit-scrollbar { width: 8px; }
+  .drawer-inner::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 8px; }
+
+  .chip { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 999px; }
+  .chip::before { content: ""; width: 6px; height: 6px; border-radius: 999px; background: currentColor; }
+  .chip.pend { background: #fef3c7; color: #b45309; }
+  .chip.pago { background: #d1fae5; color: #047857; }
+  .chip.parc { background: #dbeafe; color: #1d4ed8; }
+  .chip.canc { background: #fee2e2; color: #b91c1c; }
+
+  .lbl { font-size: 10.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: #94a3b8; }
+  .kv { display: flex; justify-content: space-between; gap: 10px; font-size: 12.5px; }
+  .kv .k { color: #94a3b8; }
+  .kv .v { font-weight: 600; color: #0f172a; text-align: right; }
+
+  .sec { border: 1px solid #e2e8f0; border-radius: 14px; }
+  .btn2 {
+    display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+    border-radius: 10px; font-size: 12.5px; font-weight: 700; padding: 9px 14px;
+    border: none; cursor: pointer; transition: all .15s; text-decoration: none;
+  }
+  .btn2-p { background: #2563eb; color: #fff; }
+  .btn2-p:hover { background: #1d4ed8; }
+  .btn2-o { background: #fff; border: 1px solid #cbd5e1; color: #475569; }
+  .btn2-o:hover { border-color: #2563eb; color: #2563eb; }
+  .btn2-g { background: #fff; border: 1px solid #d1d5db; color: #6b7280; }
+
+  /* ════ V1 · Split View ════ */
+  .v1 .drawer-shell { width: 780px; flex-direction: row; }
+  .v1-side {
+    width: 230px; background: linear-gradient(160deg, #0f172a, #1e293b);
+    color: #fff; display: flex; flex-direction: column; justify-content: space-between; padding: 20px;
+  }
+  .v1-side .mini { font-size: 11px; color: #64748b; }
+  .v1-side .big { font-size: 24px; font-weight: 800; margin-top: 4px; }
+  .v1-side .tag { font-size: 10.5px; color: #94a3b8; letter-spacing: .1em; text-transform: uppercase; margin-bottom: 6px; }
+  .v1-side .tot { border-top: 1px solid #334155; padding-top: 12px; margin-top: 12px; }
+  .v1-side .tot .v { font-size: 26px; font-weight: 800; color: #60a5fa; }
+  .v1-side .act { display: grid; gap: 8px; }
+  .v1-main { flex: 1; padding: 22px; display: flex; flex-direction: column; gap: 14px; overflow-y: auto; }
+
+  /* ════ V2 · Tabs ════ */
+  .v2 .drawer-shell { width: 460px; }
+  .v2-head {
+    background: linear-gradient(135deg, #4f46e5, #2563eb); color: #fff;
+    padding: 18px 20px; position: relative; overflow: hidden;
+  }
+  .v2-head::after {
+    content: ""; position: absolute; right: -30px; top: -40px; width: 140px; height: 140px;
+    background: rgba(255,255,255,.08); border-radius: 50%;
+  }
+  .v2-head .num { font-size: 16px; font-weight: 800; }
+  .v2-head .sub { font-size: 11px; color: rgba(255,255,255,.7); margin-top: 2px; }
+  .v2-status { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 700; background: rgba(255,255,255,.18); padding: 4px 10px; border-radius: 999px; }
+  .v2-tabs { display: flex; gap: 6px; padding: 12px 20px 0; border-bottom: 1px solid #e2e8f0; background: #fff; }
+  .v2-tab {
+    font-size: 12px; font-weight: 700; color: #94a3b8; padding: 7px 12px;
+    border: none; background: none; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px;
+  }
+  .v2-tab.on { color: #4f46e5; border-color: #4f46e5; }
+  .v2-panel { display: none; padding: 16px 20px; }
+  .v2-panel.on { display: block; animation: fade .2s ease; }
+  .v2-foot {
+    border-top: 1px solid #e2e8f0; padding: 14px 20px; display: flex;
+    align-items: center; justify-content: space-between; background: #fff;
+  }
+  .v2-foot .lab { font-size: 10.5px; color: #94a3b8; font-weight: 700; text-transform: uppercase; }
+  .v2-foot .tot { font-size: 20px; font-weight: 800; color: #4f46e5; }
+
+  /* ════ V3 · Extrato premium ════ */
+  .v3 .drawer-shell { width: 520px; }
+  .v3-inner { background: #faf9f7; }
+  .v3-head { padding: 24px 28px 0; text-align: center; }
+  .v3-mono {
+    width: 52px; height: 52px; border-radius: 50%; margin: 0 auto 10px;
+    background: #0f172a; color: #fff; display: flex; align-items: center; justify-content: center;
+    font-weight: 800; font-size: 16px; font-family: Georgia, 'Times New Roman', serif;
+  }
+  .v3-head h3 { font-family: Georgia, 'Times New Roman', serif; font-size: 17px; letter-spacing: .02em; }
+  .v3-head .ref { font-size: 11px; color: #9ca3af; letter-spacing: .18em; text-transform: uppercase; margin-top: 3px; }
+  .v3-statusrow { display: flex; justify-content: center; margin: 12px 0 18px; }
+  .v3-dash { border: none; border-top: 1px dashed #d6d3d1; margin: 0 28px; }
+  .v3-row { display: flex; justify-content: space-between; padding: 7px 0; font-size: 12.5px; }
+  .v3-row .k { color: #78716c; }
+  .v3-cond { padding: 16px 28px 8px; }
+  .v3-total {
+    margin: 14px 28px; border: 1.5px solid #0f172a; border-radius: 12px;
+    padding: 14px 18px; display: flex; justify-content: space-between; align-items: center;
+    background: #fff;
+  }
+  .v3-total .t { font-size: 11px; font-weight: 800; letter-spacing: .12em; }
+  .v3-total .v { font-size: 24px; font-weight: 800; }
+  .v3-items { padding: 0 28px; }
+  .v3-item { display: flex; justify-content: space-between; gap: 10px; font-size: 12px; padding: 9px 0; border-bottom: 1px dashed #e7e5e4; }
+  .v3-item .d { flex: 1; }
+  .v3-item .d b { display: block; font-size: 12.5px; color: #1c1917; }
+  .v3-item .d span { color: #a8a29e; font-size: 11px; }
+  .v3-item .q { color: #a8a29e; margin: 0 8px; }
+  .v3-item .p { font-weight: 700; }
+  .v3-foot { padding: 18px 28px 24px; display: flex; gap: 10px; }
+
+  /* ════ V4 · Timeline vertical ════ */
+  .v4 .drawer-shell { width: 440px; }
+  .v4-hero { padding: 20px 22px; background: linear-gradient(180deg, #fef3c7, #fff7ed); }
+  .v4-hero .num { font-size: 20px; font-weight: 800; color: #0f172a; }
+  .v4-hero .cli { font-size: 12.5px; color: #92400e; margin-top: 2px; }
+  .v4-tot { display: flex; justify-content: space-between; align-items: flex-end; margin-top: 14px; }
+  .v4-tot .lab { font-size: 10.5px; font-weight: 700; color: #b45309; text-transform: uppercase; letter-spacing: .1em; }
+  .v4-tot .v { font-size: 26px; font-weight: 800; color: #b45309; }
+  .v4-tl { padding: 18px 22px 20px; position: relative; }
+  .v4-node { position: relative; padding-left: 26px; padding-bottom: 16px; }
+  .v4-node::before {
+    content: ""; position: absolute; left: 7px; top: 4px; bottom: 0; width: 2px; background: #e2e8f0;
+  }
+  .v4-node:last-child::before { display: none; }
+  .v4-node::after {
+    content: ""; position: absolute; left: 2px; top: 4px; width: 12px; height: 12px;
+    border-radius: 50%; background: #fff; border: 3px solid #2563eb;
+  }
+  .v4-node.ok::after { border-color: #10b981; background: #10b981; }
+  .v4-node .t { font-size: 11px; font-weight: 800; color: #0f172a; text-transform: uppercase; letter-spacing: .08em; margin-bottom: 6px; display: flex; align-items: center; gap: 8px; }
+  .v4-node.ok .t { color: #059669; }
+  .v4-card { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 10px 12px; }
+  .v4-line { display: flex; justify-content: space-between; font-size: 12px; padding: 3px 0; }
+  .v4-line .d { color: #334155; font-weight: 600; }
+  .v4-line .m { color: #94a3b8; }
+  .v4-line .s { font-weight: 700; }
+
+  /* ════ V5 · Minimal + sticky footer ════ */
+  .v5 .drawer-shell { width: 400px; }
+  .v5-head { display: flex; align-items: center; justify-content: space-between; padding: 16px 18px; border-bottom: 1px solid #f1f5f9; }
+  .v5-head .num { font-size: 14px; font-weight: 800; }
+  .v5-hero {
+    background: #0f172a; color: #fff; margin: 14px 16px; border-radius: 16px;
+    padding: 16px 18px; position: relative; overflow: hidden;
+  }
+  .v5-hero::after {
+    content: ""; position: absolute; right: -24px; top: -30px; width: 120px; height: 120px;
+    background: radial-gradient(circle, rgba(96,165,250,.28), transparent 70%);
+  }
+  .v5-hero .lab { color: #94a3b8; }
+  .v5-hero .tot { font-size: 26px; font-weight: 800; color: #fff; margin-top: 2px; }
+  .v5-hero .sub { font-size: 11px; color: #64748b; margin-top: 6px; }
+  .v5-acc { padding: 0 16px; }
+  .v5-acc-item { border: 1px solid #e2e8f0; border-radius: 12px; margin-bottom: 8px; overflow: hidden; }
+  .v5-acc-head {
+    display: flex; align-items: center; justify-content: space-between; padding: 11px 14px;
+    cursor: pointer; background: #fff; font-size: 12.5px; font-weight: 700; color: #334155;
+    border: none; width: 100%; text-align: left;
+  }
+  .v5-acc-head .arrow { transition: transform .2s; color: #94a3b8; font-size: 10px; }
+  .v5-acc-item.open .arrow { transform: rotate(90deg); }
+  .v5-acc-body { display: none; padding: 0 14px 12px; }
+  .v5-acc-item.open .v5-acc-body { display: block; animation: fade .2s ease; }
+  .v5-foot {
+    display: flex; gap: 10px; padding: 14px 16px;
+    border-top: 1px solid #e2e8f0; background: #fff;
+  }
+</style>
+</head>
+<body>
+
+  <div class="topbar">
+    <div class="topbar-brand">
+      <div class="topbar-logo">K</div>
+      <div>
+        <div class="topbar-title">Redesign — Drawer de Ver Fatura</div>
+        <div class="topbar-sub">5 variações · navegue com ← → ou botões</div>
+      </div>
+    </div>
+    <div class="nav-controls">
+      <button class="nav-btn" id="prevVar">← Anterior</button>
+      <span class="step-counter" id="varCounter">1 / 5</span>
+      <button class="nav-btn primary" id="nextVar">Próximo →</button>
+      <div class="dots" id="dots"></div>
+    </div>
+  </div>
+
+  <div class="stage">
+
+    <!-- ════════════════ V1 · Split View ════════════════ -->
+    <div class="variation v1">
+      <div class="variation-head">
+        <h2>1. Split View — Resumo fixo à esquerda</h2>
+        <p>Drawer mais larga em dois painéis: lado esquerdo com o resumo financeiro e status sempre visíveis, lado direito com os detalhes roláveis.</p>
+      </div>
+
+      <div class="app-mock">
+        <div class="mock-topbar">
+          <div class="mock-search"></div>
+          <div class="mock-bar"><span class="mock-tab">Todas</span><span class="mock-tab on">Pendentes</span><span class="mock-tab">Pagas</span></div>
+        </div>
+        <div class="mock-table">
+          <div class="mock-row"><span class="fnum">A/000001</span><span class="fcli">Angola Telecom, SA</span><span class="mock-chip pend" style="background:#fef3c7;color:#b45309;">Pendente</span><span class="fval">179 700,00 Kz</span></div>
+          <div class="mock-row hl"><span class="fnum">A/000002</span><span class="fcli">Edições Novembro, Lda</span><span class="mock-chip pago" style="background:#d1fae5;color:#047857;">Pago</span><span class="fval">42 800,00 Kz</span></div>
+          <div class="mock-row"><span class="fnum">A/000003</span><span class="fcli">Transportes Kubango</span><span class="mock-chip pend" style="background:#fef3c7;color:#b45309;">Pendente</span><span class="fval">315 000,00 Kz</span></div>
+        </div>
+
+        <div class="drawer-shell">
+          <div class="v1-side">
+            <div>
+              <div class="mini">FATURA</div>
+              <div class="big">A/000002</div>
+              <div style="margin-top:6px;"><span class="chip pago">Pago</span></div>
+              <div style="margin-top:18px;">
+                <div class="tag">Total a Pagar</div>
+                <div class="kv"><span class="k" style="color:#94a3b8;">Subtotal</span><span class="mono" style="font-size:12px;color:#cbd5e1;">165 000,00</span></div>
+                <div class="kv" style="margin-top:4px;"><span class="k" style="color:#94a3b8;">IVA (14%)</span><span class="mono" style="font-size:12px;color:#cbd5e1;">14 700,00</span></div>
+                <div class="tot">
+                  <div class="tag">Total</div>
+                  <div class="v mono">179 700,00</div>
+                </div>
+              </div>
+            </div>
+            <div class="act">
+              <button class="btn2 btn2-p">⬇ Baixar PDF</button>
+              <button class="btn2 btn2-g" style="background:#1e293b;border-color:#334155;color:#cbd5e1;">✕ Fechar</button>
+            </div>
+          </div>
+          <div class="v1-main">
+            <div class="sec" style="padding:14px 16px;">
+              <div class="lbl" style="margin-bottom:10px;">Cliente</div>
+              <div style="font-size:14px;font-weight:700;">Angola Telecom, SA</div>
+              <div class="kv" style="margin-top:8px;"><span class="k">NIF</span><span class="v">5417001234</span></div>
+              <div class="kv" style="margin-top:4px;"><span class="k">Morada</span><span class="v">Rua Amílcar Cabral 12, Luanda</span></div>
+              <div class="kv" style="margin-top:4px;"><span class="k">Telefone</span><span class="v">+244 923 456 789</span></div>
+              <div class="kv" style="margin-top:4px;"><span class="k">Email</span><span class="v">financas@angolatelecom.ao</span></div>
+            </div>
+            <div class="sec" style="padding:14px 16px;">
+              <div class="lbl" style="margin-bottom:10px;">Informações</div>
+              <div class="kv"><span class="k">Série / Número</span><span class="v">A / 000002</span></div>
+              <div class="kv" style="margin-top:6px;"><span class="k">Emissão</span><span class="v">12 de agosto de 2026</span></div>
+              <div class="kv" style="margin-top:6px;"><span class="k">Vencimento</span><span class="v">26 de agosto de 2026</span></div>
+              <div class="kv" style="margin-top:6px;"><span class="k">Pagamento</span><span class="v">Transferência</span></div>
+              <div class="kv" style="margin-top:6px;"><span class="k">Data Pagamento</span><span class="v">12 de agosto de 2026</span></div>
+            </div>
+            <div class="sec">
+              <div class="lbl" style="padding:14px 16px 0;">Linhas da Fatura</div>
+              <div style="padding:8px 16px 14px;">
+                <div class="line-row" style="display:flex;gap:8px;font-size:11px;color:#94a3b8;font-weight:700;border-bottom:1px solid #e2e8f0;padding:6px 0;">
+                  <span style="flex:1;">Descrição</span><span style="width:30px;text-align:center;">Qtd</span><span style="width:70px;text-align:right;">Preço</span><span style="width:30px;text-align:center;">IVA</span><span style="width:80px;text-align:right;">Total</span>
+                </div>
+                <div style="display:flex;gap:8px;font-size:12px;padding:8px 0;border-bottom:1px solid #f1f5f9;">
+                  <span style="flex:1;font-weight:600;">Cartucho HP 305</span><span style="width:30px;text-align:center;" class="mono">3</span><span style="width:70px;text-align:right;" class="mono">15 000,00</span><span style="width:30px;text-align:center;" class="mono">14%</span><span style="width:80px;text-align:right;font-weight:700;" class="mono">51 300,00</span>
+                </div>
+                <div style="display:flex;gap:8px;font-size:12px;padding:8px 0;">
+                  <span style="flex:1;font-weight:600;">Manutenção Anual</span><span style="width:30px;text-align:center;" class="mono">1</span><span style="width:70px;text-align:right;" class="mono">112 631,58</span><span style="width:30px;text-align:center;" class="mono">14%</span><span style="width:80px;text-align:right;font-weight:700;" class="mono">128 400,00</span>
+                </div>
+              </div>
+            </div>
+            <div class="sec" style="padding:14px 16px;">
+              <div class="lbl" style="margin-bottom:6px;">Observações</div>
+              <p style="font-size:12.5px;color:#475569;line-height:1.5;">Pagamento processado por transferência bancária. Obrigado pela preferência.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ════════════════ V2 · Tabs ════════════════ -->
+    <div class="variation v2">
+      <div class="variation-head">
+        <h2>2. Painel com Abas — Cliente / Informações / Linhas</h2>
+        <p>Drawer com cabeçalho em gradiente e abas para organizar o conteúdo. Rodapé fixo com total e ação principal.</p>
+      </div>
+
+      <div class="app-mock">
+        <div class="mock-topbar">
+          <div class="mock-search"></div>
+          <div class="mock-bar"><span class="mock-tab">Todas</span><span class="mock-tab on">Pendentes</span><span class="mock-tab">Pagas</span></div>
+        </div>
+        <div class="mock-table">
+          <div class="mock-row"><span class="fnum">A/000001</span><span class="fcli">Angola Telecom, SA</span><span class="mock-chip pend" style="background:#fef3c7;color:#b45309;">Pendente</span><span class="fval">179 700,00 Kz</span></div>
+          <div class="mock-row hl"><span class="fnum">A/000002</span><span class="fcli">Edições Novembro, Lda</span><span class="mock-chip pago" style="background:#d1fae5;color:#047857;">Pago</span><span class="fval">42 800,00 Kz</span></div>
+          <div class="mock-row"><span class="fnum">A/000003</span><span class="fcli">Transportes Kubango</span><span class="mock-chip pend" style="background:#fef3c7;color:#b45309;">Pendente</span><span class="fval">315 000,00 Kz</span></div>
+        </div>
+
+        <div class="drawer-shell">
+          <div class="v2-head">
+            <div style="display:flex;align-items:center;justify-content:space-between;">
+              <div>
+                <div class="num">Fatura A/000002</div>
+                <div class="sub">Angola Telecom, SA · NIF 5417001234</div>
+              </div>
+              <span class="v2-status">● Pago</span>
+            </div>
+          </div>
+          <div class="v2-tabs">
+            <button class="v2-tab on" data-tab="1">Cliente</button>
+            <button class="v2-tab" data-tab="2">Informações</button>
+            <button class="v2-tab" data-tab="3">Linhas</button>
+          </div>
+          <div class="drawer-inner">
+            <div class="v2-panel on" data-panel="1">
+              <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;">
+                <div style="width:44px;height:44px;border-radius:12px;background:linear-gradient(135deg,#4f46e5,#2563eb);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:16px;">AT</div>
+                <div>
+                  <div style="font-weight:700;font-size:14px;">Angola Telecom, SA</div>
+                  <div style="font-size:11.5px;color:#64748b;">Cliente desde 2024</div>
+                </div>
+              </div>
+              <div class="sec" style="padding:14px 16px;">
+                <div class="kv"><span class="k">NIF</span><span class="v">5417001234</span></div>
+                <div class="kv" style="margin-top:8px;"><span class="k">Morada</span><span class="v">Rua Amílcar Cabral 12, Luanda</span></div>
+                <div class="kv" style="margin-top:8px;"><span class="k">Telefone</span><span class="v">+244 923 456 789</span></div>
+                <div class="kv" style="margin-top:8px;"><span class="k">Email</span><span class="v">financas@angolatelecom.ao</span></div>
+              </div>
+            </div>
+            <div class="v2-panel" data-panel="2">
+              <div class="sec" style="padding:14px 16px;">
+                <div class="lbl" style="margin-bottom:10px;">Dados do Documento</div>
+                <div class="kv"><span class="k">Série / Número</span><span class="v">A / 000002</span></div>
+                <div class="kv" style="margin-top:8px;"><span class="k">Data de Emissão</span><span class="v">12 de agosto de 2026</span></div>
+                <div class="kv" style="margin-top:8px;"><span class="k">Data de Vencimento</span><span class="v">26 de agosto de 2026</span></div>
+                <div class="kv" style="margin-top:8px;"><span class="k">Forma de Pagamento</span><span class="v">Transferência</span></div>
+                <div class="kv" style="margin-top:8px;"><span class="k">Data de Pagamento</span><span class="v">12 de agosto de 2026</span></div>
+                <div class="kv" style="margin-top:8px;"><span class="k">Criado por</span><span class="v">Maria dos Santos</span></div>
+              </div>
+            </div>
+            <div class="v2-panel" data-panel="3">
+              <div class="sec">
+                <div style="padding:6px 0;">
+                  <div style="display:flex;gap:8px;font-size:11px;color:#94a3b8;font-weight:700;padding:8px 16px;border-bottom:1px solid #e2e8f0;background:#f8fafc;">
+                    <span style="flex:1;">Descrição</span><span style="width:34px;text-align:center;">Qtd</span><span style="width:80px;text-align:right;">Total</span>
+                  </div>
+                  <div style="display:flex;gap:8px;font-size:12px;padding:10px 16px;border-bottom:1px solid #f1f5f9;">
+                    <span style="flex:1;"><b>Cartucho HP 305</b><br><span style="font-size:11px;color:#94a3b8;">14% IVA · 15 000,00 c/u</span></span>
+                    <span style="width:34px;text-align:center;" class="mono">3</span>
+                    <span style="width:80px;text-align:right;font-weight:700;" class="mono">51 300,00</span>
+                  </div>
+                  <div style="display:flex;gap:8px;font-size:12px;padding:10px 16px;">
+                    <span style="flex:1;"><b>Manutenção Anual</b><br><span style="font-size:11px;color:#94a3b8;">14% IVA · 112 631,58 c/u</span></span>
+                    <span style="width:34px;text-align:center;" class="mono">1</span>
+                    <span style="width:80px;text-align:right;font-weight:700;" class="mono">128 400,00</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="v2-foot">
+            <div><div class="lab">Total a Pagar</div><div class="tot mono">179 700,00 Kz</div></div>
+            <div style="display:flex;gap:8px;">
+              <button class="btn2 btn2-o">⬇ PDF</button>
+              <button class="btn2 btn2-p">Fechar</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ════════════════ V3 · Extrato premium ════════════════ -->
+    <div class="variation v3">
+      <div class="variation-head">
+        <h2>3. Estilo Extrato / Recibo Premium</h2>
+        <p>Estética de documento financeiro em papel: tipografia elegante, divisores tracejados e total emoldurado.</p>
+      </div>
+
+      <div class="app-mock">
+        <div class="mock-topbar">
+          <div class="mock-search"></div>
+          <div class="mock-bar"><span class="mock-tab">Todas</span><span class="mock-tab on">Pendentes</span><span class="mock-tab">Pagas</span></div>
+        </div>
+        <div class="mock-table">
+          <div class="mock-row"><span class="fnum">A/000001</span><span class="fcli">Angola Telecom, SA</span><span class="mock-chip pend" style="background:#fef3c7;color:#b45309;">Pendente</span><span class="fval">179 700,00 Kz</span></div>
+          <div class="mock-row hl"><span class="fnum">A/000002</span><span class="fcli">Edições Novembro, Lda</span><span class="mock-chip pago" style="background:#d1fae5;color:#047857;">Pago</span><span class="fval">42 800,00 Kz</span></div>
+          <div class="mock-row"><span class="fnum">A/000003</span><span class="fcli">Transportes Kubango</span><span class="mock-chip pend" style="background:#fef3c7;color:#b45309;">Pendente</span><span class="fval">315 000,00 Kz</span></div>
+        </div>
+
+        <div class="drawer-shell">
+          <div class="drawer-inner v3-inner">
+            <div class="v3-head">
+              <div class="v3-mono">K</div>
+              <h3>KIMA Facturação</h3>
+              <div class="ref">Fatura · A/000002</div>
+              <div class="v3-statusrow"><span class="chip pago">Pago</span></div>
+            </div>
+            <hr class="v3-dash" />
+            <div class="v3-cond">
+              <div class="v3-row"><span class="k">Faturado a</span><b>Angola Telecom, SA</b></div>
+              <div class="v3-row"><span class="k">NIF do cliente</span><span class="mono">5417001234</span></div>
+              <div class="v3-row"><span class="k">Data de emissão</span><span>12 de agosto de 2026</span></div>
+              <div class="v3-row"><span class="k">Vencimento</span><span>26 de agosto de 2026</span></div>
+              <div class="v3-row"><span class="k">Pagamento</span><span>Transferência</span></div>
+            </div>
+            <hr class="v3-dash" />
+            <div class="v3-items">
+              <div class="v3-item">
+                <div class="d"><b>Cartucho HP 305</b><span>Qtd 3 × 15 000,00 · IVA 14%</span></div>
+                <div class="q">3</div>
+                <div class="p mono">51 300,00</div>
+              </div>
+              <div class="v3-item">
+                <div class="d"><b>Manutenção Anual</b><span>Qtd 1 × 112 631,58 · IVA 14%</span></div>
+                <div class="q">1</div>
+                <div class="p mono">128 400,00</div>
+              </div>
+            </div>
+            <hr class="v3-dash" style="margin-top:6px;" />
+            <div style="padding:0 28px;">
+              <div class="v3-row"><span class="k">Subtotal (sem IVA)</span><span class="mono">165 000,00</span></div>
+              <div class="v3-row"><span class="k">IVA (14%)</span><span class="mono">14 700,00</span></div>
+            </div>
+            <div class="v3-total">
+              <span class="t">TOTAL</span>
+              <span class="v mono">179 700,00 Kz</span>
+            </div>
+            <div class="v3-foot">
+              <button class="btn2 btn2-p" style="flex:1;">⬇ Baixar PDF</button>
+              <button class="btn2 btn2-o" style="flex:1;">Fechar</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ════════════════ V4 · Timeline vertical ════════════════ -->
+    <div class="variation v4">
+      <div class="variation-head">
+        <h2>4. Timeline Vertical do Ciclo de Vida</h2>
+        <p>Cabeçalho com status em destaque e uma linha do tempo (emissão → cliente → itens → pagamento) mostrando o ciclo da fatura.</p>
+      </div>
+
+      <div class="app-mock">
+        <div class="mock-topbar">
+          <div class="mock-search"></div>
+          <div class="mock-bar"><span class="mock-tab">Todas</span><span class="mock-tab on">Pendentes</span><span class="mock-tab">Pagas</span></div>
+        </div>
+        <div class="mock-table">
+          <div class="mock-row"><span class="fnum">A/000001</span><span class="fcli">Angola Telecom, SA</span><span class="mock-chip pend" style="background:#fef3c7;color:#b45309;">Pendente</span><span class="fval">179 700,00 Kz</span></div>
+          <div class="mock-row hl"><span class="fnum">A/000002</span><span class="fcli">Edições Novembro, Lda</span><span class="mock-chip pago" style="background:#d1fae5;color:#047857;">Pago</span><span class="fval">42 800,00 Kz</span></div>
+          <div class="mock-row"><span class="fnum">A/000003</span><span class="fcli">Transportes Kubango</span><span class="mock-chip pend" style="background:#fef3c7;color:#b45309;">Pendente</span><span class="fval">315 000,00 Kz</span></div>
+        </div>
+
+        <div class="drawer-shell">
+          <div class="v4-hero">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+              <div>
+                <div class="num">Fatura A/000002</div>
+                <div class="cli">Angola Telecom, SA · NIF 5417001234</div>
+              </div>
+              <span class="chip pago">Pago</span>
+            </div>
+            <div class="v4-tot">
+              <div><div class="lab">Total a Pagar</div><div class="mono" style="font-size:12px;color:#92400e;">2 itens · vence 26/08/2026</div></div>
+              <div class="v mono">179 700,00</div>
+            </div>
+          </div>
+          <div class="v4-tl">
+            <div class="v4-node ok">
+              <div class="t">✓ Emissão</div>
+              <div class="v4-card">
+                <div class="v4-line"><span class="d">Série / Número</span><span class="s mono">A / 000002</span></div>
+                <div class="v4-line"><span class="m">Data de emissão</span><span>12 de agosto de 2026</span></div>
+                <div class="v4-line"><span class="m">Vencimento</span><span>26 de agosto de 2026</span></div>
+                <div class="v4-line"><span class="m">Forma de pagamento</span><span>Transferência</span></div>
+              </div>
+            </div>
+            <div class="v4-node ok">
+              <div class="t">✓ Cliente</div>
+              <div class="v4-card">
+                <div class="v4-line"><span class="d">Angola Telecom, SA</span><span class="s mono">5417001234</span></div>
+                <div class="v4-line"><span class="m">Rua Amílcar Cabral 12, Luanda</span><span>+244 923 456 789</span></div>
+              </div>
+            </div>
+            <div class="v4-node ok">
+              <div class="t">✓ Itens</div>
+              <div class="v4-card">
+                <div class="v4-line"><span class="d">Cartucho HP 305</span><span class="m">3 un</span><span class="s mono">51 300,00</span></div>
+                <div class="v4-line" style="padding-top:4px;"><span class="d">Manutenção Anual</span><span class="m">1 un</span><span class="s mono">128 400,00</span></div>
+              </div>
+            </div>
+            <div class="v4-node ok">
+              <div class="t">✓ Pagamento</div>
+              <div class="v4-card">
+                <div class="v4-line"><span class="d">Subtotal</span><span class="mono">165 000,00</span></div>
+                <div class="v4-line"><span class="m">IVA (14%)</span><span class="mono">14 700,00</span></div>
+                <div class="v4-line" style="border-top:1px solid #e2e8f0;margin-top:6px;padding-top:6px;"><span class="d" style="color:#059669;">TOTAL PAGO</span><span class="s mono" style="color:#059669;">179 700,00</span></div>
+              </div>
+            </div>
+          </div>
+          <div style="padding:0 22px 20px;display:flex;gap:10px;">
+            <button class="btn2 btn2-p" style="flex:1;">⬇ Baixar PDF</button>
+            <button class="btn2 btn2-o" style="flex:1;">Fechar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ════════════════ V5 · Minimal + sticky footer ════════════════ -->
+    <div class="variation v5">
+      <div class="variation-head">
+        <h2>5. Minimalista com Acordeão e Barra Fixa</h2>
+        <p>Drawer compacta com seções em acordeão, total em destaque no topo e barra de ações fixa no rodapé.</p>
+      </div>
+
+      <div class="app-mock">
+        <div class="mock-topbar">
+          <div class="mock-search"></div>
+          <div class="mock-bar"><span class="mock-tab">Todas</span><span class="mock-tab on">Pendentes</span><span class="mock-tab">Pagas</span></div>
+        </div>
+        <div class="mock-table">
+          <div class="mock-row"><span class="fnum">A/000001</span><span class="fcli">Angola Telecom, SA</span><span class="mock-chip pend" style="background:#fef3c7;color:#b45309;">Pendente</span><span class="fval">179 700,00 Kz</span></div>
+          <div class="mock-row hl"><span class="fnum">A/000002</span><span class="fcli">Edições Novembro, Lda</span><span class="mock-chip pago" style="background:#d1fae5;color:#047857;">Pago</span><span class="fval">42 800,00 Kz</span></div>
+          <div class="mock-row"><span class="fnum">A/000003</span><span class="fcli">Transportes Kubango</span><span class="mock-chip pend" style="background:#fef3c7;color:#b45309;">Pendente</span><span class="fval">315 000,00 Kz</span></div>
+        </div>
+
+        <div class="drawer-shell">
+          <div class="v5-head">
+            <div style="display:flex;align-items:center;gap:10px;">
+              <div style="width:34px;height:34px;border-radius:10px;background:#eff6ff;display:flex;align-items:center;justify-content:center;color:#2563eb;font-weight:800;">▤</div>
+              <div>
+                <div class="num">Fatura A/000002</div>
+                <div style="font-size:11px;color:#94a3b8;">12 de agosto de 2026</div>
+              </div>
+            </div>
+            <span class="chip pago">Pago</span>
+          </div>
+
+          <div class="drawer-inner" style="padding-bottom:10px;">
+            <div class="v5-hero">
+              <div class="lab">Total a Pagar</div>
+              <div class="tot mono">179 700,00 Kz</div>
+              <div class="sub">2 itens · vence 26/08/2026 · Transferência</div>
+            </div>
+
+            <div class="v5-acc">
+              <div class="v5-acc-item open">
+                <button class="v5-acc-head" onclick="toggleAcc(this)">Cliente <span class="arrow">▶</span></button>
+                <div class="v5-acc-body">
+                  <div style="font-weight:700;font-size:13px;margin-bottom:6px;">Angola Telecom, SA</div>
+                  <div class="kv"><span class="k">NIF</span><span class="v mono">5417001234</span></div>
+                  <div class="kv" style="margin-top:4px;"><span class="k">Telefone</span><span class="v">+244 923 456 789</span></div>
+                  <div class="kv" style="margin-top:4px;"><span class="k">Email</span><span class="v">financas@angolatelecom.ao</span></div>
+                </div>
+              </div>
+              <div class="v5-acc-item">
+                <button class="v5-acc-head" onclick="toggleAcc(this)">Informações <span class="arrow">▶</span></button>
+                <div class="v5-acc-body">
+                  <div class="kv"><span class="k">Série / Número</span><span class="v">A / 000002</span></div>
+                  <div class="kv" style="margin-top:4px;"><span class="k">Emissão</span><span class="v">12 ago 2026</span></div>
+                  <div class="kv" style="margin-top:4px;"><span class="k">Vencimento</span><span class="v">26 ago 2026</span></div>
+                  <div class="kv" style="margin-top:4px;"><span class="k">Pagamento</span><span class="v">Transferência</span></div>
+                  <div class="kv" style="margin-top:4px;"><span class="k">Data Pagamento</span><span class="v">12 ago 2026</span></div>
+                </div>
+              </div>
+              <div class="v5-acc-item">
+                <button class="v5-acc-head" onclick="toggleAcc(this)">Linhas da Fatura <span class="arrow">▶</span></button>
+                <div class="v5-acc-body">
+                  <div style="display:flex;gap:8px;font-size:11px;color:#94a3b8;font-weight:700;padding:4px 0 6px;border-bottom:1px solid #f1f5f9;">
+                    <span style="flex:1;">Descrição</span><span style="width:30px;text-align:center;">Qtd</span><span style="width:76px;text-align:right;">Total</span>
+                  </div>
+                  <div style="display:flex;gap:8px;font-size:12px;padding:7px 0;">
+                    <span style="flex:1;"><b>Cartucho HP 305</b><br><span style="font-size:11px;color:#94a3b8;">IVA 14%</span></span><span style="width:30px;text-align:center;" class="mono">3</span><span style="width:76px;text-align:right;font-weight:700;" class="mono">51 300,00</span>
+                  </div>
+                  <div style="display:flex;gap:8px;font-size:12px;padding:7px 0;">
+                    <span style="flex:1;"><b>Manutenção Anual</b><br><span style="font-size:11px;color:#94a3b8;">IVA 14%</span></span><span style="width:30px;text-align:center;" class="mono">1</span><span style="width:76px;text-align:right;font-weight:700;" class="mono">128 400,00</span>
+                  </div>
+                  <div style="border-top:1px dashed #e2e8f0;margin-top:6px;padding-top:8px;">
+                    <div class="kv"><span class="k">Subtotal</span><span class="mono">165 000,00</span></div>
+                    <div class="kv" style="margin-top:4px;"><span class="k">IVA (14%)</span><span class="mono">14 700,00</span></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="v5-foot">
+            <button class="btn2 btn2-p" style="flex:2;">⬇ Baixar PDF</button>
+            <button class="btn2 btn2-o" style="flex:1;">Fechar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+<script>
+  const variations = Array.from(document.querySelectorAll('.variation'));
+  const dotsWrap = document.getElementById('dots');
+  let currentV = 0;
+
+  variations.forEach((_, i) => {
+    const d = document.createElement('button');
+    d.className = 'dot';
+    d.addEventListener('click', () => showVariation(i));
+    dotsWrap.appendChild(d);
+  });
+  const dots = Array.from(dotsWrap.children);
+
+  function showVariation(i) {
+    currentV = Math.max(0, Math.min(variations.length - 1, i));
+    variations.forEach((el, idx) => el.classList.toggle('active', idx === currentV));
+    dots.forEach((d, idx) => d.classList.toggle('active', idx === currentV));
+    document.getElementById('varCounter').textContent = (currentV + 1) + ' / ' + variations.length;
+    document.getElementById('prevVar').disabled = currentV === 0;
+    document.getElementById('nextVar').disabled = currentV === variations.length - 1;
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  // Abas da V2
+  document.querySelectorAll('.v2-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      const root = tab.closest('.v2');
+      root.querySelectorAll('.v2-tab').forEach(t => t.classList.toggle('on', t === tab));
+      root.querySelectorAll('.v2-panel').forEach(p => p.classList.toggle('on', p.dataset.panel === tab.dataset.tab));
+    });
+  });
+
+  // Acordeão da V5
+  function toggleAcc(head) {
+    head.closest('.v5-acc-item').classList.toggle('open');
+  }
+  window.toggleAcc = toggleAcc;
+
+  document.getElementById('prevVar').addEventListener('click', () => showVariation(currentV - 1));
+  document.getElementById('nextVar').addEventListener('click', () => showVariation(currentV + 1));
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowRight') showVariation(currentV + 1);
+    if (e.key === 'ArrowLeft') showVariation(currentV - 1);
+  });
+
+  showVariation(0);
+</script>
+</body>
+</html>

@@ -2,13 +2,11 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Settings, Database } from "lucide-react";
+import { Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useAppStore } from "@/lib/store";
 
 export function Header() {
   const pathname = usePathname();
-  const store = useAppStore();
 
   const navItems = [
     { href: "/dashboard", label: "Dashboard" },
@@ -47,15 +45,6 @@ export function Header() {
 
           {/* Actions / Settings */}
           <div className="flex items-center gap-2">
-            <button
-              onClick={() => store.seedMockData()}
-              className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-blue-800/60 hover:bg-blue-800 text-xs font-medium text-blue-100 rounded-md border border-blue-400/30 transition-colors"
-              title="Recarregar dados mockados"
-            >
-              <Database size={14} />
-              <span>Dados Mock</span>
-            </button>
-
             <Link
               href="/configuracoes"
               className="flex items-center justify-center w-10 h-10 rounded-md hover:bg-blue-500/50 transition-colors"

@@ -17,7 +17,8 @@ export const clienteSchema = z.object({
 
 // Schema interno do form (antes de transform) - taxaIVA como string para o <select> HTML
 export const artigoSchemaInput = z.object({
-  codigo: z.string().min(1, "Código é obrigatório"),
+  tipo: z.enum(["Produto", "Serviço"]).default("Produto"),
+  codigo: z.string().optional(),
   descricao: z.string().min(1, "Descrição é obrigatória"),
   preco: z.number().min(0, "Preço deve ser maior que 0"),
   taxaIVA: z.enum(["0", "7", "14"]),
@@ -33,6 +34,18 @@ export const artigoSchema = artigoSchemaInput.transform((data) => ({
   ...data,
   taxaIVA: parseInt(data.taxaIVA) as 0 | 7 | 14,
 }));
+
+export const fornecedorSchema = z.object({
+  nome: z.string().min(1, "Nome é obrigatório").min(3, "Nome deve ter pelo menos 3 caracteres"),
+  nif: z.string().min(1, "NIF é obrigatório").refine((val) => validarNIFAngolano(val).valido, {
+    message: "NIF Angolano inválido. Deve possuir 10 dígitos (PJ/PF) ou 14 caracteres de BI (ex: 005432198LA042)",
+  }),
+  morada: z.string().min(1, "Morada é obrigatória"),
+  telefone: z.string().min(1, "Telefone é obrigatório"),
+  email: z.string().email("Email inválido"),
+  bancaria: z.string().optional(),
+  ativo: z.boolean().default(true),
+});
 
 export const faturaLinhaSchema = z.object({
   artigoId: z.string().min(1, "Artigo é obrigatório"),
@@ -52,6 +65,26 @@ export const empresaSchema = z.object({
   email: z.string().email("Email inválido"),
   logoUrl: z.string().optional().nullable(),
 });
+
+export const loginSchema = z.object({
+  email: z.string().min(1, "Email é obrigatório").email("Email inválido"),
+  password: z.string().min(6, "A palavra-passe deve ter pelo menos 6 caracteres"),
+});
+
+export const signupSchema = z
+  .object({
+    nome: z.string().min(1, "Nome é obrigatório").min(3, "O nome deve ter pelo menos 3 caracteres"),
+    email: z.string().min(1, "Email é obrigatório").email("Email inválido"),
+    password: z.string().min(6, "A palavra-passe deve ter pelo menos 6 caracteres"),
+    confirmPassword: z.string().min(1, "Confirme a palavra-passe"),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: "As palavras-passe não coincidem",
+    path: ["confirmPassword"],
+  });
+
+export type LoginFormData = z.input<typeof loginSchema>;
+export type SignupFormData = z.input<typeof signupSchema>;
 
 export type ClienteFormData = z.output<typeof clienteSchema>;
 export type ClienteFormInput = z.input<typeof clienteSchema>;

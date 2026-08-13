@@ -1,0 +1,707 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Redesign — Wizard de Emissão de Faturas</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    background: #eef2f7;
+    color: #0f172a;
+  }
+
+  .topbar {
+    background: #0f172a; color: #fff; padding: 14px 24px;
+    display: flex; align-items: center; justify-content: space-between; gap: 16px;
+    position: sticky; top: 0; z-index: 60; box-shadow: 0 4px 20px rgba(15,23,42,.35);
+  }
+  .topbar-brand { display: flex; align-items: center; gap: 10px; }
+  .topbar-logo {
+    width: 30px; height: 30px; border-radius: 8px;
+    background: linear-gradient(135deg, #2563eb, #6366f1);
+    display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 13px;
+  }
+  .topbar-title { font-weight: 700; font-size: 14px; }
+  .topbar-sub { font-size: 11px; color: #94a3b8; }
+  .nav-controls { display: flex; align-items: center; gap: 14px; }
+  .nav-btn {
+    border: 1px solid #334155; background: #1e293b; color: #e2e8f0;
+    padding: 8px 16px; border-radius: 10px; font-size: 12.5px; font-weight: 600;
+    cursor: pointer; transition: all .15s;
+  }
+  .nav-btn:hover:not(:disabled) { background: #2b3b50; color: #fff; }
+  .nav-btn:disabled { opacity: .4; cursor: not-allowed; }
+  .nav-btn.primary { background: #2563eb; border-color: #2563eb; color: #fff; }
+  .nav-btn.primary:hover:not(:disabled) { background: #1d4ed8; }
+  .step-counter {
+    font-size: 12.5px; font-weight: 600; color: #cbd5e1;
+    background: #1e293b; padding: 6px 12px; border-radius: 999px;
+  }
+  .dots { display: flex; gap: 6px; }
+  .dot { width: 9px; height: 9px; border-radius: 999px; background: #334155; cursor: pointer; border: none; transition: all .2s; }
+  .dot.active { background: #2563eb; width: 26px; }
+
+  .stage { max-width: 1000px; margin: 26px auto 60px; }
+  .variation { display: none; }
+  .variation.active { display: block; animation: fade .35s ease; }
+  @keyframes fade { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+  .variation-head { margin-bottom: 16px; }
+  .variation-head h2 { font-size: 18px; font-weight: 800; }
+  .variation-head p { font-size: 12.5px; color: #64748b; margin-top: 4px; }
+
+  .wizard-shell {
+    background: #fff; border: 1px solid #e2e8f0; border-radius: 16px;
+    box-shadow: 0 8px 30px rgba(15,23,42,.08); overflow: hidden;
+  }
+  .wizard-body { padding: 22px; }
+
+  .wstep { display: none; }
+  .wstep.active { display: block; animation: fade .25s ease; }
+
+  .btn {
+    display: inline-flex; align-items: center; gap: 7px;
+    padding: 9px 16px; border-radius: 10px; font-size: 13px; font-weight: 600;
+    cursor: pointer; border: none; transition: all .15s;
+  }
+  .btn-primary { background: #2563eb; color: #fff; }
+  .btn-primary:hover { background: #1d4ed8; }
+  .btn-success { background: #16a34a; color: #fff; }
+  .btn-success:hover { background: #15803d; }
+  .btn-outline { background: #fff; border: 1px solid #cbd5e1; color: #475569; }
+  .btn-outline:hover { border-color: #2563eb; color: #2563eb; }
+  .btn-danger { background: #fff; border: 1px solid #fecaca; color: #dc2626; }
+  .btn-danger:hover { background: #fef2f2; }
+
+  .field label {
+    display: block; font-size: 12px; font-weight: 600; color: #475569; margin-bottom: 6px;
+  }
+  .field input, .field select, .field textarea {
+    width: 100%; padding: 10px 12px; border-radius: 10px;
+    border: 1px solid #cbd5e1; font-size: 13px; color: #0f172a; background: #fff; outline: none;
+  }
+  .field input:focus, .field select:focus, .field textarea:focus { border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37,99,235,.12); }
+
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chip {
+    padding: 8px 14px; border-radius: 10px; border: 1px solid #cbd5e1;
+    font-size: 12.5px; font-weight: 600; color: #475569; cursor: pointer; background: #fff;
+  }
+  .chip.active { background: #2563eb; border-color: #2563eb; color: #fff; }
+
+  table { border-collapse: collapse; width: 100%; font-size: 13px; }
+  th, td { padding: 10px 12px; text-align: left; }
+  th { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; }
+  .mono { font-family: Consolas, monospace; }
+  .num { text-align: right; font-variant-numeric: tabular-nums; }
+  .muted { color: #64748b; }
+
+  .selected-card {
+    border: 1px solid #a7f3d0; background: #ecfdf5; border-radius: 12px; padding: 14px;
+  }
+  .selected-card b { display: block; margin-top: 4px; font-size: 15px; }
+
+  .nav-line {
+    display: flex; justify-content: space-between; align-items: center;
+    padding-top: 16px; margin-top: 16px; border-top: 1px solid #eef2f7;
+  }
+  .hint { font-size: 12px; color: #94a3b8; }
+
+  /* ============ V1 — Atual refinado ============ */
+  .v1 .banner {
+    background: linear-gradient(135deg, #2563eb, #6366f1);
+    border-radius: 16px; padding: 20px; color: #fff; margin-bottom: 20px;
+    display: flex; gap: 16px; align-items: flex-start;
+  }
+  .v1 .banner .bicon {
+    width: 42px; height: 42px; border-radius: 12px; background: rgba(255,255,255,.15);
+    display: flex; align-items: center; justify-content: center; font-size: 19px; flex-shrink: 0;
+  }
+  .v1 .stepper { display: flex; gap: 10px; margin-bottom: 20px; }
+  .v1 .sstep {
+    flex: 1; display: flex; align-items: center; gap: 10px;
+    padding: 10px 12px; border-radius: 12px; border: 1px solid #e2e8f0; background: #fff;
+  }
+  .v1 .sstep .n {
+    width: 32px; height: 32px; border-radius: 999px; display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 13px; flex-shrink: 0;
+    background: #f1f5f9; color: #94a3b8;
+  }
+  .v1 .sstep.active { border-color: #2563eb; background: #eff6ff; }
+  .v1 .sstep.active .n { background: #2563eb; color: #fff; }
+  .v1 .sstep.done { border-color: #a7f3d0; background: #ecfdf5; }
+  .v1 .sstep.done .n { background: #10b981; color: #fff; }
+
+  /* ============ V2 — Stepper compacto + barra ============ */
+  .v2 .stepper { display: flex; align-items: center; gap: 0; margin-bottom: 14px; }
+  .v2 .sstep { display: flex; align-items: center; gap: 8px; }
+  .v2 .sstep .n {
+    width: 26px; height: 26px; border-radius: 999px; display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 700; background: #e2e8f0; color: #64748b;
+  }
+  .v2 .sstep.active .n { background: #2563eb; color: #fff; box-shadow: 0 0 0 4px rgba(37,99,235,.15); }
+  .v2 .sstep.done .n { background: #10b981; color: #fff; }
+  .v2 .sstep .lbl { font-size: 12.5px; font-weight: 600; color: #475569; }
+  .v2 .sstep.active .lbl { color: #2563eb; }
+  .v2 .sstep.done .lbl { color: #047857; }
+  .v2 .bar { flex: 0 0 44px; height: 3px; border-radius: 999px; background: #e2e8f0; margin: 0 10px; }
+  .v2 .bar.filled { background: #10b981; }
+  .v2 .progress-bg { height: 6px; border-radius: 999px; background: #e2e8f0; overflow: hidden; margin-bottom: 20px; }
+  .v2 .progress-fill { height: 100%; border-radius: 999px; background: linear-gradient(90deg, #2563eb, #6366f1); transition: width .3s; }
+  .v2 .section-title { font-size: 14px; font-weight: 800; margin-bottom: 12px; }
+  .v2 .panel { border: 1px solid #e2e8f0; border-radius: 14px; padding: 18px; }
+
+  /* ============ V3 — Sidebar de etapas ============ */
+  .v3 .wrap { display: grid; grid-template-columns: 230px 1fr; gap: 20px; }
+  .v3 .rail { border: 1px solid #e2e8f0; border-radius: 14px; padding: 12px; align-self: start; }
+  .v3 .railitem {
+    display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 10px;
+    font-size: 13px; font-weight: 600; color: #64748b; margin-bottom: 6px; cursor: default;
+  }
+  .v3 .railitem.active { background: #eff6ff; color: #2563eb; }
+  .v3 .railitem.done { color: #047857; }
+  .v3 .railitem .n {
+    width: 26px; height: 26px; border-radius: 8px; display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 700; background: #f1f5f9;
+  }
+  .v3 .railitem.active .n { background: #2563eb; color: #fff; }
+  .v3 .railitem.done .n { background: #10b981; color: #fff; }
+  .v3 .content { border: 1px solid #e2e8f0; border-radius: 14px; padding: 20px; min-height: 380px; }
+
+  /* ============ V4 — Com resumo sticky ============ */
+  .v4 .wrap { display: grid; grid-template-columns: 1fr 290px; gap: 20px; align-items: start; }
+  .v4 .render-area { background: #fff; }
+  .v4 .summary {
+    position: sticky; top: 90px; border: 1px solid #e2e8f0; border-radius: 14px;
+    padding: 18px; background: #fff;
+  }
+  .v4 .summary .total-box { background: #0f172a; color: #fff; border-radius: 12px; padding: 14px; margin-top: 14px; }
+  .v4 .summary-item { display: flex; justify-content: space-between; font-size: 13px; color: #475569; padding: 4px 0; }
+  .v4 .summary-item.total { font-weight: 800; color: #2563eb; font-size: 18px; }
+  .v4 .stepper-h { display: flex; gap: 18px; margin-bottom: 18px; }
+  .v4 .stepper-h .it { display: flex; align-items: center; gap: 7px; font-size: 12px; font-weight: 700; color: #94a3b8; }
+  .v4 .stepper-h .it .n {
+    width: 24px; height: 24px; border-radius: 999px; background: #e2e8f0;
+    display: flex; align-items: center; justify-content: center; font-size: 11px;
+  }
+  .v4 .stepper-h .it.active { color: #2563eb; }
+  .v4 .stepper-h .it.active .n { background: #2563eb; color: #fff; }
+  .v4 .stepper-h .it.done { color: #10b981; }
+  .v4 .stepper-h .it.done .n { background: #10b981; color: #fff; }
+
+  /* ============ V5 — Cards centrais minimalistas ============ */
+  .v5 .stepper { display: flex; justify-content: center; gap: 22px; margin-bottom: 22px; }
+  .v5 .sdot { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+  .v5 .sdot .n {
+    width: 38px; height: 38px; border-radius: 999px; border: 2px solid #e2e8f0; background: #fff;
+    display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; color: #94a3b8;
+  }
+  .v5 .sdot.active .n { border-color: #2563eb; color: #2563eb; box-shadow: 0 0 0 5px rgba(37,99,235,.12); }
+  .v5 .sdot.done .n { border-color: #10b981; background: #10b981; color: #fff; }
+  .v5 .sdot .lbl { font-size: 11.5px; font-weight: 600; color: #64748b; }
+  .v5 .bigcard {
+    border: 1px solid #e2e8f0; border-radius: 18px; padding: 26px;
+    max-width: 620px; margin: 0 auto; background: #fff;
+  }
+  .v5 .bigcard h3 { font-size: 19px; font-weight: 800; margin-bottom: 6px; }
+  .v5 .bigcard > p { font-size: 13px; color: #64748b; margin-bottom: 18px; }
+  .v5 .cta-row { display: flex; justify-content: flex-end; gap: 10px; margin-top: 18px; }
+
+  @media (max-width: 860px) {
+    .v3 .wrap, .v4 .wrap { grid-template-columns: 1fr; }
+    .v4 .summary { position: static; }
+    .topbar { flex-wrap: wrap; }
+    .v2 .sstep .lbl { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-brand">
+    <div class="topbar-logo">K</div>
+    <div>
+      <div class="topbar-title">Kima Faturas — Wizard de Emissão</div>
+      <div class="topbar-sub">Análise de variações do fluxo</div>
+    </div>
+  </div>
+  <div class="nav-controls">
+    <button class="nav-btn" id="prevVar">‹ Anterior</button>
+    <span class="step-counter" id="varCounter">1 / 5</span>
+    <button class="nav-btn primary" id="nextVar">Seguinte ›</button>
+  </div>
+</div>
+
+<div class="stage">
+  <div style="display:flex; justify-content:center; margin-bottom:20px;">
+    <div class="dots" id="dots"></div>
+  </div>
+
+  <!-- ════════════════ V1 ════════════════ -->
+  <div class="variation v1">
+    <div class="variation-head">
+      <h2>1. Atual Refinado</h2>
+      <p>Base no wizard atual: banner de boas-vindas + 3 passos em cartões + conteúdo em card.</p>
+    </div>
+
+    <div class="wizard-shell">
+      <div class="wizard-body">
+
+        <div class="banner">
+          <div class="bicon">●</div>
+          <div>
+            <b style="font-size:17px;">Pronto para criar uma Fatura?</b>
+            <p style="font-size:13px; color:#dbeafe; margin-top:2px;">Vamos guiá-lo em 3 passos simples. Comece por indicar o tipo de documento.</p>
+          </div>
+        </div>
+
+        <div class="stepper" id="v1stepper">
+          <div class="sstep active" data-step="1"><span class="n">1</span><div><b style="font-size:12.5px;">Cliente</b><br><span style="font-size:11px; color:#94a3b8;">Escolha o cliente</span></div></div>
+          <div class="sstep" data-step="2"><span class="n">2</span><div><b style="font-size:12.5px;">Artigos</b><br><span style="font-size:11px; color:#94a3b8;">Adicione os artigos</span></div></div>
+          <div class="sstep" data-step="3"><span class="n">3</span><div><b style="font-size:12.5px;">Emitir</b><br><span style="font-size:11px; color:#94a3b8;">Revise e emita</span></div></div>
+        </div>
+
+        <div style="border:1px solid #e2e8f0; border-radius:14px; padding:20px;">
+          <!-- Passo 1 -->
+          <div class="wstep active" data-step="1">
+            <p class="field"><label>Que tipo de documento quer emitir?</label></p>
+            <div class="chips" style="margin-bottom:16px;">
+              <span class="chip active">Fatura</span><span class="chip">Fatura Recibo</span><span class="chip">Simplificada</span>
+            </div>
+            <div class="field" style="margin-bottom:14px;">
+              <label>Qual o cliente?</label>
+              <select><option>Escolha um cliente...</option><option>Angola Telecom, SA — NIF 5417001234</option><option>Supermercado Kikolo</option></select>
+            </div>
+            <div class="selected-card">
+              <span style="font-size:11px; font-weight:700; text-transform:uppercase; color:#047857;">Cliente Confirmado</span>
+              <b>Angola Telecom, SA</b>
+              <p style="font-size:12px; color:#047857;">NIF: 5417001234 · +244 923 456 789</p>
+            </div>
+            <div class="nav-line">
+              <span class="hint">Selecione um cliente para continuar.</span>
+              <button class="btn btn-primary" onclick="go(1, 2)">Próximo: Artigos e Serviços →</button>
+            </div>
+          </div>
+          <!-- Passo 2 -->
+          <div class="wstep" data-step="2">
+            <p class="field"><label>Que artigo ou serviço quer incluir? *</label></p>
+            <div style="display:grid; grid-template-columns:1fr 130px auto; gap:10px;">
+              <select><option>Escolha um artigo...</option><option>[PROD-001] Cartucho HP 305 — 15 000,00 (IVA 14%)</option><option>[SERV-001] Manutenção Anual — 120 000,00 (IVA 14%)</option></select>
+              <input type="number" value="1" style="padding:10px 12px; border:1px solid #cbd5e1; border-radius:10px;" />
+              <button class="btn btn-primary">＋ Adicionar Linha</button>
+            </div>
+            <div style="margin-top:16px; border:1px solid #e2e8f0; border-radius:12px; overflow:hidden;">
+              <table>
+                <thead><tr style="background:#f8fafc;"><th>Descrição</th><th style="text-align:center">Qtd</th><th class="num">Preço Unit.</th><th style="text-align:center">IVA</th><th class="num">Total c/ IVA</th><th></th></tr></thead>
+                <tbody>
+                  <tr><td style="font-weight:600;">Cartucho HP 305</td><td style="text-align:center" class="mono">3</td><td class="num mono">15 000,00</td><td style="text-align:center"><span style="background:#eff6ff;color:#1d4ed8;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:700;">14%</span></td><td class="num mono strong">51 300,00</td><td style="text-align:right;color:#dc2626;cursor:pointer;">✕</td></tr>
+                  <tr><td style="font-weight:600;">Manutenção Anual</td><td style="text-align:center" class="mono">1</td><td class="num mono">120 000,00</td><td style="text-align:center"><span style="background:#fffbeb;color:#b45309;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:700;">7%</span></td><td class="num mono strong">128 400,00</td><td style="text-align:right;color:#dc2626;cursor:pointer;">✕</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <div style="display:flex; justify-content:flex-end; margin-top:12px;">
+              <div style="width:260px; font-size:13px;">
+                <div style="display:flex; justify-content:space-between;" class="muted"><span>Subtotal</span><span class="mono">165 000,00</span></div>
+                <div style="display:flex; justify-content:space-between;" class="muted"><span>IVA</span><span class="mono">14 700,00</span></div>
+                <div style="display:flex; justify-content:space-between; font-weight:800; font-size:16px; border-top:1px solid #e2e8f0; padding-top:8px; margin-top:6px;"><span>TOTAL</span><span class="mono" style="color:#2563eb;">179 700,00</span></div>
+              </div>
+            </div>
+            <div class="nav-line">
+              <button class="btn btn-outline" onclick="go(1, 1)">← Voltar</button>
+              <button class="btn btn-primary" onclick="go(1, 3)">Próximo: Rever e Emitir →</button>
+            </div>
+          </div>
+          <!-- Passo 3 -->
+          <div class="wstep" data-step="3">
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:14px;">
+              <div>
+                <p class="field"><label>Forma de pagamento *</label></p>
+                <select><option>Transferência</option><option>Numerário</option><option>Multicaixa</option></select>
+              </div>
+              <div>
+                <p class="field"><label>Vencimento</label></p>
+                <div style="padding:10px 12px; border:1px solid #e2e8f0; border-radius:10px; font-size:13px;">11/09/2026 (30 dias)</div>
+              </div>
+            </div>
+            <div class="field"><label>Observações (opcional)</label><textarea rows="2" style="height:auto;" placeholder="Adicione notas para o cliente..."></textarea></div>
+            <div style="background:#0f172a; color:#fff; border-radius:12px; padding:14px 16px; display:flex; justify-content:space-between; align-items:center; margin-top:14px;">
+              <span style="font-size:13px; font-weight:700;">TOTAL A PAGAR</span>
+              <span class="mono" style="font-size:20px; font-weight:800; color:#60a5fa;">179 700,00</span>
+            </div>
+            <div class="nav-line">
+              <button class="btn btn-outline" onclick="go(1, 2)">← Editar Itens</button>
+              <button class="btn btn-success">🚀 Emitir Fatura Agora</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════════════ V2 ════════════════ -->
+  <div class="variation v2">
+    <div class="variation-head">
+      <h2>2. Stepper Compacto + Progresso</h2>
+      <p>Indicador compacto em linha com círculos e barra de progresso. Menos ruído, conteúdo em painéis.</p>
+    </div>
+
+    <div class="wizard-shell">
+      <div class="wizard-body">
+        <div class="stepper" id="v2stepper">
+          <div class="sstep active" data-step="1"><span class="n">1</span><span class="lbl">Cliente</span></div>
+          <div class="bar"><div data-role="bar-1"></div></div>
+          <div class="sstep" data-step="2"><span class="n">2</span><span class="lbl">Artigos</span></div>
+          <div class="bar"><div data-role="bar-2"></div></div>
+          <div class="sstep" data-step="3"><span class="n">3</span><span class="lbl">Emitir</span></div>
+        </div>
+        <div class="progress-bg"><div class="progress-fill" id="v2progress" style="width:33%"></div></div>
+
+        <!-- Passo 1 -->
+        <div class="wstep active" data-step="1">
+          <h3 class="section-title">1 · Tipo de documento e cliente</h3>
+          <div class="panel">
+            <div class="chips" style="margin-bottom:16px;">
+              <span class="chip active">Fatura</span><span class="chip">Fatura Recibo</span><span class="chip">Simplificada</span>
+            </div>
+            <div class="field"><label>Cliente</label><select><option>Escolha um cliente...</option><option>Angola Telecom, SA</option><option>Supermercado Kikolo</option></select></div>
+            <div class="selected-card" style="margin-top:12px;"><b>Angola Telecom, SA</b><p style="font-size:12px; color:#047857;">NIF: 5417001234</p></div>
+          </div>
+          <div class="nav-line">
+            <span class="hint">1/3 · Selecione um cliente</span>
+            <button class="btn btn-primary" onclick="go(2, 2)">Próximo →</button>
+          </div>
+        </div>
+        <!-- Passo 2 -->
+        <div class="wstep" data-step="2">
+          <h3 class="section-title">2 · Adicionar artigos e serviços</h3>
+          <div class="panel">
+            <div style="display:grid; grid-template-columns:1fr 120px auto; gap:10px; margin-bottom:14px;">
+              <select><option>[PROD-001] Cartucho HP 305</option><option>[SERV-001] Manutenção Anual</option></select>
+              <input type="number" value="1" style="padding:10px; border:1px solid #cbd5e1; border-radius:10px;" />
+              <button class="btn btn-primary">＋ Adicionar</button>
+            </div>
+            <div style="border:1px solid #e2e8f0; border-radius:12px; overflow:hidden;">
+              <table>
+                <thead><tr style="background:#f8fafc;"><th>Descrição</th><th style="text-align:center">Qtd</th><th class="num">Preço</th><th style="text-align:center">IVA</th><th class="num">Total</th></tr></thead>
+                <tbody>
+                  <tr><td style="font-weight:600;">Cartucho HP 305</td><td style="text-align:center" class="mono">3</td><td class="num mono">15 000,00</td><td style="text-align:center"><span style="background:#eff6ff;color:#1d4ed8;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:700;">14%</span></td><td class="num mono strong">51 300,00</td></tr>
+                  <tr><td style="font-weight:600;">Manutenção Anual</td><td style="text-align:center" class="mono">1</td><td class="num mono">120 000,00</td><td style="text-align:center"><span style="background:#fffbeb;color:#b45309;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:700;">7%</span></td><td class="num mono strong">128 400,00</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div class="nav-line">
+            <button class="btn btn-outline" onclick="go(2, 1)">← Voltar</button>
+            <button class="btn btn-primary" onclick="go(2, 3)">Próximo →</button>
+          </div>
+        </div>
+        <!-- Passo 3 -->
+        <div class="wstep" data-step="3">
+          <h3 class="section-title">3 · Rever e emitir</h3>
+          <div class="panel">
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:14px;">
+              <div class="field"><label>Forma de pagamento *</label><select><option>Transferência</option><option>Numerário</option></select></div>
+              <div class="field"><label>Vencimento</label><div style="padding:10px 12px; border:1px solid #e2e8f0; border-radius:10px; font-size:13px;">11/09/2026 (30 dias)</div></div>
+            </div>
+            <div style="background:#0f172a; color:#fff; border-radius:12px; padding:14px 16px; display:flex; justify-content:space-between; align-items:center;">
+              <span style="font-size:13px; font-weight:700;">TOTAL A PAGAR</span>
+              <span class="mono" style="font-size:20px; font-weight:800; color:#60a5fa;">179 700,00</span>
+            </div>
+          </div>
+          <div class="nav-line">
+            <button class="btn btn-outline" onclick="go(2, 2)">← Voltar</button>
+            <button class="btn btn-success">🚀 Emitir Fatura Agora</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════════════ V3 ════════════════ -->
+  <div class="variation v3">
+    <div class="variation-head">
+      <h2>3. Etapas em Sidebar (Vertical)</h2>
+      <p>As etapas ficam numa coluna lateral à esquerda. Tudo é visível o tempo todo, conteúdo à direita.</p>
+    </div>
+
+    <div class="wizard-shell">
+      <div class="wizard-body">
+        <div class="wrap">
+          <aside class="rail" id="v3rail">
+            <div class="railitem active" data-step="1"><span class="n">1</span> Cliente</div>
+            <div class="railitem" data-step="2"><span class="n">2</span> Artigos & Serviços</div>
+            <div class="railitem" data-step="3"><span class="n">3</span> Rever & Emitir</div>
+          </aside>
+
+          <section class="content">
+            <!-- Passo 1 -->
+            <div class="wstep active" data-step="1">
+              <h3 style="font-size:16px; font-weight:800; margin-bottom:4px;">Escolher cliente</h3>
+              <p class="muted" style="font-size:12.5px; margin-bottom:14px;">Selecione a quem a fatura será emitida.</p>
+              <div class="field" style="margin-bottom:12px;"><label>Tipo de documento</label><select><option>Fatura</option><option>Fatura Recibo</option></select></div>
+              <div class="field" style="margin-bottom:12px;"><label>Cliente</label><select><option>Escolha um cliente...</option><option>Angola Telecom, SA</option></select></div>
+              <div class="selected-card"><b>Angola Telecom, SA</b><p style="font-size:12px; color:#047857;">NIF: 5417001234</p></div>
+              <div class="nav-line">
+                <span class="hint">Passo 1 de 3</span>
+                <button class="btn btn-primary" onclick="go(3, 2)">Continuar →</button>
+              </div>
+            </div>
+            <!-- Passo 2 -->
+            <div class="wstep" data-step="2">
+              <h3 style="font-size:16px; font-weight:800; margin-bottom:4px;">Adicionar artigos</h3>
+              <p class="muted" style="font-size:12.5px; margin-bottom:14px;">Componha a fatura do cliente selecionado.</p>
+              <div style="display:grid; grid-template-columns:1fr 100px auto; gap:10px; margin-bottom:14px;">
+                <select><option>[PROD-001] Cartucho HP 305</option><option>[SERV-001] Manutenção Anual</option></select>
+                <input type="number" value="1" style="padding:10px; border:1px solid #cbd5e1; border-radius:10px;" />
+                <button class="btn btn-primary">＋ Adicionar</button>
+              </div>
+              <div style="border:1px solid #e2e8f0; border-radius:12px; overflow:hidden;">
+                <table>
+                  <thead><tr style="background:#f8fafc;"><th>Descrição</th><th style="text-align:center">Qtd</th><th class="num">Total</th></tr></thead>
+                  <tbody>
+                    <tr><td style="font-weight:600;">Cartucho HP 305</td><td style="text-align:center" class="mono">3</td><td class="num mono strong">51 300,00</td></tr>
+                    <tr><td style="font-weight:600;">Manutenção Anual</td><td style="text-align:center" class="mono">1</td><td class="num mono strong">128 400,00</td></tr>
+                  </tbody>
+                </table>
+              </div>
+              <div class="nav-line">
+                <button class="btn btn-outline" onclick="go(3, 1)">← Voltar</button>
+                <button class="btn btn-primary" onclick="go(3, 3)">Continuar →</button>
+              </div>
+            </div>
+            <!-- Passo 3 -->
+            <div class="wstep" data-step="3">
+              <h3 style="font-size:16px; font-weight:800; margin-bottom:4px;">Rever e emitir</h3>
+              <p class="muted" style="font-size:12.5px; margin-bottom:14px;">Confira e confirme a emissão.</p>
+              <div style="background:#0f172a; color:#fff; border-radius:12px; padding:14px 16px; display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                <span style="font-size:13px; font-weight:700;">TOTAL A PAGAR</span>
+                <span class="mono" style="font-size:20px; font-weight:800; color:#60a5fa;">179 700,00</span>
+              </div>
+              <div class="field" style="margin-bottom:10px;"><label>Forma de pagamento *</label><select><option>Transferência</option></select></div>
+              <div class="nav-line">
+                <button class="btn btn-outline" onclick="go(3, 2)">← Voltar</button>
+                <button class="btn btn-success">🚀 Emitir Fatura Agora</button>
+              </div>
+            </div>
+          </section>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════════════ V4 ════════════════ -->
+  <div class="variation v4">
+    <div class="variation-head">
+      <h2>4. Com Resumo Sticky à Direita</h2>
+      <p>Durante todo o fluxo, um painel fixo acompanha os totais e o cliente. Ótimo para faturação rápida.</p>
+    </div>
+
+    <div class="wizard-shell">
+      <div class="wizard-body">
+        <div class="wrap">
+          <div class="render-area">
+            <div class="stepper-h" id="v4stepper">
+              <div class="it active" data-step="1"><span class="n">1</span> Cliente</div>
+              <div class="it" data-step="2"><span class="n">2</span> Artigos</div>
+              <div class="it" data-step="3"><span class="n">3</span> Emitir</div>
+            </div>
+
+            <!-- Passo 1 -->
+            <div class="wstep active" data-step="1">
+              <h3 style="font-size:16px; font-weight:800; margin-bottom:12px;">1 · Cliente e documento</h3>
+              <div class="chips" style="margin-bottom:14px;"><span class="chip active">Fatura</span><span class="chip">Fatura Recibo</span></div>
+              <div class="field" style="margin-bottom:12px;"><label>Cliente</label><select><option>Escolha um cliente...</option><option>Angola Telecom, SA</option></select></div>
+              <div class="selected-card"><b>Angola Telecom, SA</b><p style="font-size:12px; color:#047857;">NIF: 5417001234</p></div>
+              <div class="nav-line">
+                <span class="hint">Passo 1 de 3</span>
+                <button class="btn btn-primary" onclick="go(4, 2)">Próximo →</button>
+              </div>
+            </div>
+            <!-- Passo 2 -->
+            <div class="wstep" data-step="2">
+              <h3 style="font-size:16px; font-weight:800; margin-bottom:12px;">2 · Adicionar artigos</h3>
+              <div style="display:grid; grid-template-columns:1fr 100px auto; gap:10px; margin-bottom:14px;">
+                <select><option>[PROD-001] Cartucho HP 305</option><option>[SERV-001] Manutenção Anual</option></select>
+                <input type="number" value="1" style="padding:10px; border:1px solid #cbd5e1; border-radius:10px;" />
+                <button class="btn btn-primary">＋ Adicionar</button>
+              </div>
+              <div style="border:1px solid #e2e8f0; border-radius:12px; overflow:hidden;">
+                <table>
+                  <thead><tr style="background:#f8fafc;"><th>Descrição</th><th style="text-align:center">Qtd</th><th class="num">Total</th></tr></thead>
+                  <tbody>
+                    <tr><td style="font-weight:600;">Cartucho HP 305</td><td style="text-align:center" class="mono">3</td><td class="num mono strong">51 300,00</td></tr>
+                    <tr><td style="font-weight:600;">Manutenção Anual</td><td style="text-align:center" class="mono">1</td><td class="num mono strong">128 400,00</td></tr>
+                  </tbody>
+                </table>
+              </div>
+              <div class="nav-line">
+                <button class="btn btn-outline" onclick="go(4, 1)">← Voltar</button>
+                <button class="btn btn-primary" onclick="go(4, 3)">Próximo →</button>
+              </div>
+            </div>
+            <!-- Passo 3 -->
+            <div class="wstep" data-step="3">
+              <h3 style="font-size:16px; font-weight:800; margin-bottom:12px;">3 · Rever e emitir</h3>
+              <div class="field" style="margin-bottom:12px;"><label>Forma de pagamento *</label><select><option>Transferência</option></select></div>
+              <div style="background:#fff; border:1px solid #e2e8f0; border-radius:12px; padding:14px 16px;">
+                Observações do documento ficam aqui...
+              </div>
+              <div class="nav-line">
+                <button class="btn btn-outline" onclick="go(4, 2)">← Voltar</button>
+                <button class="btn btn-success">🚀 Emitir Fatura Agora</button>
+              </div>
+            </div>
+          </div>
+
+          <aside class="summary">
+            <p style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:#94a3b8;">Resumo</p>
+            <p style="font-size:14px; font-weight:700; margin-top:6px;">Angola Telecom, SA</p>
+            <p class="muted" style="font-size:12px;">Fatura · NIF 5417001234</p>
+            <div style="margin-top:14px;">
+              <div class="summary-item"><span>Subtotal</span><span class="mono">165 000,00</span></div>
+              <div class="summary-item"><span>IVA</span><span class="mono">14 700,00</span></div>
+              <div class="total-box">
+                <div class="summary-item" style="color:#94a3b8;"><span>TOTAL</span><span class="mono">179 700,00</span></div>
+                <p style="font-size:12px; color:#60a5fa; ">2 itens · vence 11/09/2026</p>
+              </div>
+            </div>
+          </aside>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════════════ V5 ════════════════ -->
+  <div class="variation v5">
+    <div class="variation-head">
+      <h2>5. Cartões Centrais Minimalistas</h2>
+      <p>Fluxo focado: cada etapa é um cartão grande e central com micro-copy e um único CTA. Muito clean.</p>
+    </div>
+
+    <div class="wizard-shell">
+      <div class="wizard-body">
+        <div class="stepper" id="v5stepper">
+          <div class="sdot active" data-step="1"><span class="n">1</span><span class="lbl">Cliente</span></div>
+          <div class="sdot" data-step="2"><span class="n">2</span><span class="lbl">Itens</span></div>
+          <div class="sdot" data-step="3"><span class="n">3</span><span class="lbl">Emitir</span></div>
+        </div>
+
+        <!-- Passo 1 -->
+        <div class="wstep active" data-step="1">
+          <div class="bigcard">
+            <h3>Para quem vai esta fatura?</h3>
+            <p>Escolha o cliente e o tipo de documento.</p>
+            <div class="chips" style="margin-bottom:14px;"><span class="chip active">Fatura</span><span class="chip">Fatura Recibo</span></div>
+            <div class="field" style="margin-bottom:12px;"><label>Cliente</label><select><option>Escolha um cliente...</option><option>Angola Telecom, SA</option></select></div>
+            <div class="selected-card"><b>Angola Telecom, SA</b><p style="font-size:12px; color:#047857;">NIF: 5417001234</p></div>
+            <div class="cta-row"><button class="btn btn-primary" onclick="go(5, 2)">Continuar →</button></div>
+          </div>
+        </div>
+        <!-- Passo 2 -->
+        <div class="wstep" data-step="2">
+          <div class="bigcard">
+            <h3>Adicione artigos e serviços</h3>
+            <p>Três campos rápidos e a linha fica pronta.</p>
+            <div style="display:grid; grid-template-columns:1fr 90px auto; gap:10px; margin-bottom:14px;">
+              <select><option>[PROD-001] Cartucho HP 305</option><option>[SERV-001] Manutenção Anual</option></select>
+              <input type="number" value="1" style="padding:10px; border:1px solid #cbd5e1; border-radius:10px;" />
+              <button class="btn btn-primary">＋</button>
+            </div>
+            <div style="border:1px solid #e2e8f0; border-radius:12px; overflow:hidden;">
+              <table>
+                <thead><tr style="background:#f8fafc;"><th>Descrição</th><th style="text-align:center">Qtd</th><th class="num">Total</th></tr></thead>
+                <tbody>
+                  <tr><td style="font-weight:600;">Cartucho HP 305</td><td style="text-align:center" class="mono">3</td><td class="num mono strong">51 300,00</td></tr>
+                  <tr><td style="font-weight:600;">Manutenção Anual</td><td style="text-align:center" class="mono">1</td><td class="num mono strong">128 400,00</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="cta-row" style="justify-content:space-between;">
+              <button class="btn btn-outline" onclick="go(5, 1)">← Voltar</button>
+              <button class="btn btn-primary" onclick="go(5, 3)">Continuar →</button>
+            </div>
+          </div>
+        </div>
+        <!-- Passo 3 -->
+        <div class="wstep" data-step="3">
+          <div class="bigcard">
+            <h3>Está tudo pronto 👌</h3>
+            <p>Confirme e emita a fatura sem demora.</p>
+            <div style="background:#0f172a; color:#fff; border-radius:12px; padding:14px 16px; display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+              <span style="font-size:13px; font-weight:700;">TOTAL A PAGAR</span>
+              <span class="mono" style="font-size:22px; font-weight:800; color:#60a5fa;">179 700,00</span>
+            </div>
+            <div class="field" style="margin-bottom:12px;"><label>Forma de pagamento *</label><select><option>Transferência</option></select></div>
+            <p class="muted" style="font-size:12px; text-align:center;">Fatura para Angola Telecom, SA · 2 itens</p>
+            <div class="cta-row">
+              <button class="btn btn-outline" onclick="go(5, 2)">← Voltar</button>
+              <button class="btn btn-success">🚀 Emitir Fatura Agora</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const variations = Array.from(document.querySelectorAll('.variation'));
+  const dotsWrap = document.getElementById('dots');
+  let currentV = 0;
+
+  variations.forEach((_, i) => {
+    const d = document.createElement('button');
+    d.className = 'dot';
+    d.addEventListener('click', () => showVariation(i));
+    dotsWrap.appendChild(d);
+  });
+  const dots = Array.from(dotsWrap.children);
+
+  function updateStepUI(v, step, doneUpTo) {
+    const root = variations[v];
+    root.querySelectorAll('.wstep').forEach(p => p.classList.toggle('active', parseInt(p.dataset.step) === step));
+
+    // steppers
+    root.querySelectorAll('[data-role]').forEach(() => {});
+    root.querySelectorAll('.sstep, .sdot, .railitem, .it').forEach(el => {
+      const s = parseInt(el.dataset.step);
+      el.classList.toggle('active', s === step);
+      el.classList.toggle('done', doneUpTo >= s && s !== step);
+    });
+    // connector bars / progress
+    root.querySelectorAll('.bar').forEach((b, i) => {
+      const filled = doneUpTo > (i + 1);
+      b.classList.toggle('filled', filled);
+    });
+    const progress = root.querySelector('#v2progress');
+    if (progress && v === 2) progress.style.width = (step * 33.33) + '%';
+  }
+
+  function go(v, step) {
+    updateStepUI(v, step, step);
+  }
+
+  function showVariation(i) {
+    currentV = Math.max(0, Math.min(variations.length - 1, i));
+    variations.forEach((el, idx) => el.classList.toggle('active', idx === currentV));
+    dots.forEach((d, idx) => d.classList.toggle('active', idx === currentV));
+    document.getElementById('varCounter').textContent = (currentV + 1) + ' / ' + variations.length;
+    document.getElementById('prevVar').disabled = currentV === 0;
+    document.getElementById('nextVar').disabled = currentV === variations.length - 1;
+    // reset wizard to step 1
+    updateStepUI(currentV, 1, 1);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  document.getElementById('prevVar').addEventListener('click', () => showVariation(currentV - 1));
+  document.getElementById('nextVar').addEventListener('click', () => showVariation(currentV + 1));
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowRight') showVariation(currentV + 1);
+    if (e.key === 'ArrowLeft') showVariation(currentV - 1);
+  });
+
+  showVariation(0);
+</script>
+</body>
+</html>

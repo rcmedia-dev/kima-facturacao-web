@@ -1,28 +1,25 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useAppStore } from "@/lib/store";
 import { formatMoedaAOA, formatData, formatDataCompleta } from "@/lib/formatters";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ArrowLeft, Download, CheckCircle, Trash2 } from "lucide-react";
+import { ArrowLeft, Download, Printer, CreditCard, CheckCircle2, FileText, Share2 } from "lucide-react";
 import Link from "next/link";
-import { PagamentoModal } from "./components/pagamento-modal";
-import { ConfirmModal } from "@/components/confirm-modal";
 import { gerarPDFFatura } from "@/lib/pdf-generator";
+import { PagamentoModal } from "./components/pagamento-modal";
 
 export default function FaturaDetailPage() {
   const params = useParams();
-  const router = useRouter();
   const store = useAppStore();
   const [mounted, setMounted] = useState(false);
   const [apiFatura, setApiFatura] = useState<any>(null);
   const [loadingApi, setLoadingApi] = useState(false);
   const [showPagamentoModal, setShowPagamentoModal] = useState(false);
-  const [cancelarId, setCancelarId] = useState<string | null>(null);
 
   const faturaLocal = params.id ? store.getFaturaPorId(params.id as string) : null;
   const fatura = faturaLocal || apiFatura;
@@ -32,9 +29,13 @@ export default function FaturaDetailPage() {
     id: fatura.cliente.id,
     nome: fatura.cliente.nome,
     nif: fatura.cliente.nif,
+    tipo: fatura.cliente.tipo || "Empresa",
     morada: fatura.cliente.morada || "",
     telefone: fatura.cliente.telefone || "",
     email: fatura.cliente.email || "",
+    ativo: fatura.cliente.ativo ?? true,
+    dataCriacao: fatura.cliente.dataCriacao ? new Date(fatura.cliente.dataCriacao) : new Date(),
+    ultimaAtualizacao: fatura.cliente.ultimaAtualizacao ? new Date(fatura.cliente.ultimaAtualizacao) : new Date(),
   } : null);
 
   useEffect(() => {
@@ -73,214 +74,332 @@ export default function FaturaDetailPage() {
   }, [params.id]);
 
   if (!mounted || loadingApi) {
-    return <div className="max-w-4xl mx-auto px-4 py-8 animate-pulse">Carregando fatura...</div>;
+    return <div className="max-w-6xl mx-auto px-4 py-8 animate-pulse text-slate-500">Carregando fatura...</div>;
   }
 
   if (!fatura || !cliente) {
     return (
-      <div className="max-w-4xl mx-auto px-4 py-8 text-center">
+      <div className="max-w-4xl mx-auto px-4 py-12 text-center">
         <p className="text-red-500 text-lg font-semibold">Fatura não encontrada</p>
-        <p className="text-gray-500 text-sm mt-1 mb-4">A fatura solicitada não existe ou foi removida.</p>
+        <p className="text-slate-500 text-sm mt-1 mb-4">A fatura solicitada não existe ou foi removida.</p>
         <Link href="/faturas">
-          <Button className="bg-blue-600 hover:bg-blue-700 text-white">Voltar para Faturas</Button>
+          <Button className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl">Voltar para Faturas</Button>
         </Link>
       </div>
     );
   }
 
-  const getStatusColor = (status: string) => {
-    const colors: Record<string, string> = {
-      Pago: "bg-teal-50 text-teal-700 dark:bg-teal-950/60 dark:text-teal-400 border border-teal-200 dark:border-teal-800",
-      Pendente: "bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-400 border border-amber-200 dark:border-amber-800",
-      Parcial: "bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-400 border border-blue-200 dark:border-blue-800",
-      Cancelado: "bg-red-50 text-red-700 dark:bg-red-950/60 dark:text-red-400 border border-red-200 dark:border-red-800",
-    };
-    return colors[status] || "bg-gray-100 text-gray-800";
-  };
-
-  const handlePagamento = (data: Date, formaPagamento: any, valor: number) => {
-    store.registrarPagamento(fatura.id, data, formaPagamento, valor);
-    setShowPagamentoModal(false);
-
-    fetch("/api/payments", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        invoiceId: fatura.id,
-        amount: valor,
-        paymentDate: data.toISOString(),
-        method: formaPagamento,
-      }),
-    }).catch((err) => console.warn("API payments sync skipped:", err));
-  };
-
-  const handleCancelar = () => {
-    store.cancelarFatura(fatura.id);
-    router.push("/faturas");
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case "Pago":
+        return (
+          <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
+            <CheckCircle2 size={12} />
+            Pago
+          </span>
+        );
+      case "Pendente":
+        return (
+          <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-400 border border-amber-200 dark:border-amber-800">
+            Pendente
+          </span>
+        );
+      case "Cancelado":
+        return (
+          <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-red-50 text-red-700 dark:bg-red-950/60 dark:text-red-400 border border-red-200 dark:border-red-800">
+            Cancelado
+          </span>
+        );
+      default:
+        return (
+          <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+            {status}
+          </span>
+        );
+    }
   };
 
   const handleDownloadPDF = () => {
     try {
       const pdf = gerarPDFFatura(fatura, cliente, store.empresa);
-      const fileName = `Fatura_${fatura.numeroCompleto || fatura.numero}.pdf`.replace(/[\/\\?%*:|"<>]/g, "_");
+      const fileName = `${fatura.tipo || "Documento"}_${fatura.numeroCompleto || fatura.numero}.pdf`.replace(/[\/\\?%*:|"<>]/g, "_");
       pdf.save(fileName);
     } catch (error) {
       console.error("Erro ao gerar PDF:", error);
     }
   };
 
+  const handleDownloadPOS80 = () => {
+    try {
+      const pdf = gerarPDFFatura(fatura, cliente, store.empresa, { formato: "pos80" });
+      const fileName = `Talao_${fatura.numeroCompleto || fatura.numero}.pdf`.replace(/[\/\\?%*:|"<>]/g, "_");
+      pdf.save(fileName);
+    } catch (error) {
+      console.error("Erro ao gerar Talão 80mm:", error);
+    }
+  };
+
+  const handlePrint = () => {
+    window.print();
+  };
+
+  const handleConfirmPagamento = async (data: Date, formaPagamento: string, valor: number) => {
+    if (faturaLocal) {
+      try {
+        await store.updateFatura(faturaLocal.id, {
+          status: "Pago",
+          dataPagamento: data,
+          formaPagamento: formaPagamento as any,
+        });
+      } catch (e) {
+        console.error("Erro ao atualizar fatura:", e);
+      }
+    }
+    setShowPagamentoModal(false);
+  };
+
   return (
-    <div className="max-w-4xl mx-auto px-4 py-8">
-      <div className="mb-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-4">
-          <Link href="/faturas">
-            <Button variant="ghost" size="sm">
+    <div className="max-w-6xl mx-auto px-4 py-8">
+      {/* Variação 2: Tela Dividida (Sidebar de Ações & Resumo + Canvas do PDF) */}
+      <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-6 items-start">
+
+        {/* Sidebar de Ações & Resumo (Coluna Esquerda) */}
+        <aside className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm space-y-5">
+          {/* Voltar */}
+          <Link href="/faturas" className="block">
+            <Button variant="outline" className="w-full justify-start rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-300">
               <ArrowLeft className="w-4 h-4 mr-2" />
-              Voltar
+              Voltar à lista de faturas
             </Button>
           </Link>
+
+          {/* Cabeçalho da fatura na sidebar */}
           <div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">{fatura.numeroCompleto || fatura.numero}</h1>
-            <div className="flex gap-2 mt-2">
-              <Badge className={getStatusColor(fatura.status)}>
-                {fatura.status}
-              </Badge>
-            </div>
+            <div className="mb-2">{getStatusBadge(fatura.status)}</div>
+            <h1 className="text-xl font-bold font-mono text-slate-900 dark:text-white">
+              {fatura.numeroCompleto || `${fatura.serie}/${fatura.numero}`}
+            </h1>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+              Emitido a {formatData(new Date(fatura.dataEmissao))}
+            </p>
           </div>
-        </div>
-      </div>
 
-      <div className="grid md:grid-cols-2 gap-6 mb-6">
-        <Card className="p-6">
-          <h3 className="font-semibold text-gray-900 mb-3">Cliente</h3>
-          <div className="space-y-2 text-sm">
-            <p><span className="text-gray-600">Nome:</span> <span className="font-medium">{cliente.nome}</span></p>
-            <p><span className="text-gray-600">NIF:</span> <span className="font-medium">{cliente.nif}</span></p>
-            <p><span className="text-gray-600">Morada:</span> <span className="font-medium">{cliente.morada}</span></p>
-            <p><span className="text-gray-600">Telefone:</span> <span className="font-medium">{cliente.telefone}</span></p>
-            <p><span className="text-gray-600">Email:</span> <span className="font-medium">{cliente.email}</span></p>
+          {/* Card Escuro de Valor Total */}
+          <div className="bg-slate-900 dark:bg-slate-800 text-white rounded-xl p-4 shadow-sm">
+            <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+              Valor Total
+            </p>
+            <p className="text-2xl font-bold font-mono text-blue-400 mt-1">
+              {formatMoedaAOA(fatura.total)}
+            </p>
+            <p className="text-xs text-slate-300 mt-1">
+              Vence a {formatData(new Date(fatura.dataVencimento))}
+            </p>
           </div>
-        </Card>
 
-        <Card className="p-6">
-          <h3 className="font-semibold text-gray-900 mb-3">Informações</h3>
-          <div className="space-y-2 text-sm">
-            <p><span className="text-gray-600">Série/Número:</span> <span className="font-medium">{fatura.serie}/{fatura.numero}</span></p>
-            <p><span className="text-gray-600">Data de Emissão:</span> <span className="font-medium">{formatDataCompleta(new Date(fatura.dataEmissao))}</span></p>
-            <p><span className="text-gray-600">Data de Vencimento:</span> <span className="font-medium">{formatData(new Date(fatura.dataVencimento))}</span></p>
-            <p><span className="text-gray-600">Forma de Pagamento:</span> <span className="font-medium">{fatura.formaPagamento}</span></p>
-            {fatura.dataPagamento && (
-              <p><span className="text-gray-600">Data de Pagamento:</span> <span className="font-medium">{formatData(new Date(fatura.dataPagamento))}</span></p>
+          {/* Ação Principal: Baixar PDF A4 */}
+          <Button
+            onClick={handleDownloadPDF}
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-xl shadow-sm text-sm"
+          >
+            <Download className="w-4 h-4 mr-2" />
+            Baixar {fatura.tipo || "Documento"} em PDF (A4)
+          </Button>
+
+          {/* Opção para Fatura Simplificada: Talão Térmico 80mm */}
+          {fatura.tipo === "Simplificada" && (
+            <Button
+              onClick={handleDownloadPOS80}
+              variant="outline"
+              className="w-full border-blue-200 text-blue-700 dark:border-blue-800 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/40 font-semibold py-2.5 rounded-xl text-xs"
+            >
+              <FileText className="w-4 h-4 mr-2" />
+              Baixar Talão Térmico (80mm)
+            </Button>
+          )}
+
+          {/* Ação Secundária: Imprimir */}
+          <Button
+            variant="outline"
+            onClick={handlePrint}
+            className="w-full rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-300"
+          >
+            <Printer className="w-4 h-4 mr-2" />
+            Imprimir Documento
+          </Button>
+
+          {/* Registar Pagamento (se não estiver pago) */}
+          {fatura.status !== "Pago" && (
+            <Button
+              onClick={() => setShowPagamentoModal(true)}
+              className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-2.5 rounded-xl text-xs shadow-sm"
+            >
+              <CreditCard className="w-4 h-4 mr-2" />
+              Registar Pagamento
+            </Button>
+          )}
+
+          {/* Dados resumidos do cliente */}
+          <div className="border-t border-slate-100 dark:border-slate-800 pt-4 space-y-1.5">
+            <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-2">
+              Cliente
+            </p>
+            <p className="text-sm font-bold text-slate-900 dark:text-white truncate">
+              {cliente.nome}
+            </p>
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              NIF: <span className="font-mono">{cliente.nif}</span>
+            </p>
+            {cliente.telefone && (
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                Tel: {cliente.telefone}
+              </p>
+            )}
+            {cliente.email && (
+              <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
+                Email: {cliente.email}
+              </p>
             )}
           </div>
-        </Card>
+        </aside>
+
+        {/* Canvas Principal da Fatura (Coluna Direita) */}
+        <main className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 sm:p-8 shadow-sm space-y-6">
+          {/* Cabeçalho do documento */}
+          <div className="flex justify-between items-start border-b border-slate-200 dark:border-slate-800 pb-5">
+            <div>
+              <div className="flex items-center gap-2 mb-1">
+                <div className="w-7 h-7 bg-blue-600 text-white rounded-lg flex items-center justify-center font-bold text-xs">
+                  K
+                </div>
+                <h2 className="text-base font-bold text-slate-900 dark:text-white">
+                  {store.empresa?.nomeEmpresa || "KIMA SOLUÇÕES, LDA"}
+                </h2>
+              </div>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                NIF: {store.empresa?.nif || "5417082910"} · Luanda, Angola
+              </p>
+            </div>
+            <div className="text-right">
+              <span className="text-xs font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400">
+                {fatura.tipo || "FATURA"}
+              </span>
+              <p className="text-base font-bold font-mono text-slate-900 dark:text-white mt-0.5">
+                {fatura.numeroCompleto || `${fatura.serie}/${fatura.numero}`}
+              </p>
+            </div>
+          </div>
+
+          {/* Dados do cliente & datas */}
+          <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-4 border border-slate-100 dark:border-slate-800 grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+            <div>
+              <p className="font-bold text-slate-400 uppercase tracking-wider text-[10px] mb-1">
+                Faturado a
+              </p>
+              <p className="font-bold text-slate-900 dark:text-white text-sm">{cliente.nome}</p>
+              <p className="text-slate-500 mt-0.5">
+                NIF: <strong className="font-mono">{cliente.nif}</strong>
+              </p>
+              {cliente.morada && <p className="text-slate-500">{cliente.morada}</p>}
+            </div>
+
+            <div>
+              <p className="font-bold text-slate-400 uppercase tracking-wider text-[10px] mb-1">
+                Detalhes da Emissão
+              </p>
+              <p className="text-slate-600 dark:text-slate-300">
+                Data de Emissão: <strong>{formatData(new Date(fatura.dataEmissao))}</strong>
+              </p>
+              <p className="text-slate-600 dark:text-slate-300 mt-0.5">
+                Data de Vencimento: <strong>{formatData(new Date(fatura.dataVencimento))}</strong>
+              </p>
+              <p className="text-slate-600 dark:text-slate-300 mt-0.5">
+                Forma de Pagamento: <strong>{fatura.formaPagamento}</strong>
+              </p>
+              {fatura.dataPagamento && (
+                <p className="text-emerald-600 dark:text-emerald-400 font-semibold mt-0.5">
+                  Pago a: {formatData(new Date(fatura.dataPagamento))}
+                </p>
+              )}
+            </div>
+          </div>
+
+          {/* Tabela de itens */}
+          <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800">
+            <Table>
+              <TableHeader className="bg-slate-50 dark:bg-slate-800/50">
+                <TableRow>
+                  <TableHead className="text-xs font-semibold">Descrição</TableHead>
+                  <TableHead className="text-center text-xs font-semibold">Qtd</TableHead>
+                  <TableHead className="text-right text-xs font-semibold">Preço Unit.</TableHead>
+                  <TableHead className="text-center text-xs font-semibold">IVA</TableHead>
+                  <TableHead className="text-right text-xs font-semibold">Total c/ IVA</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {fatura.linhas?.map((linha: any) => {
+                  const totalLinhaComIVA = linha.total + (linha.total * linha.taxaIVA) / 100;
+                  return (
+                    <TableRow key={linha.id}>
+                      <TableCell className="font-medium text-xs text-slate-900 dark:text-white">
+                        {linha.descricao}
+                      </TableCell>
+                      <TableCell className="text-center text-xs font-mono">{linha.quantidade}</TableCell>
+                      <TableCell className="text-right text-xs font-mono">{formatMoedaAOA(linha.preco)}</TableCell>
+                      <TableCell className="text-center text-xs font-mono">{linha.taxaIVA}%</TableCell>
+                      <TableCell className="text-right text-xs font-bold font-mono">
+                        {formatMoedaAOA(totalLinhaComIVA)}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </div>
+
+          {/* Totais resumidos */}
+          <div className="flex justify-end pt-2">
+            <div className="w-full sm:w-64 space-y-1.5 text-xs">
+              <div className="flex justify-between text-slate-500 dark:text-slate-400">
+                <span>Subtotal (sem IVA):</span>
+                <span className="font-mono font-medium">{formatMoedaAOA(fatura.subtotal)}</span>
+              </div>
+              <div className="flex justify-between text-slate-500 dark:text-slate-400">
+                <span>Total IVA:</span>
+                <span className="font-mono font-medium">{formatMoedaAOA(fatura.totalIVA)}</span>
+              </div>
+              <div className="flex justify-between items-center text-sm font-bold text-slate-900 dark:text-white border-t border-slate-200 dark:border-slate-700 pt-2.5 mt-1">
+                <span>TOTAL A PAGAR:</span>
+                <span className="font-mono text-base text-blue-600 dark:text-blue-400">
+                  {formatMoedaAOA(fatura.total)}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Observações se existirem */}
+          {fatura.observacoes && (
+            <div className="border-t border-slate-100 dark:border-slate-800 pt-4 text-xs text-slate-600 dark:text-slate-400">
+              <p className="font-bold text-slate-700 dark:text-slate-300 mb-1">Observações:</p>
+              <p className="whitespace-pre-wrap">{fatura.observacoes}</p>
+            </div>
+          )}
+
+          {/* Rodapé técnico certificação AGT */}
+          <div className="border-t border-dashed border-slate-200 dark:border-slate-800 pt-4 flex flex-col sm:flex-row justify-between items-center text-[11px] text-slate-400 gap-1">
+            <p>Processado por programa certificado nº 999/AGT/2026 · Kima Facturação</p>
+            <p className="font-mono text-[10px]">Hash: a8f9-2c41-9901-kima</p>
+          </div>
+        </main>
       </div>
 
-      <Card className="p-6 mb-6">
-        <h3 className="font-semibold text-gray-900 mb-4">Linhas da Fatura</h3>
-        <div className="overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Descrição</TableHead>
-                <TableHead className="text-center">Qtd</TableHead>
-                <TableHead className="text-right">Preço Unit.</TableHead>
-                <TableHead className="text-center">IVA</TableHead>
-                <TableHead className="text-right">Total c/ IVA</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {fatura.linhas?.map((linha: any) => {
-                const totalLinhaComIVA = linha.total + (linha.total * linha.taxaIVA) / 100;
-                return (
-                  <TableRow key={linha.id}>
-                    <TableCell className="font-medium">{linha.descricao}</TableCell>
-                    <TableCell className="text-center font-mono">{linha.quantidade}</TableCell>
-                    <TableCell className="text-right font-mono">{formatMoedaAOA(linha.preco)}</TableCell>
-                    <TableCell className="text-center font-mono">{linha.taxaIVA}%</TableCell>
-                    <TableCell className="text-right font-bold font-mono">{formatMoedaAOA(totalLinhaComIVA)}</TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
-        </div>
-      </Card>
-
-      <Card className="p-6 mb-6 bg-slate-900 text-white rounded-2xl">
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 text-center sm:text-right">
-          <div>
-            <p className="text-slate-400 text-xs sm:text-sm">Subtotal (sem IVA)</p>
-            <p className="text-lg sm:text-xl font-bold font-mono text-slate-200">{formatMoedaAOA(fatura.subtotal)}</p>
-          </div>
-          <div>
-            <p className="text-slate-400 text-xs sm:text-sm">Total IVA</p>
-            <p className="text-lg sm:text-xl font-bold font-mono text-slate-200">{formatMoedaAOA(fatura.totalIVA)}</p>
-          </div>
-          <div>
-            <p className="text-slate-400 text-xs sm:text-sm">Total a Pagar</p>
-            <p className="text-2xl sm:text-3xl font-bold font-mono text-blue-400">{formatMoedaAOA(fatura.total)}</p>
-          </div>
-        </div>
-      </Card>
-
-      {fatura.observacoes && (
-        <Card className="p-6 mb-6">
-          <h3 className="font-semibold text-gray-900 mb-2">Observações</h3>
-          <p className="text-gray-700 whitespace-pre-wrap">{fatura.observacoes}</p>
-        </Card>
-      )}
-
-      <Card className="p-6 bg-blue-50/80 border-blue-200 rounded-2xl">
-        <div className="flex flex-col sm:flex-row gap-3">
-          {fatura.status === "Pendente" && (
-            <>
-              <Button
-                onClick={() => setShowPagamentoModal(true)}
-                className="bg-green-600 hover:bg-green-700 text-white w-full sm:w-auto"
-              >
-                <CheckCircle className="w-4 h-4 mr-2" />
-                Registrar Pagamento
-              </Button>
-              <Button
-                onClick={() => setCancelarId(fatura.id)}
-                variant="destructive"
-                className="w-full sm:w-auto"
-              >
-                <Trash2 className="w-4 h-4 mr-2" />
-                Cancelar Fatura
-              </Button>
-            </>
-          )}
-          <Button onClick={handleDownloadPDF} variant="outline" className="bg-white border-blue-300 text-blue-800 hover:bg-blue-100 w-full sm:w-auto">
-            <Download className="w-4 h-4 mr-2 text-blue-600" />
-            Baixar PDF
-          </Button>
-        </div>
-      </Card>
-
+      {/* Modal de confirmação de pagamento */}
       {showPagamentoModal && (
         <PagamentoModal
           faturaTotal={fatura.total}
           formaPagamentoInicial={fatura.formaPagamento}
           onClose={() => setShowPagamentoModal(false)}
-          onConfirm={handlePagamento}
-        />
-      )}
-
-      {cancelarId && (
-        <ConfirmModal
-          title="Cancelar Fatura"
-          description="Tem certeza de que deseja cancelar esta fatura? Esta ação não pode ser revertida."
-          requireInputLabel="Motivo do cancelamento"
-          inputPlaceholder="Ex: Erro na emissão"
-          confirmText="Confirmar Cancelamento"
-          variant="danger"
-          onClose={() => setCancelarId(null)}
-          onConfirm={() => {
-            handleCancelar();
-            setCancelarId(null);
-          }}
+          onConfirm={handleConfirmPagamento}
         />
       )}
     </div>

@@ -1,7 +1,6 @@
 "use client";
 
 import { create } from "zustand";
-import { v4 as uuidv4 } from "uuid";
 import {
   Cliente,
   Artigo,
@@ -12,50 +11,105 @@ import {
   Documento,
   MovimentoStock,
   LogAuditoria,
-  TipoCliente,
   TipoDocumento,
 } from "./types";
-import { STORAGE_KEYS, getStorage, setStorage, clearStorage } from "./storage";
-import { loadMockData } from "./mock-data";
 
-function generateId(): string {
-  return uuidv4();
+async function apiFetch<T>(
+  url: string,
+  options?: RequestInit
+): Promise<T> {
+  const res = await fetch(url, {
+    headers: { "Content-Type": "application/json" },
+    ...options,
+  });
+  const json = await res.json().catch(() => null);
+  if (!res.ok || !json?.success) {
+    throw new Error(json?.error || `Erro ao aceder ${url}`);
+  }
+  return json.data as T;
+}
+
+// Normaliza datas vindas da API (strings ISO → Date)
+function normalizarCliente(c: any): Cliente {
+  return {
+    ...c,
+    dataCriacao: new Date(c.dataCriacao),
+    ultimaAtualizacao: new Date(c.ultimaAtualizacao),
+  };
+}
+
+function normalizarArtigo(a: any): Artigo {
+  return {
+    ...a,
+    preco: Number(a.preco),
+    taxaIVA: Number(a.taxaIVA),
+    stock: Number(a.stock),
+    stockMinimo: Number(a.stockMinimo),
+    dataCriacao: new Date(a.dataCriacao),
+    ultimaAtualizacao: new Date(a.ultimaAtualizacao),
+  };
+}
+
+function normalizarFornecedor(f: any): Fornecedor {
+  return {
+    ...f,
+    dataCriacao: new Date(f.dataCriacao),
+    ultimaAtualizacao: new Date(f.ultimaAtualizacao),
+  };
+}
+
+function normalizarDocumento(d: any): Documento {
+  return {
+    ...d,
+    numero: String(d.numero),
+    dataEmissao: new Date(d.dataEmissao),
+    dataVencimento: new Date(d.dataVencimento),
+    dataPagamento: d.dataPagamento ? new Date(d.dataPagamento) : undefined,
+    dataAtualizacao: new Date(d.dataAtualizacao),
+    linhas: (d.linhas || []).map((l: any) => ({
+      ...l,
+      quantidade: Number(l.quantidade),
+      preco: Number(l.preco),
+      taxaIVA: Number(l.taxaIVA),
+      total: Number(l.total),
+    })),
+  };
 }
 
 interface AppStore {
   // Clientes
   clientes: Cliente[];
-  addCliente: (cliente: Omit<Cliente, "id" | "dataCriacao" | "ultimaAtualizacao">) => void;
-  updateCliente: (id: string, cliente: Partial<Omit<Cliente, "id" | "dataCriacao">>) => void;
-  deleteCliente: (id: string) => void;
+  addCliente: (cliente: Omit<Cliente, "id" | "dataCriacao" | "ultimaAtualizacao">) => Promise<Cliente>;
+  updateCliente: (id: string, cliente: Partial<Omit<Cliente, "id" | "dataCriacao">>) => Promise<Cliente>;
+  deleteCliente: (id: string) => Promise<void>;
   getClientePorId: (id: string) => Cliente | undefined;
 
   // Artigos
   artigos: Artigo[];
-  addArtigo: (artigo: Omit<Artigo, "id" | "dataCriacao" | "ultimaAtualizacao">) => void;
-  updateArtigo: (id: string, artigo: Partial<Omit<Artigo, "id" | "dataCriacao">>) => void;
-  deleteArtigo: (id: string) => void;
+  addArtigo: (artigo: Omit<Artigo, "id" | "dataCriacao" | "ultimaAtualizacao">) => Promise<Artigo>;
+  updateArtigo: (id: string, artigo: Partial<Omit<Artigo, "id" | "dataCriacao">>) => Promise<Artigo>;
+  deleteArtigo: (id: string) => Promise<void>;
   getArtigoPorId: (id: string) => Artigo | undefined;
 
   // Fornecedores
   fornecedores: Fornecedor[];
-  addFornecedor: (fornecedor: Omit<Fornecedor, "id" | "dataCriacao" | "ultimaAtualizacao">) => void;
-  updateFornecedor: (id: string, fornecedor: Partial<Omit<Fornecedor, "id" | "dataCriacao">>) => void;
-  deleteFornecedor: (id: string) => void;
+  addFornecedor: (fornecedor: Omit<Fornecedor, "id" | "dataCriacao" | "ultimaAtualizacao">) => Promise<Fornecedor>;
+  updateFornecedor: (id: string, fornecedor: Partial<Omit<Fornecedor, "id" | "dataCriacao">>) => Promise<Fornecedor>;
+  deleteFornecedor: (id: string) => Promise<void>;
   getFornecedorPorId: (id: string) => Fornecedor | undefined;
 
   // Documentos
   documentos: Documento[];
   addDocumento: (documento: Omit<Documento, "numeroCompleto" | "dataAtualizacao"> & { id?: string; numeroCompleto?: string }) => Documento;
-  updateDocumento: (id: string, documento: Partial<Documento>) => void;
-  deleteDocumento: (id: string) => void;
+  updateDocumento: (id: string, documento: Partial<Documento>) => Promise<Documento>;
+  deleteDocumento: (id: string) => Promise<void>;
   getDocumentoPorId: (id: string) => Documento | undefined;
   registrarPagamento: (
     id: string,
     data: Date,
     formaPagamento?: "Numerário" | "Transferência" | "Multicaixa" | "POS" | "Cheque" | "Crédito",
     valorPago?: number
-  ) => void;
+  ) => Promise<void>;
   cancelarDocumento: (id: string, motivo: string) => void;
 
   // Movimentos de Stock
@@ -70,16 +124,17 @@ interface AppStore {
   empresa: ConfiguracaoEmpresa | null;
   setEmpresa: (empresa: ConfiguracaoEmpresa) => void;
 
-  // Gestão de Dados Mockados & Storage
-  loadFromStorage: () => void;
+  // Gestão de dados (remoto via API)
+  loadFromStorage: () => Promise<void>;
+  loadAll: () => Promise<void>;
   seedMockData: () => void;
   clearAllData: () => void;
 
   // Aliases de Faturas (para compatibilidade)
   faturas: Fatura[];
   addFatura: (fatura: Omit<Fatura, "numeroCompleto" | "dataAtualizacao"> & { id?: string; numeroCompleto?: string }) => Fatura;
-  updateFatura: (id: string, fatura: Partial<Fatura>) => void;
-  deleteFatura: (id: string) => void;
+  updateFatura: (id: string, fatura: Partial<Fatura>) => Promise<Fatura>;
+  deleteFatura: (id: string) => Promise<void>;
   getFaturaPorId: (id: string) => Fatura | undefined;
   cancelarFatura: (id: string) => void;
 }
@@ -94,100 +149,98 @@ export const useAppStore = create<AppStore>((set, get) => ({
   empresa: null,
 
   // Clientes
-  addCliente: (cliente) =>
-    set((state) => {
-      const novoCliente: Cliente = {
-        ...cliente,
-        id: generateId(),
-        dataCriacao: new Date(),
-        ultimaAtualizacao: new Date(),
-      };
-      const updated = [...state.clientes, novoCliente];
-      setStorage(STORAGE_KEYS.CLIENTES, updated);
-      return { clientes: updated };
-    }),
+  addCliente: async (cliente) => {
+    const c = await apiFetch<any>("/api/clients", {
+      method: "POST",
+      body: JSON.stringify(cliente),
+    });
+    const novo = normalizarCliente(c);
+    set((state) => ({ clientes: [...state.clientes, novo] }));
+    return novo;
+  },
 
-  updateCliente: (id, cliente) =>
-    set((state) => {
-      const updated = state.clientes.map((c) =>
-        c.id === id ? { ...c, ...cliente, id, ultimaAtualizacao: new Date() } : c
-      );
-      setStorage(STORAGE_KEYS.CLIENTES, updated);
-      return { clientes: updated };
-    }),
+  updateCliente: async (id, cliente) => {
+    const c = await apiFetch<any>(`/api/clients/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(cliente),
+    });
+    const atualizado = normalizarCliente(c);
+    set((state) => ({
+      clientes: state.clientes.map((x) => (x.id === id ? atualizado : x)),
+    }));
+    return atualizado;
+  },
 
-  deleteCliente: (id) =>
-    set((state) => {
-      const updated = state.clientes.filter((c) => c.id !== id);
-      setStorage(STORAGE_KEYS.CLIENTES, updated);
-      return { clientes: updated };
-    }),
+  deleteCliente: async (id) => {
+    await apiFetch<any>(`/api/clients/${id}`, { method: "DELETE" });
+    set((state) => ({ clientes: state.clientes.filter((c) => c.id !== id) }));
+  },
 
   getClientePorId: (id) => get().clientes.find((c) => c.id === id),
 
   // Artigos
-  addArtigo: (artigo) =>
-    set((state) => {
-      const novoArtigo: Artigo = {
+  addArtigo: async (artigo) => {
+    const a = await apiFetch<any>("/api/products", {
+      method: "POST",
+      body: JSON.stringify({
         ...artigo,
-        id: generateId(),
-        dataCriacao: new Date(),
-        ultimaAtualizacao: new Date(),
-      };
-      const updated = [...state.artigos, novoArtigo];
-      setStorage(STORAGE_KEYS.ARTIGOS, updated);
-      return { artigos: updated };
-    }),
+        taxaIVA: String(artigo.taxaIVA),
+      }),
+    });
+    const novo = normalizarArtigo(a);
+    set((state) => ({ artigos: [...state.artigos, novo] }));
+    return novo;
+  },
 
-  updateArtigo: (id, artigo) =>
-    set((state) => {
-      const updated = state.artigos.map((a) =>
-        a.id === id ? { ...a, ...artigo, id, ultimaAtualizacao: new Date() } : a
-      );
-      setStorage(STORAGE_KEYS.ARTIGOS, updated);
-      return { artigos: updated };
-    }),
+  updateArtigo: async (id, artigo) => {
+    const a = await apiFetch<any>(`/api/products/${id}`, {
+      method: "PUT",
+      body: JSON.stringify({
+        ...artigo,
+        taxaIVA: artigo.taxaIVA !== undefined ? String(artigo.taxaIVA) : undefined,
+      }),
+    });
+    const atualizado = normalizarArtigo(a);
+    set((state) => ({
+      artigos: state.artigos.map((x) => (x.id === id ? atualizado : x)),
+    }));
+    return atualizado;
+  },
 
-  deleteArtigo: (id) =>
-    set((state) => {
-      const updated = state.artigos.filter((a) => a.id !== id);
-      setStorage(STORAGE_KEYS.ARTIGOS, updated);
-      return { artigos: updated };
-    }),
+  deleteArtigo: async (id) => {
+    await apiFetch<any>(`/api/products/${id}`, { method: "DELETE" });
+    set((state) => ({ artigos: state.artigos.filter((a) => a.id !== id) }));
+  },
 
   getArtigoPorId: (id) => get().artigos.find((a) => a.id === id),
 
   // Fornecedores
-  addFornecedor: (fornecedor) =>
-    set((state) => {
-      const novoFornecedor: Fornecedor = {
-        ...fornecedor,
-        id: generateId(),
-        dataCriacao: new Date(),
-        ultimaAtualizacao: new Date(),
-      };
-      const updated = [...state.fornecedores, novoFornecedor];
-      setStorage(STORAGE_KEYS.FORNECEDORES, updated);
-      return { fornecedores: updated };
-    }),
+  addFornecedor: async (fornecedor) => {
+    const f = await apiFetch<any>("/api/suppliers", {
+      method: "POST",
+      body: JSON.stringify(fornecedor),
+    });
+    const novo = normalizarFornecedor(f);
+    set((state) => ({ fornecedores: [...state.fornecedores, novo] }));
+    return novo;
+  },
 
-  updateFornecedor: (id, fornecedor) =>
-    set((state) => {
-      const updated = state.fornecedores.map((f) =>
-        f.id === id
-          ? { ...f, ...fornecedor, id, ultimaAtualizacao: new Date() }
-          : f
-      );
-      setStorage(STORAGE_KEYS.FORNECEDORES, updated);
-      return { fornecedores: updated };
-    }),
+  updateFornecedor: async (id, fornecedor) => {
+    const f = await apiFetch<any>(`/api/suppliers/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(fornecedor),
+    });
+    const atualizado = normalizarFornecedor(f);
+    set((state) => ({
+      fornecedores: state.fornecedores.map((x) => (x.id === id ? atualizado : x)),
+    }));
+    return atualizado;
+  },
 
-  deleteFornecedor: (id) =>
-    set((state) => {
-      const updated = state.fornecedores.filter((f) => f.id !== id);
-      setStorage(STORAGE_KEYS.FORNECEDORES, updated);
-      return { fornecedores: updated };
-    }),
+  deleteFornecedor: async (id) => {
+    await apiFetch<any>(`/api/suppliers/${id}`, { method: "DELETE" });
+    set((state) => ({ fornecedores: state.fornecedores.filter((f) => f.id !== id) }));
+  },
 
   getFornecedorPorId: (id) => get().fornecedores.find((f) => f.id === id),
 
@@ -200,91 +253,97 @@ export const useAppStore = create<AppStore>((set, get) => ({
 
     const novoDocumento: Documento = {
       ...documento,
-      id: documento.id || generateId(),
+      id: documento.id || crypto.randomUUID(),
       numeroCompleto,
       dataAtualizacao: new Date(),
     };
-    set((state) => {
-      const updated = [...state.documentos, novoDocumento];
-      setStorage(STORAGE_KEYS.DOCUMENTOS, updated);
-      return { documentos: updated };
-    });
+    set((state) => ({
+      documentos: [...state.documentos, novoDocumento],
+    }));
     return novoDocumento;
   },
 
-  updateDocumento: (id, documento) =>
-    set((state) => {
-      const updated = state.documentos.map((d) =>
-        d.id === id
-          ? { ...d, ...documento, dataAtualizacao: new Date() }
-          : d
-      );
-      setStorage(STORAGE_KEYS.DOCUMENTOS, updated);
-      return { documentos: updated };
-    }),
+  updateDocumento: async (id, documento) => {
+    const payload: any = {};
+    if (documento.status) payload.status = documento.status;
+    if (documento.formaPagamento) payload.formaPagamento = documento.formaPagamento;
+    if (documento.observacoes !== undefined) payload.observacoes = documento.observacoes;
+    if (documento.dataPagamento) payload.dataPagamento = documento.dataPagamento.toISOString();
+    if (documento.dataVencimento) payload.dataVencimento = documento.dataVencimento.toISOString();
+    if (documento.motivo !== undefined) payload.motivo = documento.motivo;
 
-  deleteDocumento: (id) =>
-    set((state) => {
-      const updated = state.documentos.filter((d) => d.id !== id);
-      setStorage(STORAGE_KEYS.DOCUMENTOS, updated);
-      return { documentos: updated };
-    }),
+    const docAtualizado = await apiFetch<any>(`/api/invoices/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(payload),
+    });
+    const atualizado = normalizarDocumento(docAtualizado);
+    set((state) => ({
+      documentos: state.documentos.map((d) =>
+        d.id === id ? atualizado : d
+      ),
+    }));
+    return atualizado;
+  },
+
+  deleteDocumento: async (id) => {
+    await apiFetch<any>(`/api/invoices/${id}`, { method: "DELETE" });
+    set((state) => ({ documentos: state.documentos.filter((d) => d.id !== id) }));
+  },
 
   getDocumentoPorId: (id) => get().documentos.find((d) => d.id === id),
 
-  registrarPagamento: (id, data, formaPagamento, valorPago) => {
+  registrarPagamento: async (id, data, formaPagamento, valorPago) => {
     const doc = get().getDocumentoPorId(id);
-    if (doc) {
-      const novosDados: Partial<Documento> = {
-        status: "Pago",
-        dataPagamento: data,
-      };
-      if (formaPagamento) {
-        novosDados.formaPagamento = formaPagamento;
+    if (!doc) return;
+
+    await apiFetch<any>(
+      "/api/payments",
+      {
+        method: "POST",
+        body: JSON.stringify({
+          invoiceId: id,
+          amount: valorPago || doc.total,
+          paymentDate: data.toISOString(),
+          method: formaPagamento || doc.formaPagamento,
+        }),
       }
-      get().updateDocumento(id, novosDados);
-      get().addLog({
-        usuario: "Operador",
-        acao: `Pagamento de ${valorPago ? valorPago : doc.total} AOA registado via ${formaPagamento || doc.formaPagamento}`,
-        entidade: "Documento",
-        entidadeId: id,
-        timestamp: new Date(),
-      });
-    }
+    );
+    await get().updateDocumento(id, {
+      status: "Pago",
+      dataPagamento: data,
+      formaPagamento,
+    });
+    get().addLog({
+      usuario: "Operador",
+      acao: `Pagamento de ${valorPago || doc.total} AOA registado via ${formaPagamento || doc.formaPagamento}`,
+      entidade: "Documento",
+      entidadeId: id,
+      timestamp: new Date(),
+    });
   },
 
   cancelarDocumento: (id, motivo) => {
-    const doc = get().getDocumentoPorId(id);
-    if (doc) {
-      get().updateDocumento(id, {
-        status: "Cancelado",
-        motivo,
-      });
-    }
+    get().updateDocumento(id, {
+      status: "Cancelado",
+      motivo,
+    });
   },
 
   // Stock & Logs
-  addMovimentoStock: (movimento) =>
-    set((state) => {
-      const novoMovimento: MovimentoStock = {
-        ...movimento,
-        id: generateId(),
-      };
-      const updated = [...state.movimentosStock, novoMovimento];
-      setStorage(STORAGE_KEYS.MOVIMENTOS_STOCK, updated);
-      return { movimentosStock: updated };
-    }),
+  addMovimentoStock: (movimento) => {
+    set((state) => ({
+      movimentosStock: [
+        ...state.movimentosStock,
+        { ...movimento, id: crypto.randomUUID() },
+      ],
+    }));
+  },
 
-  addLog: (log) =>
-    set((state) => {
-      const novoLog: LogAuditoria = {
-        ...log,
-        id: generateId(),
-      };
-      const updated = [...state.logs, novoLog];
-      setStorage(STORAGE_KEYS.LOGS_AUDITORIA, updated);
-      return { logs: updated };
-    }),
+  addLog: (log) => {
+    set((state) => ({
+      logs: [...state.logs, { ...log, id: crypto.randomUUID() }],
+    }));
+  },
 
   // Faturas aliases (compatibilidade)
   addFatura: (fatura) => get().addDocumento(fatura),
@@ -301,33 +360,14 @@ export const useAppStore = create<AppStore>((set, get) => ({
 
   // Empresa
   setEmpresa: (empresa) => {
-    setStorage(STORAGE_KEYS.EMPRESA, empresa);
     set({ empresa });
   },
 
-  // População com Mock Data
   seedMockData: () => {
-    const mock = loadMockData();
-    setStorage(STORAGE_KEYS.EMPRESA, mock.empresa);
-    setStorage(STORAGE_KEYS.CLIENTES, mock.clientes);
-    setStorage(STORAGE_KEYS.ARTIGOS, mock.artigos);
-    setStorage(STORAGE_KEYS.FORNECEDORES, mock.fornecedores);
-    setStorage(STORAGE_KEYS.DOCUMENTOS, mock.documentos);
-    setStorage(STORAGE_KEYS.MOVIMENTOS_STOCK, mock.movimentosStock);
-
-    set({
-      empresa: mock.empresa,
-      clientes: mock.clientes,
-      artigos: mock.artigos,
-      fornecedores: mock.fornecedores,
-      documentos: mock.documentos,
-      movimentosStock: mock.movimentosStock,
-    });
+    // Remove: os dados passam a vir apenas do Supabase.
   },
 
-  // Limpeza de todos os dados do localStorage e do estado
   clearAllData: () => {
-    clearStorage();
     set({
       empresa: null,
       clientes: [],
@@ -339,81 +379,33 @@ export const useAppStore = create<AppStore>((set, get) => ({
     });
   },
 
-  // Inicialização a partir do Storage local
-  loadFromStorage: () => {
-    if (typeof window === "undefined") return;
+  loadFromStorage: () => get().loadAll(),
 
+  loadAll: async () => {
     try {
-      const empresa = getStorage<ConfiguracaoEmpresa>(STORAGE_KEYS.EMPRESA);
-      const clientes = getStorage<Cliente[]>(STORAGE_KEYS.CLIENTES);
-      const artigos = getStorage<Artigo[]>(STORAGE_KEYS.ARTIGOS);
-      const fornecedores = getStorage<Fornecedor[]>(STORAGE_KEYS.FORNECEDORES);
-      const documentos = getStorage<Documento[]>(STORAGE_KEYS.DOCUMENTOS) || getStorage<Fatura[]>(STORAGE_KEYS.FATURAS);
-      const movimentosStock = getStorage<MovimentoStock[]>(STORAGE_KEYS.MOVIMENTOS_STOCK);
-      const logs = getStorage<LogAuditoria[]>(STORAGE_KEYS.LOGS_AUDITORIA);
-
-      // Se o localStorage não contiver dados, auto-popula com os dados mockados de lib/mock-data.ts
-      if (!clientes || clientes.length === 0) {
-        get().seedMockData();
-        return;
-      }
-
-      // Converter strings de datas em instâncias Date reais
-      const clientesProcessados = (clientes || []).map((c) => ({
-        ...c,
-        dataCriacao: new Date(c.dataCriacao),
-        ultimaAtualizacao: new Date(c.ultimaAtualizacao),
-      }));
-
-      const artigosProcessados = (artigos || []).map((a) => ({
-        ...a,
-        dataCriacao: new Date(a.dataCriacao),
-        ultimaAtualizacao: new Date(a.ultimaAtualizacao),
-      }));
-
-      const fornecedoresProcessados = (fornecedores || []).map((f) => ({
-        ...f,
-        dataCriacao: new Date(f.dataCriacao),
-        ultimaAtualizacao: new Date(f.ultimaAtualizacao),
-      }));
-
-      const documentosProcessados = (documentos || []).map((d) => ({
-        ...d,
-        dataEmissao: new Date(d.dataEmissao),
-        dataVencimento: new Date(d.dataVencimento),
-        dataAtualizacao: new Date(d.dataAtualizacao),
-        dataPagamento: d.dataPagamento ? new Date(d.dataPagamento) : undefined,
-      }));
-
-      const movimentosProcessados = (movimentosStock || []).map((m) => ({
-        ...m,
-        data: new Date(m.data),
-      }));
-
-      const logsProcessados = (logs || []).map((l) => ({
-        ...l,
-        timestamp: new Date(l.timestamp),
-      }));
+      const [clientes, artigos, fornecedores, documentos, empresa] =
+        await Promise.all([
+          apiFetch<any[]>("/api/clients"),
+          apiFetch<any[]>("/api/products"),
+          apiFetch<any[]>("/api/suppliers"),
+          apiFetch<any[]>("/api/invoices"),
+          apiFetch<any>("/api/company"),
+        ]);
 
       set({
-        empresa: empresa ? { ...empresa, criadoEm: new Date(empresa.criadoEm), ultimaAtualizacao: new Date(empresa.ultimaAtualizacao) } : null,
-        clientes: clientesProcessados,
-        artigos: artigosProcessados,
-        fornecedores: fornecedoresProcessados,
-        documentos: documentosProcessados,
-        movimentosStock: movimentosProcessados,
-        logs: logsProcessados,
+        clientes: (clientes || []).map(normalizarCliente),
+        artigos: (artigos || []).map(normalizarArtigo),
+        fornecedores: (fornecedores || []).map(normalizarFornecedor),
+        documentos: (documentos || []).map(normalizarDocumento),
+        empresa: empresa || null,
       });
     } catch (error) {
-      console.error("Erro ao carregar dados do localStorage:", error);
+      console.error("Erro ao carregar dados da API:", error);
     }
   },
 }));
 
-// ─── Inicialização imediata ──────────────────────────────────────────────────
-// Carrega dados do localStorage antes de qualquer render React,
-// garantindo que o store nunca começa vazio quando existem dados guardados.
+// Carrega dados do servidor (Supabase) ao iniciar a aplicação.
 if (typeof window !== "undefined") {
-  useAppStore.getState().loadFromStorage();
+  useAppStore.getState().loadAll();
 }
-

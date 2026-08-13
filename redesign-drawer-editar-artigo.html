@@ -1,0 +1,838 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Redesign — Drawer de Editar Artigo / Serviço</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    background: #eef2f7;
+    color: #0f172a;
+  }
+
+  .topbar {
+    background: #0f172a; color: #fff; padding: 14px 24px;
+    display: flex; align-items: center; justify-content: space-between; gap: 16px;
+    position: sticky; top: 0; z-index: 60; box-shadow: 0 4px 20px rgba(15,23,42,.35);
+  }
+  .topbar-brand { display: flex; align-items: center; gap: 10px; }
+  .topbar-logo {
+    width: 30px; height: 30px; border-radius: 8px;
+    background: linear-gradient(135deg, #2563eb, #6366f1);
+    display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 13px;
+  }
+  .topbar-title { font-weight: 700; font-size: 14px; }
+  .topbar-sub { font-size: 11px; color: #94a3b8; }
+  .nav-controls { display: flex; align-items: center; gap: 14px; }
+  .nav-btn {
+    border: 1px solid #334155; background: #1e293b; color: #e2e8f0;
+    padding: 8px 16px; border-radius: 10px; font-size: 12.5px; font-weight: 600;
+    cursor: pointer; transition: all .15s;
+  }
+  .nav-btn:hover:not(:disabled) { background: #2b3b50; color: #fff; }
+  .nav-btn:disabled { opacity: .4; cursor: not-allowed; }
+  .nav-btn.primary { background: #2563eb; border-color: #2563eb; color: #fff; }
+  .nav-btn.primary:hover:not(:disabled) { background: #1d4ed8; }
+  .step-counter {
+    font-size: 12.5px; font-weight: 600; color: #cbd5e1;
+    background: #1e293b; padding: 6px 12px; border-radius: 999px;
+  }
+  .dots { display: flex; gap: 6px; }
+  .dot { width: 9px; height: 9px; border-radius: 999px; background: #334155; cursor: pointer; border: none; transition: all .2s; }
+  .dot.active { background: #2563eb; width: 26px; }
+
+  .stage { max-width: 1080px; margin: 26px auto 60px; }
+  .variation { display: none; }
+  .variation.active { display: block; animation: fade .35s ease; }
+  @keyframes fade { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+  .variation-head { margin-bottom: 16px; }
+  .variation-head h2 { font-size: 18px; font-weight: 800; }
+  .variation-head p { font-size: 12.5px; color: #64748b; margin-top: 4px; }
+
+  .mono { font-family: 'Cascadia Code', Consolas, 'Courier New', monospace; }
+
+  /* ── Mock do app ── */
+  .app-mock {
+    background: #e9edf3; border: 1px solid #d8dee9; border-radius: 16px;
+    box-shadow: 0 8px 30px rgba(15,23,42,.08);
+    height: 660px; position: relative; overflow: hidden;
+  }
+  .mock-topbar {
+    background: #fff; border-bottom: 1px solid #e2e8f0;
+    padding: 12px 20px; display: flex; align-items: center; gap: 12px;
+  }
+  .mock-search { flex: 1; max-width: 300px; height: 30px; border-radius: 8px; background: #f1f5f9; border: 1px solid #e2e8f0; }
+  .mock-tabs { display: flex; gap: 8px; }
+  .mock-tab { font-size: 11.5px; color: #64748b; font-weight: 600; padding: 4px 10px; }
+  .mock-tab.on { color: #2563eb; border-bottom: 2px solid #2563eb; }
+  .mock-table { padding: 14px 20px; }
+  .mock-row {
+    background: #fff; border: 1px solid #e2e8f0; border-radius: 10px;
+    display: flex; align-items: center; gap: 12px; padding: 10px 14px; margin-bottom: 8px;
+    font-size: 12px; color: #64748b;
+  }
+  .mock-row .fcode { font-family: 'Cascadia Code', monospace; font-weight: 700; color: #0f172a; width: 100px; }
+  .mock-row .fdesc { flex: 1; font-weight: 600; color: #0f172a; }
+  .mock-row .fprice { width: 90px; text-align: right; font-weight: 700; color: #0f172a; }
+  .mock-row .edit {
+    width: 28px; height: 28px; border-radius: 8px; background: #eff6ff; color: #2563eb;
+    border: none; cursor: pointer; font-size: 13px;
+  }
+  .mock-row.hl { border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37,99,235,.12); }
+  .mock-chip { font-size: 10.5px; font-weight: 700; padding: 3px 9px; border-radius: 999px; }
+
+  /* ── Drawer genérica ── */
+  .drawer-shell {
+    position: absolute; top: 0; right: 0; height: 100%;
+    background: #fff; display: flex; flex-direction: column;
+    box-shadow: -18px 0 40px rgba(15,23,42,.14); z-index: 20;
+  }
+  .drawer-inner { flex: 1; overflow-y: auto; }
+  .drawer-inner::-webkit-scrollbar { width: 8px; }
+  .drawer-inner::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 8px; }
+
+  .chip { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 999px; }
+  .chip::before { content: ""; width: 6px; height: 6px; border-radius: 999px; background: currentColor; }
+  .chip.atv { background: #d1fae5; color: #047857; }
+  .chip.inatv { background: #fee2e2; color: #b91c1c; }
+
+  .lbl { font-size: 10.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: #94a3b8; }
+
+  /* ── Campos ── */
+  .f { display: flex; flex-direction: column; gap: 5px; }
+  .f label { font-size: 12px; font-weight: 600; color: #475569; }
+  .f .req::after { content: " *"; color: #dc2626; }
+  .f input, .f select {
+    width: 100%; padding: 10px 12px; border: 1px solid #cbd5e1; border-radius: 10px;
+    font-size: 13px; font-family: inherit; background: #fff; color: #0f172a; outline: none;
+  }
+  .f input:focus, .f select:focus { border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37,99,235,.12); }
+  .f .err { color: #dc2626; font-size: 11px; }
+  .f .hint { font-size: 11px; color: #94a3b8; }
+
+  .seg { display: flex; background: #f1f5f9; border-radius: 12px; padding: 4px; gap: 4px; }
+  .seg button {
+    flex: 1; padding: 8px 10px; border: none; border-radius: 9px; font-size: 13px;
+    font-weight: 700; color: #64748b; cursor: pointer; background: transparent; transition: all .15s;
+    display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  }
+  .seg button.on { background: #fff; color: #2563eb; box-shadow: 0 1px 3px rgba(15,23,42,.12); }
+
+  .sec { border: 1px solid #e2e8f0; border-radius: 14px; }
+  .btn2 {
+    display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+    border-radius: 10px; font-size: 13px; font-weight: 700; padding: 10px 16px;
+    border: none; cursor: pointer; transition: all .15s;
+  }
+  .btn2-p { background: #2563eb; color: #fff; }
+  .btn2-p:hover { background: #1d4ed8; }
+  .btn2-o { background: #fff; border: 1px solid #cbd5e1; color: #475569; }
+  .btn2-o:hover { border-color: #2563eb; color: #2563eb; }
+  .btn2-g { background: #fff; border: 1px solid #d1d5db; color: #6b7280; }
+
+  .tab-panel { display: none; }
+  .tab-panel.on { display: block; animation: fade .2s ease; }
+
+  .stock-note {
+    display: flex; align-items: center; gap: 8px; font-size: 12px; color: #64748b;
+    background: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 10px; padding: 10px 12px;
+  }
+
+  /* ════ V1 · Dois Painéis ════ */
+  .v1 .drawer-shell { width: 780px; flex-direction: row; }
+  .v1-side {
+    width: 230px; background: linear-gradient(160deg, #0f172a, #1e293b); color: #fff;
+    display: flex; flex-direction: column; justify-content: space-between; padding: 20px;
+  }
+  .v1-pic {
+    width: 52px; height: 52px; border-radius: 14px; background: rgba(255,255,255,.12);
+    border: 1px solid rgba(255,255,255,.2); display: flex; align-items: center; justify-content: center; font-size: 24px;
+  }
+  .v1-side .code { font-family: 'Cascadia Code', monospace; font-weight: 800; font-size: 16px; margin-top: 14px; }
+  .v1-side .desc { font-size: 12px; color: #94a3b8; margin-top: 3px; line-height: 1.4; }
+  .v1-side .tag { font-size: 10.5px; color: #94a3b8; letter-spacing: .1em; text-transform: uppercase; margin: 16px 0 8px; }
+  .v1-side .price { font-family: 'Cascadia Code', monospace; font-size: 24px; font-weight: 800; color: #60a5fa; }
+  .v1-kv { display: flex; justify-content: space-between; font-size: 12px; padding: 3px 0; }
+  .v1-kv .k { color: #94a3b8; }
+  .v1-kv .v { font-weight: 600; color: #e2e8f0; }
+  .v1-main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+  .v1-head { padding: 14px 22px 12px; border-bottom: 1px solid #e2e8f0; }
+  .v1-head .t { font-size: 14px; font-weight: 800; }
+  .v1-head .s { font-size: 11.5px; color: #94a3b8; margin-top: 2px; }
+  .v1-tabs { padding: 12px 22px 0; }
+  .v1-body { flex: 1; overflow-y: auto; padding: 16px 22px; display: grid; gap: 14px; }
+  .v1-foot { display: flex; justify-content: flex-end; gap: 10px; padding: 14px 22px; border-top: 1px solid #e2e8f0; }
+
+  /* ════ V2 · Header Gradiente + Abas ════ */
+  .v2 .drawer-shell { width: 500px; }
+  .v2-head {
+    background: linear-gradient(135deg, #0f766e, #0d9488); color: #fff;
+    padding: 18px 20px 0; position: relative; overflow: hidden;
+  }
+  .v2-head::after {
+    content: ""; position: absolute; right: -30px; top: -40px; width: 150px; height: 150px;
+    background: rgba(255,255,255,.08); border-radius: 50%;
+  }
+  .v2-head .t { font-size: 15px; font-weight: 800; display: flex; align-items: center; gap: 8px; }
+  .v2-head .s { font-size: 11.5px; color: rgba(255,255,255,.75); margin-top: 3px; }
+  .v2-tabs { margin-top: 14px; }
+  .v2-tabs .seg { background: rgba(255,255,255,.14); }
+  .v2-tabs .seg button { color: rgba(255,255,255,.85); }
+  .v2-tabs .seg button.on { color: #0f766e; }
+  .v2-body { padding: 16px 20px; display: grid; gap: 14px; }
+  .v2-sec { border: 1px solid #e2e8f0; border-radius: 14px; padding: 14px; }
+  .v2-foot { display: flex; justify-content: flex-end; gap: 10px; padding: 14px 20px; border-top: 1px solid #e2e8f0; }
+
+  /* ════ V3 · Cards com Ícones ════ */
+  .v3 .drawer-shell { width: 540px; }
+  .v3-head { display: flex; align-items: center; justify-content: space-between; padding: 14px 20px; border-bottom: 1px solid #e2e8f0; }
+  .v3-head .t { font-size: 14px; font-weight: 800; }
+  .v3-tabs { padding: 12px 20px 0; }
+  .v3-body { padding: 16px 20px; display: grid; gap: 12px; }
+  .v3-card { border: 1px solid #e2e8f0; border-radius: 16px; background: #fff; overflow: hidden; }
+  .v3-card-hd {
+    display: flex; align-items: center; gap: 8px; padding: 11px 14px;
+    border-bottom: 1px solid #f1f5f9; background: #fafbfc; font-size: 12.5px; font-weight: 800; color: #334155;
+  }
+  .v3-card-hd .i { font-size: 15px; }
+  .v3-card-bd { padding: 14px; display: grid; gap: 12px; }
+  .v3-grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .v3-foot { display: flex; justify-content: flex-end; gap: 10px; padding: 14px 20px; border-top: 1px solid #e2e8f0; }
+
+  /* ════ V4 · Grelha Compacta ════ */
+  .v4 .drawer-shell { width: 560px; }
+  .v4-head { padding: 14px 20px 0; }
+  .v4-head .t { font-size: 14px; font-weight: 800; }
+  .v4-head .s { font-size: 11.5px; color: #94a3b8; margin-top: 2px; }
+  .v4-tabs { padding: 12px 20px 0; }
+  .v4-helper {
+    font-size: 11.5px; color: #64748b; background: #f1f5f9; border-radius: 10px;
+    padding: 8px 12px; margin: 12px 20px 0;
+  }
+  .v4-body { padding: 16px 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 14px; align-content: start; }
+  .v4-body .full { grid-column: span 2; }
+  .v4-price-row { grid-column: span 2; display: flex; align-items: center; justify-content: space-between; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 12px 14px; }
+  .v4-price-row .l { font-size: 11px; color: #94a3b8; font-weight: 700; text-transform: uppercase; }
+  .v4-price-row .v { font-size: 16px; font-weight: 800; color: #0f172a; }
+  .v4-foot { display: flex; justify-content: flex-end; gap: 10px; padding: 14px 20px; border-top: 1px solid #e2e8f0; }
+
+  /* ════ V5 · Minimal + Acordeão ════ */
+  .v5 .drawer-shell { width: 430px; }
+  .v5-head { padding: 14px 16px 0; }
+  .v5-head .t { font-size: 13.5px; font-weight: 800; }
+  .v5-tabs { padding: 12px 16px 0; }
+  .v5-body { padding: 14px 16px; display: grid; gap: 8px; }
+  .v5-acc-item { border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; }
+  .v5-acc-head {
+    display: flex; align-items: center; justify-content: space-between; padding: 11px 14px;
+    cursor: pointer; background: #fff; font-size: 12.5px; font-weight: 700; color: #334155;
+    border: none; width: 100%; text-align: left;
+  }
+  .v5-acc-head .arrow { transition: transform .2s; color: #94a3b8; font-size: 10px; }
+  .v5-acc-item.open .arrow { transform: rotate(90deg); }
+  .v5-acc-body { display: none; padding: 12px 14px; border-top: 1px solid #f1f5f9; }
+  .v5-acc-item.open .v5-acc-body { display: grid; gap: 12px; animation: fade .2s ease; }
+  .v5-foot { display: flex; gap: 10px; padding: 14px 16px; border-top: 1px solid #e2e8f0; }
+</style>
+</head>
+<body>
+
+  <div class="topbar">
+    <div class="topbar-brand">
+      <div class="topbar-logo">K</div>
+      <div>
+        <div class="topbar-title">Redesign — Drawer de Editar Artigo / Serviço</div>
+        <div class="topbar-sub">5 variações · navegue com ← → ou botões</div>
+      </div>
+    </div>
+    <div class="nav-controls">
+      <button class="nav-btn" id="prevVar">← Anterior</button>
+      <span class="step-counter" id="varCounter">1 / 5</span>
+      <button class="nav-btn primary" id="nextVar">Próximo →</button>
+      <div class="dots" id="dots"></div>
+    </div>
+  </div>
+
+  <div class="stage">
+
+    <!-- ════════════════ V1 · Dois Painéis ════════════════ -->
+    <div class="variation v1">
+      <div class="variation-head">
+        <h2>1. Dois Painéis — Pré-visualização fixa + Formulário</h2>
+        <p>Drawer larga com pré-visualização do produto/serviço na sidebar e formulário editável à direita. Abas Produto/Serviço no topo do formulário.</p>
+      </div>
+
+      <div class="app-mock">
+        <div class="mock-topbar">
+          <div class="mock-search"></div>
+          <div class="mock-tabs"><span class="mock-tab on">Produtos</span><span class="mock-tab">Serviços</span><span class="mock-tab">Todos</span></div>
+        </div>
+        <div class="mock-table">
+          <div class="mock-row"><span class="fcode">PROD-001</span><span class="fdesc">Cartucho HP 305</span><span class="fprice mono">15 000,00</span><span class="mock-chip atv" style="background:#d1fae5;color:#047857;">Ativo</span><button class="edit">✎</button></div>
+          <div class="mock-row hl"><span class="fcode">SERV-001</span><span class="fdesc">Manutenção Anual</span><span class="fprice mono">128 400,00</span><span class="mock-chip atv" style="background:#d1fae5;color:#047857;">Ativo</span><button class="edit">✎</button></div>
+          <div class="mock-row"><span class="fcode">PROD-002</span><span class="fdesc">Papel A4 (500 folhas)</span><span class="fprice mono">4 200,00</span><span class="mock-chip atv" style="background:#d1fae5;color:#047857;">Ativo</span><button class="edit">✎</button></div>
+        </div>
+
+        <div class="drawer-shell">
+          <div class="v1-side">
+            <div>
+              <div class="v1-pic" id="v1pic">🛒</div>
+              <div class="code" id="v1code">SERV-001</div>
+              <div class="desc" id="v1desc">Manutenção Anual</div>
+              <div style="margin-top:10px;display:flex;gap:6px;">
+                <span class="chip atv">Ativo</span>
+              </div>
+              <div class="tag">Preço</div>
+              <div class="price mono" id="v1price">128 400,00</div>
+              <div class="tag">Identificação</div>
+              <div class="v1-kv"><span class="k">Categoria</span><span class="v" id="v1cat">Serviços</span></div>
+              <div class="v1-kv"><span class="k">Unidade</span><span class="v" id="v1unit">Mês</span></div>
+              <div class="v1-kv"><span class="k">IVA</span><span class="v mono" id="v1iva">14%</span></div>
+              <div class="v1-stock" id="v1stock" style="display:none;">
+                <div class="tag">Stock</div>
+                <div class="v1-kv"><span class="k">Atual</span><span class="v mono">120</span></div>
+                <div class="v1-kv"><span class="k">Mínimo</span><span class="v mono">20</span></div>
+              </div>
+            </div>
+            <button class="btn2 btn2-g" style="background:#1e293b;border-color:#334155;color:#cbd5e1;">✕ Cancelar</button>
+          </div>
+          <div class="v1-main">
+            <div class="v1-head">
+              <div class="t">Editar Item</div>
+              <div class="s">Preencha os campos de acordo com o tipo selecionado.</div>
+            </div>
+            <div class="v1-tabs">
+              <div class="seg">
+                <button class="on" data-tab="produto">🛒 Produto</button>
+                <button data-tab="servico">🛠 Serviço</button>
+              </div>
+            </div>
+            <div class="v1-body">
+              <div class="tab-panel on" data-panel="produto">
+                <div class="sec" style="padding:14px;">
+                  <div class="lbl" style="margin-bottom:12px;">Identificação</div>
+                  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                    <div class="f"><label class="req">Código</label><input value="PROD-001" placeholder="Ex: PROD-001" /></div>
+                    <div class="f"><label>Unidade</label><select><option>Unidade (UN)</option><option>Kilogramas</option><option>Metros</option></select></div>
+                    <div class="f" style="grid-column:span 2;"><label>Descrição</label><input value="Cartucho HP 305" /></div>
+                  </div>
+                </div>
+                <div class="sec" style="padding:14px;margin-top:14px;">
+                  <div class="lbl" style="margin-bottom:12px;">Preço &amp; IVA</div>
+                  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;">
+                    <div class="f"><label class="req">Categoria</label><input value="Consumíveis" /></div>
+                    <div class="f"><label class="req">Preço (AOA)</label><input type="number" value="15000" /></div>
+                    <div class="f"><label class="req">IVA</label><select><option>14%</option><option>7%</option><option>0% (Isento)</option></select></div>
+                  </div>
+                </div>
+                <div class="sec" style="padding:14px;margin-top:14px;">
+                  <div class="lbl" style="margin-bottom:12px;">Stock</div>
+                  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                    <div class="f"><label>Stock Atual</label><input type="number" value="120" /></div>
+                    <div class="f"><label>Stock Mínimo</label><input type="number" value="20" /></div>
+                  </div>
+                </div>
+              </div>
+              <div class="tab-panel" data-panel="servico">
+                <div class="sec" style="padding:14px;">
+                  <div class="lbl" style="margin-bottom:12px;">Identificação</div>
+                  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                    <div class="f"><label class="req">Código</label><input value="SERV-001" placeholder="Ex: SERV-001" /></div>
+                    <div class="f"><label>Unidade</label><select><option>Mês (MES)</option><option>Horas (H)</option><option>Dias (DIA)</option></select></div>
+                    <div class="f" style="grid-column:span 2;"><label>Descrição</label><input value="Manutenção Anual" /></div>
+                  </div>
+                </div>
+                <div class="sec" style="padding:14px;margin-top:14px;">
+                  <div class="lbl" style="margin-bottom:12px;">Preço &amp; IVA</div>
+                  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;">
+                    <div class="f"><label class="req">Categoria</label><input value="Serviços" /></div>
+                    <div class="f"><label class="req">Preço (AOA)</label><input type="number" value="128400" /></div>
+                    <div class="f"><label class="req">IVA</label><select><option>14%</option><option>7%</option><option>0% (Isento)</option></select></div>
+                  </div>
+                </div>
+                <div class="stock-note">🛠 Serviços não controlam stock — apenas produtos possuem controlo de inventário.</div>
+              </div>
+            </div>
+            <div class="v1-foot">
+              <button class="btn2 btn2-o">Cancelar</button>
+              <button class="btn2 btn2-p">Salvar Alterações</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ════════════════ V2 · Header Gradiente + Abas ════════════════ -->
+    <div class="variation v2">
+      <div class="variation-head">
+        <h2>2. Cabeçalho em Gradiente com Abas Integradas</h2>
+        <p>Abas Produto/Serviço dentro do cabeçalho colorido. Formulário em secções numeradas com rodapé fixo.</p>
+      </div>
+
+      <div class="app-mock">
+        <div class="mock-topbar">
+          <div class="mock-search"></div>
+          <div class="mock-tabs"><span class="mock-tab on">Produtos</span><span class="mock-tab">Serviços</span><span class="mock-tab">Todos</span></div>
+        </div>
+        <div class="mock-table">
+          <div class="mock-row"><span class="fcode">PROD-001</span><span class="fdesc">Cartucho HP 305</span><span class="fprice mono">15 000,00</span><span class="mock-chip atv" style="background:#d1fae5;color:#047857;">Ativo</span><button class="edit">✎</button></div>
+          <div class="mock-row"><span class="fcode">PROD-002</span><span class="fdesc">Papel A4 (500 folhas)</span><span class="fprice mono">4 200,00</span><span class="mock-chip atv" style="background:#d1fae5;color:#047857;">Ativo</span><button class="edit">✎</button></div>
+          <div class="mock-row hl"><span class="fcode">SERV-001</span><span class="fdesc">Manutenção Anual</span><span class="fprice mono">128 400,00</span><span class="mock-chip atv" style="background:#d1fae5;color:#047857;">Ativo</span><button class="edit">✎</button></div>
+        </div>
+
+        <div class="drawer-shell">
+          <div class="v2-head">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+              <div>
+                <div class="t">✎ Editar Item</div>
+                <div class="s">Escolha o tipo e preencha os dados.</div>
+              </div>
+              <button style="width:30px;height:30px;border-radius:8px;background:rgba(0,0,0,.2);color:#fff;border:none;cursor:pointer;font-weight:700;">✕</button>
+            </div>
+            <div class="v2-tabs">
+              <div class="seg">
+                <button class="on" data-tab="produto">🛒 Produto</button>
+                <button data-tab="servico">🛠 Serviço</button>
+              </div>
+            </div>
+          </div>
+          <div class="drawer-inner v2-body">
+            <div class="tab-panel on" data-panel="produto">
+              <div class="v2-sec">
+                <div class="lbl" style="margin-bottom:12px;">1 · Identificação</div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                  <div class="f"><label class="req">Código</label><input value="PROD-001" /></div>
+                  <div class="f"><label>Unidade</label><select><option>Unidade (UN)</option><option>Kilogramas</option></select></div>
+                  <div class="f" style="grid-column:span 2;"><label>Descrição</label><input value="Cartucho HP 305" /></div>
+                </div>
+              </div>
+              <div class="v2-sec" style="margin-top:12px;">
+                <div class="lbl" style="margin-bottom:12px;">2 · Preço &amp; IVA</div>
+                <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;">
+                  <div class="f"><label class="req">Categoria</label><input value="Consumíveis" /></div>
+                  <div class="f"><label class="req">Preço (AOA)</label><input type="number" value="15000" /></div>
+                  <div class="f"><label class="req">IVA</label><select><option>14%</option><option>7%</option><option>0%</option></select></div>
+                </div>
+              </div>
+              <div class="v2-sec" style="margin-top:12px;">
+                <div class="lbl" style="margin-bottom:12px;">3 · Stock</div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                  <div class="f"><label>Stock Atual</label><input type="number" value="120" /></div>
+                  <div class="f"><label>Stock Mínimo</label><input type="number" value="20" /></div>
+                </div>
+              </div>
+              <div class="v2-sec" style="margin-top:12px;">
+                <div class="lbl" style="margin-bottom:12px;">4 · Estado</div>
+                <div class="seg" style="max-width:260px;">
+                  <button class="on" style="background:#fff;color:#0f766e;">Ativo</button>
+                  <button>Inativo</button>
+                </div>
+              </div>
+            </div>
+            <div class="tab-panel" data-panel="servico">
+              <div class="v2-sec">
+                <div class="lbl" style="margin-bottom:12px;">1 · Identificação</div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                  <div class="f"><label class="req">Código</label><input value="SERV-001" /></div>
+                  <div class="f"><label>Unidade</label><select><option>Mês (MES)</option><option>Horas (H)</option></select></div>
+                  <div class="f" style="grid-column:span 2;"><label>Descrição</label><input value="Manutenção Anual" /></div>
+                </div>
+              </div>
+              <div class="v2-sec" style="margin-top:12px;">
+                <div class="lbl" style="margin-bottom:12px;">2 · Preço &amp; IVA</div>
+                <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;">
+                  <div class="f"><label class="req">Categoria</label><input value="Serviços" /></div>
+                  <div class="f"><label class="req">Preço (AOA)</label><input type="number" value="128400" /></div>
+                  <div class="f"><label class="req">IVA</label><select><option>14%</option><option>7%</option><option>0%</option></select></div>
+                </div>
+              </div>
+              <div class="stock-note" style="margin-top:12px;">🛠 Serviços não controlam stock — apenas produtos possuem controlo de inventário.</div>
+              <div class="v2-sec" style="margin-top:12px;">
+                <div class="lbl" style="margin-bottom:12px;">3 · Estado</div>
+                <div class="seg" style="max-width:260px;">
+                  <button class="on" style="background:#fff;color:#0f766e;">Ativo</button>
+                  <button>Inativo</button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="v2-foot">
+            <button class="btn2 btn2-o">Cancelar</button>
+            <button class="btn2 btn2-p">Salvar Alterações</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ════════════════ V3 · Cards com Ícones ════════════════ -->
+    <div class="variation v3">
+      <div class="variation-head">
+        <h2>3. Grupos em Cards com Ícones</h2>
+        <p>Cada grupo de campos num card com ícone e título próprio. Abas no topo alternam os campos conforme o tipo.</p>
+      </div>
+
+      <div class="app-mock">
+        <div class="mock-topbar">
+          <div class="mock-search"></div>
+          <div class="mock-tabs"><span class="mock-tab">Produtos</span><span class="mock-tab">Serviços</span><span class="mock-tab on">Todos</span></div>
+        </div>
+        <div class="mock-table">
+          <div class="mock-row"><span class="fcode">PROD-001</span><span class="fdesc">Cartucho HP 305</span><span class="fprice mono">15 000,00</span><span class="mock-chip atv" style="background:#d1fae5;color:#047857;">Ativo</span><button class="edit">✎</button></div>
+          <div class="mock-row hl"><span class="fcode">PROD-002</span><span class="fdesc">Papel A4 (500 folhas)</span><span class="fprice mono">4 200,00</span><span class="mock-chip atv" style="background:#d1fae5;color:#047857;">Ativo</span><button class="edit">✎</button></div>
+          <div class="mock-row"><span class="fcode">SERV-001</span><span class="fdesc">Manutenção Anual</span><span class="fprice mono">128 400,00</span><span class="mock-chip atv" style="background:#d1fae5;color:#047857;">Ativo</span><button class="edit">✎</button></div>
+        </div>
+
+        <div class="drawer-shell">
+          <div class="v3-head">
+            <div>
+              <div class="t">✎ Editar Produto</div>
+              <div style="font-size:11.5px;color:#94a3b8;margin-top:2px;">Cartucho HP 305 · PROD-001</div>
+            </div>
+            <button style="width:30px;height:30px;border-radius:8px;background:#f1f5f9;border:none;cursor:pointer;font-weight:700;color:#64748b;">✕</button>
+          </div>
+          <div class="v3-tabs">
+            <div class="seg">
+              <button class="on" data-tab="produto">🛒 Produto</button>
+              <button data-tab="servico">🛠 Serviço</button>
+            </div>
+          </div>
+          <div class="drawer-inner v3-body">
+            <div class="tab-panel on" data-panel="produto">
+              <div class="v3-card">
+                <div class="v3-card-hd"><span class="i">🏷️</span> Identificação</div>
+                <div class="v3-card-bd">
+                  <div class="v3-grid2">
+                    <div class="f"><label class="req">Código</label><input value="PROD-001" /></div>
+                    <div class="f"><label>Unidade</label><select><option>Unidade (UN)</option><option>Kilogramas</option></select></div>
+                  </div>
+                  <div class="f"><label class="req">Descrição</label><input value="Cartucho HP 305" /></div>
+                </div>
+              </div>
+              <div class="v3-card">
+                <div class="v3-card-hd"><span class="i">💰</span> Preço &amp; IVA</div>
+                <div class="v3-card-bd">
+                  <div class="v3-grid2">
+                    <div class="f"><label class="req">Categoria</label><input value="Consumíveis" /></div>
+                    <div class="f"><label class="req">Preço (AOA)</label><input type="number" value="15000" /></div>
+                    <div class="f"><label class="req">Taxa de IVA</label><select><option>14%</option><option>7%</option><option>0% (Isento)</option></select></div>
+                  </div>
+                </div>
+              </div>
+              <div class="v3-card">
+                <div class="v3-card-hd"><span class="i">📦</span> Stock</div>
+                <div class="v3-card-bd">
+                  <div class="v3-grid2">
+                    <div class="f"><label>Stock Atual</label><input type="number" value="120" /></div>
+                    <div class="f"><label>Stock Mínimo</label><input type="number" value="20" /></div>
+                  </div>
+                </div>
+              </div>
+              <div class="v3-card">
+                <div class="v3-card-hd"><span class="i">🟢</span> Estado</div>
+                <div class="v3-card-bd">
+                  <div class="seg" style="max-width:260px;">
+                    <button class="on" style="background:#fff;color:#2563eb;">Ativo</button>
+                    <button>Inativo</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="tab-panel" data-panel="servico">
+              <div class="v3-card">
+                <div class="v3-card-hd"><span class="i">🏷️</span> Identificação</div>
+                <div class="v3-card-bd">
+                  <div class="v3-grid2">
+                    <div class="f"><label class="req">Código</label><input value="SERV-001" /></div>
+                    <div class="f"><label>Unidade</label><select><option>Mês (MES)</option><option>Horas (H)</option></select></div>
+                  </div>
+                  <div class="f"><label class="req">Descrição</label><input value="Manutenção Anual" /></div>
+                </div>
+              </div>
+              <div class="v3-card">
+                <div class="v3-card-hd"><span class="i">💰</span> Preço &amp; IVA</div>
+                <div class="v3-card-bd">
+                  <div class="v3-grid2">
+                    <div class="f"><label class="req">Categoria</label><input value="Serviços" /></div>
+                    <div class="f"><label class="req">Preço (AOA)</label><input type="number" value="128400" /></div>
+                    <div class="f"><label class="req">Taxa de IVA</label><select><option>14%</option><option>7%</option><option>0% (Isento)</option></select></div>
+                  </div>
+                </div>
+              </div>
+              <div class="stock-note">🛠 Serviços não controlam stock — apenas produtos possuem controlo de inventário.</div>
+              <div class="v3-card">
+                <div class="v3-card-hd"><span class="i">🟢</span> Estado</div>
+                <div class="v3-card-bd">
+                  <div class="seg" style="max-width:260px;">
+                    <button class="on" style="background:#fff;color:#2563eb;">Ativo</button>
+                    <button>Inativo</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="v3-foot">
+            <button class="btn2 btn2-o">Cancelar</button>
+            <button class="btn2 btn2-p">Salvar Alterações</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ════════════════ V4 · Grelha Compacta ════════════════ -->
+    <div class="variation v4">
+      <div class="variation-head">
+        <h2>4. Grelha Compacta com Total Calculado</h2>
+        <p>Formulário denso em duas colunas, com nota contextual por aba e linha de preço com IVA calculado.</p>
+      </div>
+
+      <div class="app-mock">
+        <div class="mock-topbar">
+          <div class="mock-search"></div>
+          <div class="mock-tabs"><span class="mock-tab on">Produtos</span><span class="mock-tab">Serviços</span><span class="mock-tab">Todos</span></div>
+        </div>
+        <div class="mock-table">
+          <div class="mock-row"><span class="fcode">PROD-001</span><span class="fdesc">Cartucho HP 305</span><span class="fprice mono">15 000,00</span><span class="mock-chip atv" style="background:#d1fae5;color:#047857;">Ativo</span><button class="edit">✎</button></div>
+          <div class="mock-row hl"><span class="fcode">PROD-002</span><span class="fdesc">Papel A4 (500 folhas)</span><span class="fprice mono">4 200,00</span><span class="mock-chip atv" style="background:#d1fae5;color:#047857;">Ativo</span><button class="edit">✎</button></div>
+          <div class="mock-row"><span class="fcode">SERV-001</span><span class="fdesc">Manutenção Anual</span><span class="fprice mono">128 400,00</span><span class="mock-chip atv" style="background:#d1fae5;color:#047857;">Ativo</span><button class="edit">✎</button></div>
+        </div>
+
+        <div class="drawer-shell">
+          <div class="v4-head">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+              <div>
+                <div class="t">✎ Editar Item</div>
+                <div class="s">Papel A4 (500 folhas) · PROD-002</div>
+              </div>
+              <button style="width:30px;height:30px;border-radius:8px;background:#f1f5f9;border:none;cursor:pointer;font-weight:700;color:#64748b;">✕</button>
+            </div>
+          </div>
+          <div class="v4-tabs">
+            <div class="seg">
+              <button class="on" data-tab="produto">🛒 Produto</button>
+              <button data-tab="servico">🛠 Serviço</button>
+            </div>
+          </div>
+          <div class="v4-helper" id="v4helper">📦 Produtos controlam stock e inventário.</div>
+          <div class="drawer-inner v4-body">
+            <div class="tab-panel on" data-panel="produto">
+              <div class="f full"><label class="req">Descrição</label><input value="Papel A4 (500 folhas)" /></div>
+              <div class="f"><label class="req">Código</label><input value="PROD-002" /></div>
+              <div class="f"><label>Categoria</label><input value="Consumíveis" /></div>
+              <div class="f"><label class="req">Preço (AOA)</label><input type="number" value="4200" /></div>
+              <div class="f"><label class="req">IVA</label><select><option>14%</option><option>7%</option><option>0% (Isento)</option></select></div>
+              <div class="f"><label>Unidade</label><select><option>Unidade (UN)</option><option>Resmas</option></select></div>
+              <div class="f"><label>Stock Atual</label><input type="number" value="340" /></div>
+              <div class="f"><label>Stock Mínimo</label><input type="number" value="50" /></div>
+              <div class="v4-price-row">
+                <div><div class="l">Preço com IVA (14%)</div><div style="font-size:11px;color:#94a3b8;">4 200,00 + 588,00 IVA</div></div>
+                <div class="v mono">4 788,00</div>
+              </div>
+            </div>
+            <div class="tab-panel" data-panel="servico">
+              <div class="f full"><label class="req">Descrição</label><input value="Manutenção Anual" /></div>
+              <div class="f"><label class="req">Código</label><input value="SERV-001" /></div>
+              <div class="f"><label>Categoria</label><input value="Serviços" /></div>
+              <div class="f"><label class="req">Preço (AOA)</label><input type="number" value="128400" /></div>
+              <div class="f"><label class="req">IVA</label><select><option>14%</option><option>7%</option><option>0% (Isento)</option></select></div>
+              <div class="f"><label>Unidade</label><select><option>Mês (MES)</option><option>Horas (H)</option></select></div>
+              <div class="f full"><label>Estado</label><div class="seg"><button class="on" style="background:#fff;color:#2563eb;">Ativo</button><button>Inativo</button></div></div>
+              <div class="v4-price-row">
+                <div><div class="l">Preço com IVA (14%)</div><div style="font-size:11px;color:#94a3b8;">128 400,00 + 17 976,00 IVA</div></div>
+                <div class="v mono">146 376,00</div>
+              </div>
+            </div>
+          </div>
+          <div class="v4-foot">
+            <button class="btn2 btn2-o">Cancelar</button>
+            <button class="btn2 btn2-p">Salvar Alterações</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ════════════════ V5 · Minimal + Acordeão ════════════════ -->
+    <div class="variation v5">
+      <div class="variation-head">
+        <h2>5. Minimalista com Acordeão e Barra Fixa</h2>
+        <p>Drawer compacta com secções em acordeão e barra de ações fixa. Abas no topo alternam os grupos.</p>
+      </div>
+
+      <div class="app-mock">
+        <div class="mock-topbar">
+          <div class="mock-search"></div>
+          <div class="mock-tabs"><span class="mock-tab">Produtos</span><span class="mock-tab on">Serviços</span><span class="mock-tab">Todos</span></div>
+        </div>
+        <div class="mock-table">
+          <div class="mock-row"><span class="fcode">PROD-001</span><span class="fdesc">Cartucho HP 305</span><span class="fprice mono">15 000,00</span><span class="mock-chip atv" style="background:#d1fae5;color:#047857;">Ativo</span><button class="edit">✎</button></div>
+          <div class="mock-row"><span class="fcode">PROD-002</span><span class="fdesc">Papel A4 (500 folhas)</span><span class="fprice mono">4 200,00</span><span class="mock-chip atv" style="background:#d1fae5;color:#047857;">Ativo</span><button class="edit">✎</button></div>
+          <div class="mock-row hl"><span class="fcode">SERV-001</span><span class="fdesc">Manutenção Anual</span><span class="fprice mono">128 400,00</span><span class="mock-chip atv" style="background:#d1fae5;color:#047857;">Ativo</span><button class="edit">✎</button></div>
+        </div>
+
+        <div class="drawer-shell">
+          <div class="v5-head">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+              <div>
+                <div class="t">✎ Editar Item</div>
+                <div style="font-size:11.5px;color:#94a3b8;margin-top:2px;">Manutenção Anual · SERV-001</div>
+              </div>
+              <button style="width:30px;height:30px;border-radius:8px;background:#f1f5f9;border:none;cursor:pointer;font-weight:700;color:#64748b;">✕</button>
+            </div>
+          </div>
+          <div class="v5-tabs">
+            <div class="seg">
+              <button class="on" data-tab="produto">🛒 Produto</button>
+              <button data-tab="servico">🛠 Serviço</button>
+            </div>
+          </div>
+          <div class="drawer-inner v5-body">
+            <div class="tab-panel on" data-panel="produto">
+              <div class="v5-acc-item open">
+                <button class="v5-acc-head" onclick="toggleAcc(this)">🏷️ Identificação <span class="arrow">▶</span></button>
+                <div class="v5-acc-body">
+                  <div class="f"><label class="req">Código</label><input value="PROD-001" /></div>
+                  <div class="f"><label class="req">Descrição</label><input value="Cartucho HP 305" /></div>
+                  <div class="f"><label>Unidade</label><select><option>Unidade (UN)</option><option>Kilogramas</option></select></div>
+                </div>
+              </div>
+              <div class="v5-acc-item open">
+                <button class="v5-acc-head" onclick="toggleAcc(this)">💰 Preço &amp; IVA <span class="arrow">▶</span></button>
+                <div class="v5-acc-body">
+                  <div class="f"><label class="req">Preço (AOA)</label><input type="number" value="15000" /></div>
+                  <div class="f"><label class="req">IVA</label><select><option>14%</option><option>7%</option><option>0%</option></select></div>
+                  <div class="f"><label>Categoria</label><input value="Consumíveis" /></div>
+                </div>
+              </div>
+              <div class="v5-acc-item">
+                <button class="v5-acc-head" onclick="toggleAcc(this)">📦 Stock <span class="arrow">▶</span></button>
+                <div class="v5-acc-body">
+                  <div class="f"><label>Stock Atual</label><input type="number" value="120" /></div>
+                  <div class="f"><label>Stock Mínimo</label><input type="number" value="20" /></div>
+                </div>
+              </div>
+              <div class="v5-acc-item open">
+                <button class="v5-acc-head" onclick="toggleAcc(this)">🟢 Estado <span class="arrow">▶</span></button>
+                <div class="v5-acc-body">
+                  <div class="seg"><button class="on" style="background:#fff;color:#2563eb;">Ativo</button><button>Inativo</button></div>
+                </div>
+              </div>
+            </div>
+            <div class="tab-panel" data-panel="servico">
+              <div class="v5-acc-item open">
+                <button class="v5-acc-head" onclick="toggleAcc(this)">🏷️ Identificação <span class="arrow">▶</span></button>
+                <div class="v5-acc-body">
+                  <div class="f"><label class="req">Código</label><input value="SERV-001" /></div>
+                  <div class="f"><label class="req">Descrição</label><input value="Manutenção Anual" /></div>
+                  <div class="f"><label>Unidade</label><select><option>Mês (MES)</option><option>Horas (H)</option></select></div>
+                </div>
+              </div>
+              <div class="v5-acc-item open">
+                <button class="v5-acc-head" onclick="toggleAcc(this)">💰 Preço &amp; IVA <span class="arrow">▶</span></button>
+                <div class="v5-acc-body">
+                  <div class="f"><label class="req">Preço (AOA)</label><input type="number" value="128400" /></div>
+                  <div class="f"><label class="req">IVA</label><select><option>14%</option><option>7%</option><option>0%</option></select></div>
+                  <div class="f"><label>Categoria</label><input value="Serviços" /></div>
+                </div>
+              </div>
+              <div class="stock-note">🛠 Serviços não controlam stock.</div>
+              <div class="v5-acc-item open">
+                <button class="v5-acc-head" onclick="toggleAcc(this)">🟢 Estado <span class="arrow">▶</span></button>
+                <div class="v5-acc-body">
+                  <div class="seg"><button class="on" style="background:#fff;color:#2563eb;">Ativo</button><button>Inativo</button></div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="v5-foot">
+            <button class="btn2 btn2-o" style="flex:1;">Cancelar</button>
+            <button class="btn2 btn2-p" style="flex:2;">Salvar Alterações</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+<script>
+  const variations = Array.from(document.querySelectorAll('.variation'));
+  const dotsWrap = document.getElementById('dots');
+  let currentV = 0;
+
+  variations.forEach((_, i) => {
+    const d = document.createElement('button');
+    d.className = 'dot';
+    d.addEventListener('click', () => showVariation(i));
+    dotsWrap.appendChild(d);
+  });
+  const dots = Array.from(dotsWrap.children);
+
+  function showVariation(i) {
+    currentV = Math.max(0, Math.min(variations.length - 1, i));
+    variations.forEach((el, idx) => el.classList.toggle('active', idx === currentV));
+    dots.forEach((d, idx) => d.classList.toggle('active', idx === currentV));
+    document.getElementById('varCounter').textContent = (currentV + 1) + ' / ' + variations.length;
+    document.getElementById('prevVar').disabled = currentV === 0;
+    document.getElementById('nextVar').disabled = currentV === variations.length - 1;
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  // Abas Produto/Serviço (comuns a todas as variações)
+  document.querySelectorAll('.seg button[data-tab]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const root = btn.closest('.drawer-shell');
+      root.querySelectorAll('.seg button').forEach(b => b.classList.toggle('on', b === btn));
+      root.querySelectorAll('.tab-panel').forEach(p => p.classList.toggle('on', p.dataset.panel === btn.dataset.tab));
+
+      // Preview V1
+      if (root.classList.contains('v1')) {
+        const isProd = btn.dataset.tab === 'produto';
+        const v1 = root;
+        if (isProd) {
+          v1.querySelector('#v1pic').textContent = '🛒';
+          v1.querySelector('#v1code').textContent = 'PROD-001';
+          v1.querySelector('#v1desc').textContent = 'Cartucho HP 305';
+          v1.querySelector('#v1price').textContent = '15 000,00';
+          v1.querySelector('#v1cat').textContent = 'Consumíveis';
+          v1.querySelector('#v1unit').textContent = 'Unidade';
+          v1.querySelector('#v1iva').textContent = '14%';
+          v1.querySelector('#v1stock').style.display = '';
+        } else {
+          v1.querySelector('#v1pic').textContent = '🛠';
+          v1.querySelector('#v1code').textContent = 'SERV-001';
+          v1.querySelector('#v1desc').textContent = 'Manutenção Anual';
+          v1.querySelector('#v1price').textContent = '128 400,00';
+          v1.querySelector('#v1cat').textContent = 'Serviços';
+          v1.querySelector('#v1unit').textContent = 'Mês';
+          v1.querySelector('#v1iva').textContent = '14%';
+          v1.querySelector('#v1stock').style.display = 'none';
+        }
+      }
+
+      // Helper V4
+      const helper = root.querySelector('#v4helper');
+      if (helper) {
+        helper.textContent = btn.dataset.tab === 'produto'
+          ? '📦 Produtos controlam stock e inventário.'
+          : '🛠 Serviços são cobrados por tempo/período e não controlam stock.';
+      }
+    });
+  });
+
+  // Acordeão (V5)
+  function toggleAcc(head) {
+    head.closest('.v5-acc-item').classList.toggle('open');
+  }
+  window.toggleAcc = toggleAcc;
+
+  document.getElementById('prevVar').addEventListener('click', () => showVariation(currentV - 1));
+  document.getElementById('nextVar').addEventListener('click', () => showVariation(currentV + 1));
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowRight') showVariation(currentV + 1);
+    if (e.key === 'ArrowLeft') showVariation(currentV - 1);
+  });
+
+  showVariation(0);
+</script>
+</body>
+</html>

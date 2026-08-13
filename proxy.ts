@@ -31,36 +31,68 @@ export async function proxy(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
 
   const isAuthCallback = request.nextUrl.pathname.startsWith('/auth/callback');
+  const isAuthPage =
+    request.nextUrl.pathname === '/login' ||
+    request.nextUrl.pathname === '/signup' ||
+    request.nextUrl.pathname === '/auth';
   const isStaticAsset =
     request.nextUrl.pathname.startsWith('/_next/') ||
     request.nextUrl.pathname.startsWith('/favicon.ico');
 
-  if (isStaticAsset || isAuthCallback) {
+  if (isStaticAsset || isAuthCallback || isAuthPage) {
     return response;
   }
 
   if (!user) {
-    const hubLoginUrl = new URL('/login', process.env.NEXT_PUBLIC_KIMA_HUB_URL!);
-    hubLoginUrl.searchParams.set('app', MODULE_KEY);
-    hubLoginUrl.searchParams.set('redirect_uri', request.url);
-    return NextResponse.redirect(hubLoginUrl);
+    const loginUrl = new URL('/login', request.url);
+    loginUrl.searchParams.set('redirect', request.url);
+    return NextResponse.redirect(loginUrl);
   }
 
-  const activeCompanyId = request.cookies.get('kima-company-id')?.value;
-  if (activeCompanyId) {
-    const { data: hasModule } = await supabase
-      .from('company_modules')
-      .select('id')
-      .eq('company_id', activeCompanyId)
-      .eq('module_key', MODULE_KEY)
-      .eq('status', 'Ativo')
+  // 1. Resolver a empresa ativa: usa o cookie de SSO quando existir,
+  //    senão procura a associação do próprio user na tabela `memberships`.
+  const cookieCompanyId = request.cookies.get('kima-company-id')?.value;
+
+  let activeCompanyId: string | null = cookieCompanyId ?? null;
+
+  if (!activeCompanyId) {
+    const { data: membership } = await supabase
+      .from('memberships')
+      .select('company_id')
+      .eq('user_id', user.id)
       .maybeSingle();
 
-    if (!hasModule) {
-      const marketplaceUrl = new URL('/marketplace', process.env.NEXT_PUBLIC_KIMA_HUB_URL!);
-      marketplaceUrl.searchParams.set('required_module', MODULE_KEY);
-      return NextResponse.redirect(marketplaceUrl);
+    if (!membership?.company_id) {
+      // Sem empresa associada: direciona para o onboarding do Hub
+      const onboardingUrl = new URL('/onboarding', process.env.NEXT_PUBLIC_KIMA_HUB_URL!);
+      return NextResponse.redirect(onboardingUrl);
     }
+
+    activeCompanyId = membership.company_id;
+    response.cookies.set('kima-company-id', membership.company_id, {
+      domain: COOKIE_DOMAIN,
+      path: '/',
+      httpOnly: true,
+      sameSite: 'lax',
+      secure: process.env.NODE_ENV === 'production',
+      maxAge: 60 * 60 * 24 * 30,
+    });
+  }
+
+  const companyId = activeCompanyId;
+
+  // 2. Verificar se a empresa ativa possui este módulo contratado e ativo
+  const { data: hasModule } = await supabase
+    .from('company_modules')
+    .select('id, status, expires_at')
+    .eq('company_id', companyId)
+    .eq('module_key', MODULE_KEY)
+    .maybeSingle();
+
+  if (!hasModule || hasModule.status !== 'Ativo') {
+    const marketplaceUrl = new URL('/marketplace', process.env.NEXT_PUBLIC_KIMA_HUB_URL!);
+    marketplaceUrl.searchParams.set('required_module', MODULE_KEY);
+    return NextResponse.redirect(marketplaceUrl);
   }
 
   return response;

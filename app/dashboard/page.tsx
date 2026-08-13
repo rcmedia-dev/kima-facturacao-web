@@ -4,7 +4,6 @@ import { useAppStore } from "@/lib/store";
 import { formatMoedaAOA } from "@/lib/formatters";
 import { ArrowRight, TrendingUp, Clock, Users, Receipt } from "lucide-react";
 import Link from "next/link";
-import { DashboardMetric } from "./components/dashboard-metric";
 import { DashboardFaturaTable } from "./components/dashboard-fatura-table";
 
 export default function DashboardPage() {
@@ -40,39 +39,78 @@ export default function DashboardPage() {
     <div className="max-w-7xl mx-auto px-2 py-2 space-y-6 animate-slide-up">
 
       {/* ── MÉTRICAS ─────────────────────────────────── */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-        <DashboardMetric
-          title="Faturado este Mês"
-          value={formatMoedaAOA(totalFaturadoMes)}
-          icon={TrendingUp}
-          color="blue"
-          detail={`${faturasEsteMes.length} ${faturasEsteMes.length === 1 ? "doc. emitido" : "doc. emitidos"}`}
-        />
-        <DashboardMetric
-          title="Faturas Pendentes"
-          value={faturasPendentes.length.toString()}
-          icon={Clock}
-          color="amber"
-          detail="Aguardam pagamento"
-        />
-        <DashboardMetric
-          title="Clientes Activos"
-          value={totalClientes.toString()}
-          icon={Users}
-          color="teal"
-          detail="Base de clientes"
-        />
-        <DashboardMetric
-          title="Total de Faturas"
-          value={totalFaturas.toString()}
-          icon={Receipt}
-          color="indigo"
-          detail="Documentos emitidos"
-        />
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4">
+          <div className="flex items-start justify-between">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+              Faturado este Mês
+            </span>
+            <span className="w-9 h-9 rounded-lg bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 flex items-center justify-center">
+              <TrendingUp size={16} />
+            </span>
+          </div>
+          <p className="text-[22px] font-extrabold leading-tight text-slate-900 dark:text-white mt-1.5">
+            {formatMoedaAOA(totalFaturadoMes)}
+          </p>
+          <p className="text-[11.5px] font-medium text-slate-500 dark:text-slate-400 mt-0.5">
+            {faturasEsteMes.length} {faturasEsteMes.length === 1 ? "doc. emitido" : "doc. emitidos"}
+          </p>
+        </div>
+
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4">
+          <div className="flex items-start justify-between">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+              Faturas Pendentes
+            </span>
+            <span className="w-9 h-9 rounded-lg bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 flex items-center justify-center">
+              <Clock size={16} />
+            </span>
+          </div>
+          <p className="text-[22px] font-extrabold leading-tight text-slate-900 dark:text-white mt-1.5">
+            {faturasPendentes.length}
+          </p>
+          <p className="text-[11.5px] font-medium text-slate-500 dark:text-slate-400 mt-0.5">
+            Aguardam pagamento
+          </p>
+        </div>
+
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4">
+          <div className="flex items-start justify-between">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+              Clientes Activos
+            </span>
+            <span className="w-9 h-9 rounded-lg bg-teal-50 dark:bg-teal-900/30 text-teal-600 dark:text-teal-400 flex items-center justify-center">
+              <Users size={16} />
+            </span>
+          </div>
+          <p className="text-[22px] font-extrabold leading-tight text-slate-900 dark:text-white mt-1.5">
+            {totalClientes}
+          </p>
+          <p className="text-[11.5px] font-medium text-slate-500 dark:text-slate-400 mt-0.5">
+            Base de clientes
+          </p>
+        </div>
+
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4">
+          <div className="flex items-start justify-between">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+              Total de Faturas
+            </span>
+            <span className="w-9 h-9 rounded-lg bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
+              <Receipt size={16} />
+            </span>
+          </div>
+          <p className="text-[22px] font-extrabold leading-tight text-slate-900 dark:text-white mt-1.5">
+            {totalFaturas}
+          </p>
+          <p className="text-[11.5px] font-medium text-slate-500 dark:text-slate-400 mt-0.5">
+            Documentos emitidos
+          </p>
+        </div>
       </div>
 
       {/* ── ÚLTIMAS FATURAS ──────────────────────────── */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm overflow-hidden">
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm overflow-hidden">
         {/* Card Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800">
           <div>
@@ -99,7 +137,7 @@ export default function DashboardPage() {
       </div>
 
       {/* ── CTA NOVA FATURA ──────────────────────────── */}
-      <div className="relative overflow-hidden bg-gradient-to-br from-blue-600 via-blue-600 to-indigo-700 rounded-2xl p-6 shadow-md">
+      <div className="relative overflow-hidden bg-gradient-to-br from-blue-600 via-blue-600 to-indigo-700 rounded-xl p-6 shadow-md">
         {/* Círculo decorativo */}
         <div className="absolute -top-8 -right-8 w-40 h-40 bg-white/10 rounded-full" />
         <div className="absolute -bottom-6 -left-6 w-28 h-28 bg-white/10 rounded-full" />

@@ -1,462 +1,771 @@
 'use server';
 
 import { db } from './client';
-import { eq, and, sql, desc, lt, gte } from 'drizzle-orm';
 import {
-  empresas,
-  clientes,
-  artigos,
-  documentos,
-  fornecedores,
-  movimentosStock,
-  logsAuditoria,
-  documentoLinhas,
-} from './schema';
-import { Documento, Cliente, Artigo } from '@/lib/types';
-import { criarLogAuditoria, UsuarioAutenticado } from '@/lib/audit-system';
+  Cliente,
+  Fornecedor,
+  Artigo,
+  FaturaLinha,
+  Documento,
+  MovimentoStock,
+  LogAuditoria,
+  ConfiguracaoEmpresa,
+  SerieNumeracao,
+} from '@/lib/types';
+import { usuarioAtual } from '@/lib/session';
 
 /**
- * CLIENTES
+ * CAMADA DE DADOS — Kima Facturação
+ * Consome apenas o Supabase (schema `kima_facturas`) via PostgREST.
+ * Toda consulta é isolada por `company_id` (multiempresa/multitenant).
+ * Os registos são devolvidos como "DTOs" no formato usado pela UI
+ * (camelCase, números como `number`, datas como `Date`).
  */
 
-export async function obterClientes(empresaId: string) {
-  return await db.query.clientes.findMany({
-    where: eq(clientes.empresaId, empresaId),
-    orderBy: desc(clientes.criadoEm),
-  });
+const publicDb = db.schema('public');
+
+// ─── Mapeadores (DB snake_case → UI camelCase) ───────────────────────────────
+
+type LinhaRow = {
+  id: string;
+  artigo_id: string | null;
+  descricao: string;
+  quantidade: string | number;
+  preco: string | number;
+  taxa_iva: number;
+  unidade_medida: string;
+  total: string | number;
+};
+
+function mapearLinha(r: LinhaRow): FaturaLinha {
+  return {
+    id: r.id,
+    artigoId: r.artigo_id || undefined,
+    descricao: r.descricao,
+    quantidade: Number(r.quantidade),
+    preco: Number(r.preco),
+    taxaIVA: Number(r.taxa_iva) as 0 | 7 | 14,
+    unidadeMedida: r.unidade_medida as FaturaLinha['unidadeMedida'],
+    total: Number(r.total),
+  };
+}
+
+function mapearCliente(r: any): Cliente {
+  return {
+    id: r.id,
+    nome: r.nome,
+    tipo: r.tipo,
+    nif: r.nif,
+    morada: r.morada || '',
+    telefone: r.telefone || '',
+    email: r.email || '',
+    responsavel: r.responsavel || undefined,
+    inscricaoSocial: r.inscricao_social || undefined,
+    dataCriacao: new Date(r.created_at),
+    ultimaAtualizacao: new Date(r.updated_at || r.created_at),
+    ativo: r.ativo,
+  };
+}
+
+function mapearFornecedor(r: any): Fornecedor {
+  return {
+    id: r.id,
+    nome: r.nome,
+    nif: r.nif,
+    morada: r.morada || '',
+    telefone: r.telefone || '',
+    email: r.email || '',
+    bancaria: r.bancaria || undefined,
+    dataCriacao: new Date(r.created_at),
+    ultimaAtualizacao: new Date(r.updated_at || r.created_at),
+    ativo: r.ativo,
+  };
+}
+
+function mapearArtigo(r: any): Artigo {
+  return {
+    id: r.id,
+    codigo: r.codigo,
+    descricao: r.descricao,
+    categoria: r.categoria || 'Geral',
+    unidadeMedida: r.unidade_medida,
+    preco: Number(r.preco),
+    taxaIVA: Number(r.taxa_iva) as Artigo['taxaIVA'],
+    stock: Number(r.stock ?? 0),
+    stockMinimo: Number(r.stock_minimo ?? 0),
+    fornecedorId: r.fornecedor_id || undefined,
+    dataCriacao: new Date(r.created_at),
+    ultimaAtualizacao: new Date(r.updated_at || r.created_at),
+    ativo: r.ativo,
+    tipo: r.tipo || 'Produto',
+  };
+}
+
+function mapearDocumento(r: any): Documento {
+  return {
+    id: r.id,
+    tipo: r.tipo,
+    serie: r.serie,
+    numero: String(r.numero),
+    numeroCompleto: r.numero_completo,
+    clienteId: r.cliente_id || undefined,
+    fornecedorId: r.fornecedor_id || undefined,
+    dataEmissao: new Date(r.data_emissao),
+    dataVencimento: new Date(r.data_vencimento),
+    formaPagamento: r.forma_pagamento,
+    status: r.status,
+    linhas: (r.linhas || []).map(mapearLinha),
+    observacoes: r.observacoes || '',
+    subtotal: Number(r.subtotal),
+    totalIVA: Number(r.total_iva),
+    total: Number(r.total),
+    dataPagamento: r.data_pagamento ? new Date(r.data_pagamento) : undefined,
+    criadoPor: r.created_by || undefined,
+    atualizadoPor: r.updated_by || undefined,
+    dataAtualizacao: new Date(r.updated_at || r.created_at),
+    documentoReferenciado: r.documento_referenciado || undefined,
+    motivo: r.motivo || undefined,
+  };
+}
+
+// ─── Auditoria ───────────────────────────────────────────────────────────────
+
+async function registarAuditoria(
+  companyId: string,
+  acao: string,
+  entidade: string,
+  entidadeId: string,
+  anteriores?: Record<string, unknown> | null,
+  novas?: Record<string, unknown> | null
+) {
+  try {
+    const user = await usuarioAtual();
+    const { error } = await db.from('logs_auditoria').insert({
+      company_id: companyId,
+      user_id: user?.id ?? null,
+      acao,
+      entidade,
+      entidade_id: entidadeId,
+      alteracoes_anteriores: anteriores || null,
+      alteracoes_novas: novas || null,
+    });
+    if (error) console.warn('Falha ao registar log de auditoria:', error.message);
+  } catch (e) {
+    console.warn('Falha ao registar log de auditoria:', e);
+  }
+}
+
+// ─── CLIENTES ────────────────────────────────────────────────────────────────
+
+export async function obterClientes(companyId: string) {
+  const { data, error } = await db
+    .from('clientes')
+    .select('*')
+    .eq('company_id', companyId)
+    .order('created_at', { ascending: false });
+  if (error) throw new Error(error.message);
+  return (data || []).map(mapearCliente);
+}
+
+export async function obterClientePorId(companyId: string, id: string) {
+  const { data, error } = await db
+    .from('clientes')
+    .select('*')
+    .eq('company_id', companyId)
+    .eq('id', id)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  return data ? mapearCliente(data) : null;
 }
 
 export async function criarCliente(
-  empresaId: string,
-  cliente: Omit<Cliente, 'id' | 'dataCriacao' | 'ultimaAtualizacao'>,
-  usuario?: UsuarioAutenticado
+  companyId: string,
+  cliente: Omit<Cliente, 'id' | 'dataCriacao' | 'ultimaAtualizacao'>
 ) {
-  const [novo] = await db
-    .insert(clientes)
-    .values({
-      empresaId,
-      ...cliente,
+  const { data, error } = await db
+    .from('clientes')
+    .insert({
+      company_id: companyId,
+      nome: cliente.nome,
+      tipo: cliente.tipo,
+      nif: cliente.nif,
+      morada: cliente.morada || null,
+      telefone: cliente.telefone || null,
+      email: cliente.email || null,
+      responsavel: cliente.responsavel || null,
+      inscricao_social: cliente.inscricaoSocial || null,
+      ativo: cliente.ativo ?? true,
     })
-    .returning();
-
-  if (usuario) {
-    await db.insert(logsAuditoria).values({
-      empresaId,
-      ...criarLogAuditoria(
-        'CRIAR',
-        'Cliente',
-        novo.id,
-        usuario,
-        undefined,
-        cliente
-      ),
-    });
-  }
-
-  return novo;
+    .select()
+    .single();
+  if (error) throw new Error(error.message);
+  await registarAuditoria(companyId, 'CRIAR', 'Cliente', data.id, null, data);
+  return mapearCliente(data);
 }
 
 export async function atualizarCliente(
+  companyId: string,
   id: string,
-  cliente: Partial<Cliente>,
-  usuario?: UsuarioAutenticado
+  cliente: Partial<Cliente>
 ) {
-  const anterior = await db.query.clientes.findFirst({
-    where: eq(clientes.id, id),
-  });
+  const anteriores = await obterClientePorId(companyId, id);
+  if (!anteriores) throw new Error('Cliente não encontrado');
 
-  const [atualizado] = await db
-    .update(clientes)
-    .set({
-      ...cliente,
-      atualizadoEm: new Date(),
+  const { data, error } = await db
+    .from('clientes')
+    .update({
+      nome: cliente.nome ?? anteriores.nome,
+      tipo: cliente.tipo,
+      nif: cliente.nif ?? anteriores.nif,
+      morada: cliente.morada !== undefined ? cliente.morada || null : undefined,
+      telefone: cliente.telefone !== undefined ? cliente.telefone || null : undefined,
+      email: cliente.email !== undefined ? cliente.email || null : undefined,
+      responsavel: cliente.responsavel !== undefined ? cliente.responsavel || null : undefined,
+      inscricao_social: cliente.inscricaoSocial !== undefined ? cliente.inscricaoSocial || null : undefined,
+      ativo: cliente.ativo,
     })
-    .where(eq(clientes.id, id))
-    .returning();
-
-  if (usuario && anterior) {
-    await db.insert(logsAuditoria).values({
-      empresaId: anterior.empresaId,
-      ...criarLogAuditoria('ATUALIZAR', 'Cliente', id, usuario, anterior, cliente),
-    });
-  }
-
-  return atualizado;
+    .eq('company_id', companyId)
+    .eq('id', id)
+    .select()
+    .single();
+  if (error) throw new Error(error.message);
+  await registarAuditoria(companyId, 'ATUALIZAR', 'Cliente', id, anteriores as any, data);
+  return mapearCliente(data);
 }
 
-export async function deletarCliente(id: string, usuario?: UsuarioAutenticado) {
-  const anterior = await db.query.clientes.findFirst({
-    where: eq(clientes.id, id),
-  });
-
-  const [deletado] = await db
-    .delete(clientes)
-    .where(eq(clientes.id, id))
-    .returning();
-
-  if (usuario && anterior) {
-    await db.insert(logsAuditoria).values({
-      empresaId: anterior.empresaId,
-      ...criarLogAuditoria('DELETAR', 'Cliente', id, usuario, anterior, undefined),
-    });
-  }
-
-  return deletado;
+export async function deletarCliente(companyId: string, id: string) {
+  const anteriores = await obterClientePorId(companyId, id);
+  const { data, error } = await db
+    .from('clientes')
+    .delete()
+    .eq('company_id', companyId)
+    .eq('id', id);
+  if (error) throw new Error(error.message);
+  await registarAuditoria(companyId, 'DELETAR', 'Cliente', id, anteriores as any, null);
+  return data;
 }
 
-/**
- * ARTIGOS
- */
+// ─── FORNECEDORES ────────────────────────────────────────────────────────────
 
-export async function obterArtigos(empresaId: string) {
-  return await db.query.artigos.findMany({
-    where: eq(artigos.empresaId, empresaId),
-    with: {
-      fornecedor: true,
-    },
-    orderBy: desc(artigos.criadoEm),
-  });
+export async function obterFornecedores(companyId: string) {
+  const { data, error } = await db
+    .from('fornecedores')
+    .select('*')
+    .eq('company_id', companyId)
+    .order('created_at', { ascending: false });
+  if (error) throw new Error(error.message);
+  return (data || []).map(mapearFornecedor);
+}
+
+export async function obterFornecedorPorId(companyId: string, id: string) {
+  const { data, error } = await db
+    .from('fornecedores')
+    .select('*')
+    .eq('company_id', companyId)
+    .eq('id', id)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  return data ? mapearFornecedor(data) : null;
+}
+
+export async function criarFornecedor(
+  companyId: string,
+  fornecedor: Omit<Fornecedor, 'id' | 'dataCriacao' | 'ultimaAtualizacao'>
+) {
+  const { data, error } = await db
+    .from('fornecedores')
+    .insert({
+      company_id: companyId,
+      nome: fornecedor.nome,
+      nif: fornecedor.nif,
+      morada: fornecedor.morada || null,
+      telefone: fornecedor.telefone || null,
+      email: fornecedor.email || null,
+      bancaria: fornecedor.bancaria || null,
+      ativo: fornecedor.ativo ?? true,
+    })
+    .select()
+    .single();
+  if (error) throw new Error(error.message);
+  await registarAuditoria(companyId, 'CRIAR', 'Fornecedor', data.id, null, data);
+  return mapearFornecedor(data);
+}
+
+export async function atualizarFornecedor(
+  companyId: string,
+  id: string,
+  fornecedor: Partial<Fornecedor>
+) {
+  const anteriores = await obterFornecedorPorId(companyId, id);
+  if (!anteriores) throw new Error('Fornecedor não encontrado');
+
+  const { data, error } = await db
+    .from('fornecedores')
+    .update({
+      nome: fornecedor.nome ?? anteriores.nome,
+      nif: fornecedor.nif ?? anteriores.nif,
+      morada: fornecedor.morada !== undefined ? fornecedor.morada || null : undefined,
+      telefone: fornecedor.telefone !== undefined ? fornecedor.telefone || null : undefined,
+      email: fornecedor.email !== undefined ? fornecedor.email || null : undefined,
+      bancaria: fornecedor.bancaria !== undefined ? fornecedor.bancaria || null : undefined,
+      ativo: fornecedor.ativo,
+    })
+    .eq('company_id', companyId)
+    .eq('id', id)
+    .select()
+    .single();
+  if (error) throw new Error(error.message);
+  await registarAuditoria(companyId, 'ATUALIZAR', 'Fornecedor', id, anteriores as any, data);
+  return mapearFornecedor(data);
+}
+
+export async function deletarFornecedor(companyId: string, id: string) {
+  const anteriores = await obterFornecedorPorId(companyId, id);
+  const { data, error } = await db
+    .from('fornecedores')
+    .delete()
+    .eq('company_id', companyId)
+    .eq('id', id);
+  if (error) throw new Error(error.message);
+  await registarAuditoria(companyId, 'DELETAR', 'Fornecedor', id, anteriores as any, null);
+  return data;
+}
+
+// ─── ARTIGOS ─────────────────────────────────────────────────────────────────
+
+export async function obterArtigos(companyId: string) {
+  const { data, error } = await db
+    .from('artigos')
+    .select('*')
+    .eq('company_id', companyId)
+    .order('created_at', { ascending: false });
+  if (error) throw new Error(error.message);
+  return (data || []).map(mapearArtigo);
+}
+
+export async function obterArtigoPorId(companyId: string, id: string) {
+  const { data, error } = await db
+    .from('artigos')
+    .select('*')
+    .eq('company_id', companyId)
+    .eq('id', id)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  return data ? mapearArtigo(data) : null;
 }
 
 export async function criarArtigo(
-  empresaId: string,
-  artigo: Omit<Artigo, 'id' | 'dataCriacao' | 'ultimaAtualizacao'>,
-  usuario?: UsuarioAutenticado
+  companyId: string,
+  artigo: Omit<Artigo, 'id' | 'dataCriacao' | 'ultimaAtualizacao'>
 ) {
-  const [novo] = await db
-    .insert(artigos)
-    .values({
-      empresaId,
-      ...artigo,
+  const { data, error } = await db
+    .from('artigos')
+    .insert({
+      company_id: companyId,
+      codigo: artigo.codigo,
+      descricao: artigo.descricao,
+      categoria: artigo.categoria || 'Geral',
+      tipo: artigo.tipo || 'Produto',
+      unidade_medida: artigo.unidadeMedida || 'UN',
       preco: String(artigo.preco),
+      taxa_iva: artigo.taxaIVA,
+      stock: String(artigo.stock ?? 0),
+      stock_minimo: String(artigo.stockMinimo ?? 0),
+      fornecedor_id: artigo.fornecedorId || null,
+      ativo: artigo.ativo ?? true,
     })
-    .returning();
-
-  if (usuario) {
-    await db.insert(logsAuditoria).values({
-      empresaId,
-      ...criarLogAuditoria('CRIAR', 'Artigo', novo.id, usuario, undefined, artigo),
-    });
-  }
-
-  return novo;
+    .select()
+    .single();
+  if (error) throw new Error(error.message);
+  await registarAuditoria(companyId, 'CRIAR', 'Artigo', data.id, null, data);
+  return mapearArtigo(data);
 }
 
-/**
- * DOCUMENTOS
- */
+export async function atualizarArtigo(
+  companyId: string,
+  id: string,
+  artigo: Partial<Artigo>
+) {
+  const anteriores = await obterArtigoPorId(companyId, id);
+  if (!anteriores) throw new Error('Artigo não encontrado');
 
-export async function obterDocumentos(empresaId: string, tipo?: string) {
-  const where =
-    tipo !== undefined
-      ? and(eq(documentos.empresaId, empresaId), eq(documentos.tipo, tipo as any))
-      : eq(documentos.empresaId, empresaId);
+  const payload: any = {
+    codigo: artigo.codigo ?? anteriores.codigo,
+    descricao: artigo.descricao ?? anteriores.descricao,
+    categoria: artigo.categoria !== undefined ? artigo.categoria : undefined,
+    tipo: artigo.tipo,
+    unidade_medida: artigo.unidadeMedida,
+    preco: artigo.preco !== undefined ? String(artigo.preco) : undefined,
+    taxa_iva: artigo.taxaIVA,
+    stock: artigo.stock !== undefined ? String(artigo.stock) : undefined,
+    stock_minimo: artigo.stockMinimo !== undefined ? String(artigo.stockMinimo) : undefined,
+    fornecedor_id: artigo.fornecedorId !== undefined ? artigo.fornecedorId || null : undefined,
+    ativo: artigo.ativo,
+  };
 
-  return await db.query.documentos.findMany({
-    where,
-    with: {
-      cliente: true,
-      linhas: {
-        with: {
-          artigo: true,
-        },
-      },
-    },
-    orderBy: desc(documentos.criadoEm),
-  });
+  const { data, error } = await db
+    .from('artigos')
+    .update(payload)
+    .eq('company_id', companyId)
+    .eq('id', id)
+    .select()
+    .single();
+  if (error) throw new Error(error.message);
+  await registarAuditoria(companyId, 'ATUALIZAR', 'Artigo', id, anteriores as any, data);
+  return mapearArtigo(data);
 }
 
-export async function obterDocumentoPorId(empresaId: string, id: string) {
-  return await db.query.documentos.findFirst({
-    where: and(
-      eq(documentos.empresaId, empresaId),
-      eq(documentos.id, id)
-    ),
-    with: {
-      cliente: true,
-      linhas: {
-        with: {
-          artigo: true,
-        },
-      },
-    },
-  });
+export async function deletarArtigo(companyId: string, id: string) {
+  const anteriores = await obterArtigoPorId(companyId, id);
+  const { data, error } = await db
+    .from('artigos')
+    .delete()
+    .eq('company_id', companyId)
+    .eq('id', id);
+  if (error) throw new Error(error.message);
+  await registarAuditoria(companyId, 'DELETAR', 'Artigo', id, anteriores as any, null);
+  return data;
+}
+
+// ─── DOCUMENTOS ──────────────────────────────────────────────────────────────
+
+export async function obterDocumentos(companyId: string, tipo?: string) {
+  let query = db
+    .from('documentos')
+    .select('*, linhas:documento_linhas(*)')
+    .eq('company_id', companyId);
+  if (tipo) query = query.eq('tipo', tipo);
+  const { data, error } = await query.order('created_at', { ascending: false });
+  if (error) throw new Error(error.message);
+  return (data || []).map(mapearDocumento);
+}
+
+export async function obterDocumentoPorId(companyId: string, id: string) {
+  const { data, error } = await db
+    .from('documentos')
+    .select('*, cliente:clientes(*), fornecedor:fornecedores(*), linhas:documento_linhas(*)')
+    .eq('company_id', companyId)
+    .eq('id', id)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!data) return null;
+
+  const doc = mapearDocumento(data);
+  return {
+    ...doc,
+    cliente: data.cliente ? mapearCliente(data.cliente) : null,
+    fornecedor: data.fornecedor ? mapearFornecedor(data.fornecedor) : null,
+  } as Documento & { cliente: Cliente | null; fornecedor: Fornecedor | null };
 }
 
 export async function obterDocumentosPorPeriodo(
-  empresaId: string,
+  companyId: string,
   dataInicio: Date,
   dataFim: Date
 ) {
-  return await db.query.documentos.findMany({
-    where: and(
-      eq(documentos.empresaId, empresaId),
-      gte(documentos.dataEmissao, dataInicio),
-      lt(documentos.dataEmissao, dataFim)
-    ),
-    with: {
-      cliente: true,
-      linhas: true,
-    },
-    orderBy: desc(documentos.dataEmissao),
-  });
+  const { data, error } = await db
+    .from('documentos')
+    .select('*, linhas:documento_linhas(*)')
+    .eq('company_id', companyId)
+    .gte('data_emissao', dataInicio.toISOString())
+    .lte('data_emissao', dataFim.toISOString())
+    .order('created_at', { ascending: false });
+  if (error) throw new Error(error.message);
+  return (data || []).map(mapearDocumento);
 }
 
 export async function criarDocumento(
-  empresaId: string,
-  documento: Omit<Documento, 'id' | 'numeroCompleto' | 'dataAtualizacao'>,
-  usuario?: UsuarioAutenticado
+  companyId: string,
+  documento: Omit<Documento, 'id' | 'numeroCompleto' | 'dataAtualizacao' | 'linhas'> & {
+    linhas: FaturaLinha[];
+  }
 ) {
   const numInt = parseInt(documento.numero, 10) || 1;
   const numeroCompleto = `${documento.serie}/${String(numInt).padStart(6, '0')}`;
 
-  const [novo] = await db
-    .insert(documentos)
-    .values({
-      empresaId,
+  const { data, error } = await db
+    .from('documentos')
+    .insert({
+      company_id: companyId,
       tipo: documento.tipo,
       serie: documento.serie,
       numero: numInt,
-      numeroCompleto,
-      clienteId: documento.clienteId,
-      fornecedorId: documento.fornecedorId,
-      dataEmissao: documento.dataEmissao,
-      dataVencimento: documento.dataVencimento,
-      formaPagamento: documento.formaPagamento,
+      numero_completo: numeroCompleto,
+      cliente_id: documento.clienteId || null,
+      fornecedor_id: documento.fornecedorId || null,
+      data_emissao: documento.dataEmissao.toISOString(),
+      data_vencimento: documento.dataVencimento.toISOString(),
+      forma_pagamento: documento.formaPagamento,
       status: documento.status,
-      observacoes: documento.observacoes,
+      observacoes: documento.observacoes || null,
       subtotal: String(documento.subtotal),
-      totalIVA: String(documento.totalIVA),
+      total_iva: String(documento.totalIVA),
       total: String(documento.total),
-      dataPagamento: documento.dataPagamento,
-      criadoPor: usuario?.id,
+      data_pagamento: documento.dataPagamento ? documento.dataPagamento.toISOString() : null,
+      documento_referenciado: documento.documentoReferenciado || null,
+      motivo: documento.motivo || null,
     })
-    .returning();
+    .select()
+    .single();
+  if (error) throw new Error(error.message);
 
-  // Inserir linhas
   if (documento.linhas && documento.linhas.length > 0) {
-    await db.insert(documentoLinhas).values(
+    const { error: linhasError } = await db.from('documento_linhas').insert(
       documento.linhas.map((l) => ({
-        documentoId: novo.id,
-        artigoId: l.artigoId,
+        company_id: companyId,
+        documento_id: data.id,
+        artigo_id: l.artigoId || null,
         descricao: l.descricao,
         quantidade: String(l.quantidade),
         preco: String(l.preco),
-        taxaIVA: l.taxaIVA,
-        unidadeMedida: l.unidadeMedida,
+        taxa_iva: l.taxaIVA,
+        unidade_medida: l.unidadeMedida || 'UN',
         total: String(l.total),
       }))
     );
+    if (linhasError) throw new Error(linhasError.message);
   }
 
-  if (usuario) {
-    await db.insert(logsAuditoria).values({
-      empresaId,
-      ...criarLogAuditoria(
-        'CRIAR',
-        'Documento',
-        novo.id,
-        usuario,
-        undefined,
-        documento
-      ),
-    });
-  }
+  await registarAuditoria(companyId, 'CRIAR', 'Documento', data.id, null, data);
+  return obterDocumentoPorId(companyId, data.id);
+}
 
-  return novo;
+export async function atualizarDocumento(
+  companyId: string,
+  id: string,
+  documento: Partial<Documento>
+) {
+  const anteriores = await obterDocumentoPorId(companyId, id);
+  if (!anteriores) throw new Error('Documento não encontrado');
+
+  const payload: any = {
+    tipo: documento.tipo,
+    serie: documento.serie,
+    status: documento.status,
+    observacoes: documento.observacoes !== undefined ? documento.observacoes || null : undefined,
+    forma_pagamento: documento.formaPagamento,
+    cliente_id: documento.clienteId !== undefined ? documento.clienteId || null : undefined,
+    fornecedor_id: documento.fornecedorId !== undefined ? documento.fornecedorId || null : undefined,
+    data_emissao: documento.dataEmissao ? documento.dataEmissao.toISOString() : undefined,
+    data_vencimento: documento.dataVencimento ? documento.dataVencimento.toISOString() : undefined,
+    data_pagamento: documento.dataPagamento
+      ? documento.dataPagamento.toISOString()
+      : documento.status === 'Pago'
+        ? new Date().toISOString()
+        : undefined,
+    motivo: documento.motivo !== undefined ? documento.motivo || null : undefined,
+    subtotal: documento.subtotal !== undefined ? String(documento.subtotal) : undefined,
+    total_iva: documento.totalIVA !== undefined ? String(documento.totalIVA) : undefined,
+    total: documento.total !== undefined ? String(documento.total) : undefined,
+  };
+
+  const { data, error } = await db
+    .from('documentos')
+    .update(payload)
+    .eq('company_id', companyId)
+    .eq('id', id)
+    .select()
+    .single();
+  if (error) throw new Error(error.message);
+  await registarAuditoria(companyId, 'ATUALIZAR', 'Documento', id, anteriores as any, data);
+  return mapearDocumento(data);
+}
+
+export async function deletarDocumento(companyId: string, id: string) {
+  const anteriores = await obterDocumentoPorId(companyId, id);
+  const { data, error } = await db
+    .from('documentos')
+    .delete()
+    .eq('company_id', companyId)
+    .eq('id', id);
+  if (error) throw new Error(error.message);
+  await registarAuditoria(companyId, 'DELETAR', 'Documento', id, anteriores as any, null);
+  return data;
 }
 
 export async function registrarPagamento(
+  companyId: string,
   documentoId: string,
   dataPagamento: Date,
-  usuario?: UsuarioAutenticado
+  formaPagamento?: "Numerário" | "Transferência" | "Multicaixa" | "POS" | "Cheque" | "Crédito"
 ) {
-  const anterior = await db.query.documentos.findFirst({
-    where: eq(documentos.id, documentoId),
+  return atualizarDocumento(companyId, documentoId, {
+    status: 'Pago',
+    dataPagamento,
+    formaPagamento,
   });
-
-  const [atualizado] = await db
-    .update(documentos)
-    .set({
-      status: 'Pago',
-      dataPagamento,
-      atualizadoPor: usuario?.id,
-      dataAtualizacao: new Date(),
-    })
-    .where(eq(documentos.id, documentoId))
-    .returning();
-
-  if (usuario && anterior) {
-    await db.insert(logsAuditoria).values({
-      empresaId: anterior.empresaId,
-      ...criarLogAuditoria(
-        'PAGAMENTO',
-        'Documento',
-        documentoId,
-        usuario,
-        { status: anterior.status },
-        { status: 'Pago', dataPagamento }
-      ),
-    });
-  }
-
-  return atualizado;
 }
 
-/**
- * MOVIMENTOS DE STOCK
- */
+// ─── MOVIMENTOS DE STOCK ─────────────────────────────────────────────────────
 
 export async function registrarMovimentoStock(
-  empresaId: string,
-  movimento: Omit<(typeof movimentosStock.$inferInsert), 'id' | 'empresaId'>,
-  usuario?: UsuarioAutenticado
+  companyId: string,
+  movimento: Omit<MovimentoStock, 'id'> & { artigoId: string }
 ) {
-  const [novo] = await db
-    .insert(movimentosStock)
-    .values({
-      empresaId,
-      ...movimento,
+  const { data, error } = await db
+    .from('movimentos_stock')
+    .insert({
+      company_id: companyId,
+      artigo_id: movimento.artigoId,
+      tipo: movimento.tipo,
       quantidade: String(movimento.quantidade),
+      referencia: movimento.referencia,
+      observacoes: movimento.observacoes || null,
+      data: (movimento.data || new Date()).toISOString(),
     })
-    .returning();
+    .select()
+    .single();
+  if (error) throw new Error(error.message);
 
-  // Atualizar stock do artigo
-  const artigo = await db.query.artigos.findFirst({
-    where: eq(artigos.id, movimento.artigoId),
-  });
-
+  const artigo = await obterArtigoPorId(companyId, movimento.artigoId);
   if (artigo) {
     let novoStock = artigo.stock ?? 0;
-    if (movimento.tipo === 'Entrada') {
-      novoStock += Number(movimento.quantidade);
-    } else if (movimento.tipo === 'Saída') {
-      novoStock -= Number(movimento.quantidade);
-    }
-
+    if (movimento.tipo === 'Entrada') novoStock += Number(movimento.quantidade);
+    else if (movimento.tipo === 'Saída') novoStock -= Number(movimento.quantidade);
     await db
-      .update(artigos)
-      .set({ stock: novoStock })
-      .where(eq(artigos.id, movimento.artigoId));
+      .from('artigos')
+      .update({ stock: String(novoStock) })
+      .eq('company_id', companyId)
+      .eq('id', movimento.artigoId);
   }
 
-  if (usuario) {
-    await db.insert(logsAuditoria).values({
-      empresaId,
-      ...criarLogAuditoria(
-        'CRIAR',
-        'MovimentoStock',
-        novo.id,
-        usuario,
-        undefined,
-        movimento
-      ),
-    });
-  }
-
-  return novo;
+  await registarAuditoria(companyId, 'CRIAR', 'MovimentoStock', data.id, null, data);
+  return data;
 }
 
-/**
- * LOGS DE AUDITORIA
- */
+// ─── LOGS DE AUDITORIA ───────────────────────────────────────────────────────
 
 export async function obterLogsAuditoria(
-  empresaId: string,
-  filtros?: {
-    usuario?: string;
-    entidade?: string;
-    dataInicio?: Date;
-    dataFim?: Date;
-  }
+  companyId: string,
+  filtros?: { usuario?: string; entidade?: string; dataInicio?: Date; dataFim?: Date }
 ) {
-  const condicoes = [eq(logsAuditoria.empresaId, empresaId)];
+  let query = db
+    .from('logs_auditoria')
+    .select('*')
+    .eq('company_id', companyId);
+  if (filtros?.entidade) query = query.eq('entidade', filtros.entidade);
+  if (filtros?.dataInicio) query = query.gte('created_at', filtros.dataInicio.toISOString());
+  if (filtros?.dataFim) query = query.lte('created_at', filtros.dataFim.toISOString());
+  const { data, error } = await query.order('created_at', { ascending: false });
+  if (error) throw new Error(error.message);
 
-  if (filtros?.usuario) {
-    condicoes.push(eq(logsAuditoria.usuario, filtros.usuario));
-  }
-  if (filtros?.entidade) {
-    condicoes.push(eq(logsAuditoria.entidade, filtros.entidade));
-  }
-  if (filtros?.dataInicio && filtros?.dataFim) {
-    condicoes.push(gte(logsAuditoria.timestamp, filtros.dataInicio));
-    condicoes.push(lt(logsAuditoria.timestamp, filtros.dataFim));
-  }
-
-  return await db.query.logsAuditoria.findMany({
-    where: and(...condicoes),
-    orderBy: desc(logsAuditoria.timestamp),
-  });
+  return (data || []).map((l: any): LogAuditoria => ({
+    id: l.id,
+    usuario: l.user_id || undefined,
+    acao: l.acao,
+    entidade: l.entidade,
+    entidadeId: l.entidade_id,
+    alteracoesAnteriores: l.alteracoes_anteriores || undefined,
+    alteracoesNovas: l.alteracoes_novas || undefined,
+    timestamp: new Date(l.created_at),
+    endereco: l.endereco || undefined,
+  }));
 }
 
-/**
- * RELATÓRIOS
- */
+// ─── KPIs / RELATÓRIOS ───────────────────────────────────────────────────────
 
-export async function obterKPIsEmpresa(empresaId: string) {
-  const faturas = await db.query.documentos.findMany({
-    where: and(
-      eq(documentos.empresaId, empresaId),
-      eq(documentos.status, 'Pago')
-    ),
-  });
+export async function obterKPIsEmpresa(companyId: string) {
+  const documentos = await obterDocumentos(companyId);
+  const clientes = await obterClientes(companyId);
 
-  const faturasNaoPagas = await db.query.documentos.findMany({
-    where: and(
-      eq(documentos.empresaId, empresaId),
-      eq(documentos.status, 'Pendente')
-    ),
-  });
-
-  const clientesCount = await db
-    .selectDistinct()
-    .from(clientes)
-    .where(eq(clientes.empresaId, empresaId));
+  const faturas = documentos.filter((d) => d.status === 'Pago');
+  const faturasNaoPagas = documentos.filter((d) => d.status === 'Pendente');
 
   return {
-    totalFaturado: faturas.reduce(
-      (sum, f) => sum + Number(f.total),
-      0
-    ),
+    totalFaturado: faturas.reduce((sum, f) => sum + Number(f.total), 0),
     faturasNaoPagasCount: faturasNaoPagas.length,
-    valorNaoPago: faturasNaoPagas.reduce(
-      (sum, f) => sum + Number(f.total),
-      0
-    ),
-    totalClientes: clientesCount.length,
+    valorNaoPago: faturasNaoPagas.reduce((sum, f) => sum + Number(f.total), 0),
+    totalClientes: clientes.filter((c) => c.ativo).length,
   };
 }
 
-/**
- * EMPRESA
- */
+// ─── EMPRESA (configuração do módulo) ────────────────────────────────────────
 
-export async function obterEmpresa(empresaId: string) {
-  return await db.query.empresas.findFirst({
-    where: eq(empresas.id, empresaId),
-  });
+export async function obterEmpresa(
+  companyId: string
+): Promise<ConfiguracaoEmpresa | null> {
+  const { data: company, error } = await publicDb
+    .from('companies')
+    .select('*')
+    .eq('id', companyId)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!company) return null;
+
+  const { data: settings } = await db
+    .from('company_settings')
+    .select('*')
+    .eq('company_id', companyId)
+    .maybeSingle();
+
+  const { data: series } = await db
+    .from('series_numeracao')
+    .select('*')
+    .eq('company_id', companyId)
+    .order('created_at', { ascending: false });
+
+  const s = settings?.settings || {};
+
+  return {
+    id: company.id,
+    nomeEmpresa: company.name,
+    nif: company.nif || '',
+    morada: s.morada || '',
+    telefone: s.telefone || '',
+    email: s.email || '',
+    website: s.website || undefined,
+    logoUrl: s.logo_url || undefined,
+    contaBancaria: s.conta_bancaria || undefined,
+    banco: s.banco || undefined,
+    inscricaoSocial: s.inscricao_social || undefined,
+    nifRegional: s.nif_regional || undefined,
+    diasVencimentoPadrao: s.dias_vencimento_padrao || 30,
+    seriesPorTipo: (series || []).map((sr: any): SerieNumeracao => ({
+      serie: sr.serie,
+      tipoDocumento: sr.tipo_documento,
+      proximoNumero: sr.proximo_numero,
+      ultimoNumeroUtilizado: sr.ultimo_numero_utilizado,
+    })),
+    ultimaAtualizacao: s.updated_at ? new Date(s.updated_at) : new Date(company.created_at),
+    criadoEm: new Date(company.created_at),
+  };
 }
 
 export async function atualizarEmpresa(
-  empresaId: string,
-  dados: {
-    nome?: string;
-    nif?: string;
-    morada?: string;
-    telefone?: string;
-    email?: string;
-    logoUrl?: string | null;
-  }
+  companyId: string,
+  dados: Partial<ConfiguracaoEmpresa>
 ) {
-  const [atualizada] = await db
-    .update(empresas)
-    .set({
-      ...dados,
-      atualizadoEm: new Date(),
-    })
-    .where(eq(empresas.id, empresaId))
-    .returning();
+  const empresa = await obterEmpresa(companyId);
 
-  return atualizada;
+  const updateCompany: any = {};
+  if (dados.nomeEmpresa !== undefined) updateCompany.name = dados.nomeEmpresa;
+  if (dados.nif !== undefined) updateCompany.nif = dados.nif;
+
+  if (Object.keys(updateCompany).length > 0) {
+    const { error } = await publicDb.from('companies').update(updateCompany).eq('id', companyId);
+    if (error) throw new Error(error.message);
+  }
+
+  const base = empresa?.contaBancaria || undefined;
+  const settings = {
+    morada: dados.morada !== undefined ? dados.morada : empresa?.morada,
+    telefone: dados.telefone !== undefined ? dados.telefone : empresa?.telefone,
+    email: dados.email !== undefined ? dados.email : empresa?.email,
+    website: dados.website !== undefined ? dados.website : empresa?.website,
+    logo_url: dados.logoUrl !== undefined ? dados.logoUrl : empresa?.logoUrl,
+    conta_bancaria: dados.contaBancaria !== undefined ? dados.contaBancaria : empresa?.contaBancaria || base,
+    banco: dados.banco !== undefined ? dados.banco : empresa?.banco,
+    inscricao_social: dados.inscricaoSocial !== undefined ? dados.inscricaoSocial : empresa?.inscricaoSocial,
+    nif_regional: dados.nifRegional !== undefined ? dados.nifRegional : empresa?.nifRegional,
+    dias_vencimento_padrao: dados.diasVencimentoPadrao !== undefined ? dados.diasVencimentoPadrao : empresa?.diasVencimentoPadrao || 30,
+  };
+
+  const { error } = await db
+    .from('company_settings')
+    .upsert({ company_id: companyId, settings })
+    .select()
+    .single();
+  if (error) throw new Error(error.message);
+
+  return obterEmpresa(companyId);
 }
-

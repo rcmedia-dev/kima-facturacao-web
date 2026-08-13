@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Menu, Plus, ShieldCheck } from "lucide-react";
+import { Menu } from "lucide-react";
+import { ProfileDropdown } from "@/components/profile-dropdown";
 
 interface TopbarProps {
   onOpenMobile: () => void;
@@ -47,23 +48,8 @@ export function Topbar({ onOpenMobile }: TopbarProps) {
 
       {/* Direita: Ações Rápidas */}
       <div className="flex items-center gap-3">
-        {/* Badge Conformidade AGT */}
-        <div className="hidden lg:flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400 text-xs font-semibold">
-          <ShieldCheck size={13} />
-          <span>Certificado AGT</span>
-        </div>
-
-        {/* Botão Nova Fatura — gradiente KIMA */}
-        <Link href="/faturas/nova">
-          <button
-            id="topbar-btn-nova-fatura"
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-sm font-semibold text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-sm hover:shadow-md transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-          >
-            <Plus size={16} />
-            <span className="hidden xs:inline">Nova Fatura</span>
-            <span className="xs:hidden">Fatura</span>
-          </button>
-        </Link>
+        {/* Perfil do utilizador */}
+        <ProfileDropdown />
       </div>
     </header>
   );

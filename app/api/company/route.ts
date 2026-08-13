@@ -1,53 +1,40 @@
 import { NextResponse } from "next/server";
 import { empresaSchema } from "@/lib/schemas";
 import { obterEmpresa, atualizarEmpresa } from "@/db/queries";
+import { requireCompanyId } from "@/lib/company";
 
-const EMPRESA_ID_DEFAULT = "e1000000-0000-0000-0000-000000000001";
-
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    const empresa = await obterEmpresa(EMPRESA_ID_DEFAULT);
+    const companyId = requireCompanyId(request);
+    const empresa = await obterEmpresa(companyId);
     return NextResponse.json({
       success: true,
-      data: empresa || {
-        id: EMPRESA_ID_DEFAULT,
-        nome: "Kima Tecnologias & Serviços Lda",
-        nif: "5417082910",
-        morada: "Av. 4 de Fevereiro, Edifício Luanda Tower, 7º Andar, Luanda",
-        telefone: "+244 923 000 111",
-        email: "contacto@kima.co.ao",
-        logoUrl: null,
-      },
+      data: empresa || null,
     });
   } catch (error: any) {
     return NextResponse.json(
       { success: false, error: error.message || "Erro ao obter dados da empresa" },
-      { status: 500 }
+      { status: error.status || 500 }
     );
   }
 }
 
 export async function PUT(request: Request) {
   try {
+    const companyId = requireCompanyId(request);
     const body = await request.json();
     const validatedData = empresaSchema.parse(body);
 
-    const empresaAtualizada = await atualizarEmpresa(EMPRESA_ID_DEFAULT, {
-      nome: validatedData.nomeEmpresa,
+    const empresaAtualizada = await atualizarEmpresa(companyId, {
+      nomeEmpresa: validatedData.nomeEmpresa,
       nif: validatedData.nif,
       morada: validatedData.morada,
       telefone: validatedData.telefone,
       email: validatedData.email,
-      logoUrl: validatedData.logoUrl,
+      logoUrl: validatedData.logoUrl || undefined,
     });
 
-    return NextResponse.json({
-      success: true,
-      data: empresaAtualizada || {
-        id: EMPRESA_ID_DEFAULT,
-        ...validatedData,
-      },
-    });
+    return NextResponse.json({ success: true, data: empresaAtualizada });
   } catch (error: any) {
     if (error.name === "ZodError") {
       return NextResponse.json(

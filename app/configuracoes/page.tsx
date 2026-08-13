@@ -6,10 +6,6 @@ import { useToastContext } from "@/components/ui/toast";
 import { ConfiguracaoEmpresa } from "@/lib/types";
 import { validarNIFAngolano } from "@/lib/utils";
 import {
-  CheckCircle,
-  Database,
-  Trash2,
-  RefreshCw,
   Upload,
   Building2,
   X,
@@ -24,7 +20,6 @@ export default function ConfiguracoesPage() {
   const [mounted, setMounted] = useState(false);
   const [saving, setSaving] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const [mockMessage, setMockMessage] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [formData, setFormData] = useState({
@@ -151,21 +146,6 @@ export default function ConfiguracoesPage() {
     }
   };
 
-  const handleSeedMock = () => {
-    store.seedMockData();
-    setMockMessage("Sistema preenchido com sucesso com os dados mockados!");
-    setTimeout(() => setMockMessage(null), 4000);
-  };
-
-  const handleClearMock = () => {
-    if (confirm("Tem certeza de que deseja eliminar todos os dados e resetar o sistema?")) {
-      store.clearAllData();
-      setFormData({ nomeEmpresa: "", nif: "", morada: "", telefone: "", email: "", logoUrl: null });
-      setMockMessage("Todos os dados do sistema foram eliminados com sucesso!");
-      setTimeout(() => setMockMessage(null), 4000);
-    }
-  };
-
   return (
     <div className="max-w-3xl mx-auto px-2 py-2 space-y-6 animate-slide-up">
       {/* ── HEADER ──────────────────────────────────── */}
@@ -182,12 +162,6 @@ export default function ConfiguracoesPage() {
       </div>
 
       {/* ── ALERTAS ─────────────────────────────────── */}
-      {mockMessage && (
-        <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-[var(--success-light)] border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400 animate-fade-in">
-          <CheckCircle size={16} className="shrink-0" />
-          <span className="text-sm font-medium">{mockMessage}</span>
-        </div>
-      )}
       {errorMsg && (
         <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-[var(--danger-light)] border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 animate-fade-in">
           <AlertCircle size={16} className="shrink-0" />
@@ -368,39 +342,6 @@ export default function ConfiguracoesPage() {
               </button>
             </div>
           </form>
-        </div>
-      </div>
-
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm overflow-hidden">
-        <div className="flex items-center gap-2.5 px-6 py-4 border-b border-slate-100 dark:border-slate-800">
-          <Database size={18} className="text-amber-500 dark:text-amber-400" />
-          <h3 className="font-bold text-slate-900 dark:text-white text-base">Gestão de Dados de Demonstração</h3>
-        </div>
-
-        <div className="p-6">
-          <p className="text-sm text-slate-600 dark:text-slate-400 mb-5 leading-relaxed">
-            Preencha o sistema com dados de demonstração (Clientes, Artigos, Faturas) ou reponha por completo os dados locais.
-          </p>
-
-          <div className="flex flex-wrap gap-3">
-            <button
-              id="config-btn-seed-mock"
-              onClick={handleSeedMock}
-              className="btn-outline"
-            >
-              <RefreshCw size={15} className="text-amber-500" />
-              Preencher / Restaurar Dados Mock
-            </button>
-
-            <button
-              id="config-btn-clear-mock"
-              onClick={handleClearMock}
-              className="btn-danger"
-            >
-              <Trash2 size={15} />
-              Eliminar Todos os Dados
-            </button>
-          </div>
         </div>
       </div>
     </div>

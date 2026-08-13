@@ -3,8 +3,9 @@
 import { useEffect, useState } from "react";
 import { useAppStore } from "@/lib/store";
 import { useToastContext } from "@/components/ui/toast";
-import { Plus, Search, Users } from "lucide-react";
+import { Plus, Users, UserCheck, UserX, Building2 } from "lucide-react";
 import { ClienteTable } from "./components/cliente-table";
+import { ClienteFilters } from "./components/cliente-filters";
 import { ClienteFormModal } from "./components/cliente-form-modal";
 import { ConfirmModal } from "@/components/confirm-modal";
 
@@ -13,6 +14,8 @@ export default function ClientesPage() {
   const { success, error } = useToastContext();
   const [mounted, setMounted] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const [tipoFiltro, setTipoFiltro] = useState<string>("Todos");
+  const [estadoFiltro, setEstadoFiltro] = useState<string>("Todos");
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
@@ -21,13 +24,13 @@ export default function ClientesPage() {
     setMounted(true);
   }, []);
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (deleteId) {
       try {
-        store.deleteCliente(deleteId);
+        await store.deleteCliente(deleteId);
         success("Sucesso", "Cliente removido com sucesso.");
       } catch (e) {
-        error("Erro", "Falha ao remover cliente.");
+        error("Erro", `Falha ao remover cliente: ${(e as Error).message}`);
       }
       setDeleteId(null);
     }
@@ -43,13 +46,37 @@ export default function ClientesPage() {
     );
   }
 
-  const filteredClientes = store.clientes.filter(
-    (c) =>
-      c.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      c.nif.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredClientes = store.clientes.filter((c) => {
+    if (tipoFiltro !== "Todos" && c.tipo !== tipoFiltro) return false;
+
+    if (estadoFiltro === "Ativos" && !c.ativo) return false;
+    if (estadoFiltro === "Inativos" && c.ativo) return false;
+
+    if (searchTerm.trim() !== "") {
+      const term = searchTerm.toLowerCase();
+      const matchNome = c.nome.toLowerCase().includes(term);
+      const matchNif = c.nif.toLowerCase().includes(term);
+      const matchTelefone = c.telefone.toLowerCase().includes(term);
+      const matchEmail = c.email.toLowerCase().includes(term);
+      const matchMorada = c.morada.toLowerCase().includes(term);
+      const matchResponsavel = (c.responsavel || "").toLowerCase().includes(term);
+      if (!matchNome && !matchNif && !matchTelefone && !matchEmail && !matchMorada && !matchResponsavel) {
+        return false;
+      }
+    }
+
+    return true;
+  });
+
+  const hasActiveFilters =
+    searchTerm !== "" || tipoFiltro !== "Todos" || estadoFiltro !== "Todos";
 
   const clienteParaEditar = editingId ? store.getClientePorId(editingId) : undefined;
+
+  const totalClientes = store.clientes.length;
+  const clientesAtivos = store.clientes.filter((c) => c.ativo).length;
+  const clientesInativos = store.clientes.filter((c) => !c.ativo).length;
+  const clientesPJ = store.clientes.filter((c) => c.tipo === "PJ").length;
 
   return (
     <div className="max-w-7xl mx-auto px-2 py-2 space-y-5 animate-slide-up">
@@ -77,30 +104,96 @@ export default function ClientesPage() {
         </button>
       </div>
 
-      {/* ── BARRA DE PESQUISA ────────────────────────── */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl px-4 py-3 shadow-sm flex items-center gap-3">
-        <Search size={16} className="text-slate-400 dark:text-slate-500 shrink-0" />
-        <input
-          id="clientes-search"
-          type="text"
-          placeholder="Pesquisar por nome ou NIF..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="flex-1 bg-transparent text-sm text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none"
+      {/* ── MÉTRICAS ─────────────────────────────────── */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4">
+          <div className="flex items-start justify-between">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+              Total de Clientes
+            </span>
+            <span className="w-9 h-9 rounded-lg bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 flex items-center justify-center">
+              <Users size={16} />
+            </span>
+          </div>
+          <p className="text-[22px] font-extrabold leading-tight text-slate-900 dark:text-white mt-1.5">
+            {totalClientes}
+          </p>
+          <p className="text-[11.5px] font-medium text-slate-500 dark:text-slate-400 mt-0.5">
+            {totalClientes === 1 ? "Cliente registado" : "Clientes registados"}
+          </p>
+        </div>
+
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4">
+          <div className="flex items-start justify-between">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+              Ativos
+            </span>
+            <span className="w-9 h-9 rounded-lg bg-teal-50 dark:bg-teal-900/30 text-teal-600 dark:text-teal-400 flex items-center justify-center">
+              <UserCheck size={16} />
+            </span>
+          </div>
+          <p className="text-[22px] font-extrabold leading-tight text-slate-900 dark:text-white mt-1.5">
+            {clientesAtivos}
+          </p>
+          <p className="text-[11.5px] font-medium text-slate-500 dark:text-slate-400 mt-0.5">
+            Em estado ativo
+          </p>
+        </div>
+
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4">
+          <div className="flex items-start justify-between">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+              Inativos
+            </span>
+            <span className="w-9 h-9 rounded-lg bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 flex items-center justify-center">
+              <UserX size={16} />
+            </span>
+          </div>
+          <p className="text-[22px] font-extrabold leading-tight text-slate-900 dark:text-white mt-1.5">
+            {clientesInativos}
+          </p>
+          <p className="text-[11.5px] font-medium text-slate-500 dark:text-slate-400 mt-0.5">
+            Sem atividade
+          </p>
+        </div>
+
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4">
+          <div className="flex items-start justify-between">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+              Empresas (PJ)
+            </span>
+            <span className="w-9 h-9 rounded-lg bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
+              <Building2 size={16} />
+            </span>
+          </div>
+          <p className="text-[22px] font-extrabold leading-tight text-slate-900 dark:text-white mt-1.5">
+            {clientesPJ}
+          </p>
+          <p className="text-[11.5px] font-medium text-slate-500 dark:text-slate-400 mt-0.5">
+            Pessoa jurídica
+          </p>
+        </div>
+      </div>
+
+      {/* ── FILTROS ──────────────────────────────────── */}
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 shadow-sm">
+        <ClienteFilters
+          searchTerm={searchTerm}
+          onSearchTermChange={setSearchTerm}
+          tipoFiltro={tipoFiltro}
+          onTipoChange={setTipoFiltro}
+          estadoFiltro={estadoFiltro}
+          onEstadoChange={setEstadoFiltro}
         />
-        {searchTerm && (
-          <span className="text-xs text-slate-500 dark:text-slate-400 font-medium px-2 py-0.5 bg-slate-100 dark:bg-slate-800 rounded-full">
-            {filteredClientes.length} resultado{filteredClientes.length !== 1 ? "s" : ""}
-          </span>
-        )}
       </div>
 
       {/* ── TABELA ───────────────────────────────────── */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm overflow-hidden">
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm overflow-hidden">
         <ClienteTable
           clientes={filteredClientes}
           onEdit={(id) => { setEditingId(id); setShowModal(true); }}
           onDelete={(id) => setDeleteId(id)}
+          hasQuery={hasActiveFilters}
         />
       </div>
 

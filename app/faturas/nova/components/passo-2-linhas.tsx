@@ -5,11 +5,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAppStore } from "@/lib/store";
 import { Cliente, FaturaLinha } from "@/lib/types";
-import { Card } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { formatMoedaAOA } from "@/lib/formatters";
-import { Plus, Trash2, ArrowLeft, ArrowRight, Package } from "lucide-react";
+import { Plus, Trash2, ArrowLeft, ArrowRight, Package, CheckCircle2, ClipboardList } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -18,10 +17,14 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
+import { TipoDocumento } from "@/lib/types";
+
 interface Passo2LinhasProps {
   linhas: FaturaLinha[];
   onUpdateLinhas: (linhas: FaturaLinha[]) => void;
   clienteSelecionado: Cliente | null;
+  tipoDocumento?: TipoDocumento;
+  documentoReferenciado?: string;
   onBack: () => void;
   onNext: () => void;
 }
@@ -30,15 +33,21 @@ export function Passo2Linhas({
   linhas,
   onUpdateLinhas,
   clienteSelecionado,
+  tipoDocumento,
+  documentoReferenciado,
   onBack,
   onNext,
 }: Passo2LinhasProps) {
   const store = useAppStore();
   const [artigoId, setArtigoId] = useState<string>("");
-  const [quantidade, setQuantidade] = useState<number>(1);
+  const [quantidade, setQuantidade] = useState<string>("1");
+
+  const isRetificacao = tipoDocumento === "NotaCredito" || tipoDocumento === "NotaDebito";
+
+  const quantidadeNumerica = parseInt(quantidade, 10) || 0;
 
   const handleAddLinha = () => {
-    if (!artigoId || quantidade <= 0) return;
+    if (!artigoId || quantidadeNumerica <= 0) return;
 
     const artigo = store.getArtigoPorId(artigoId);
     if (!artigo) return;
@@ -47,16 +56,16 @@ export function Passo2Linhas({
       id: `linha-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
       artigoId: artigo.id,
       descricao: artigo.descricao,
-      quantidade,
+      quantidade: quantidadeNumerica,
       preco: artigo.preco,
       taxaIVA: artigo.taxaIVA,
       unidadeMedida: artigo.unidadeMedida || "UN",
-      total: quantidade * artigo.preco,
+      total: quantidadeNumerica * artigo.preco,
     };
 
     onUpdateLinhas([...linhas, novaLinha]);
     setArtigoId("");
-    setQuantidade(1);
+    setQuantidade("1");
   };
 
   const handleDeleteLinha = (id: string) => {
@@ -72,172 +81,232 @@ export function Passo2Linhas({
   const artigoSelecionado = artigoId ? store.getArtigoPorId(artigoId) : null;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
+      {/* Título do passo */}
       <div>
-        <h2 className="text-xl font-semibold text-gray-900 mb-1">
-          Passo 2: Adicionar Artigos / Serviços
-        </h2>
-        <p className="text-sm text-gray-500 mb-6">
-          Selecione os artigos da tabela e especifique as quantidades para a fatura de <strong>{clienteSelecionado?.nome}</strong>
+        <h3 className="text-base font-bold text-slate-900 dark:text-white">
+          2 · {isRetificacao ? "Ajustar artigos da retificação" : "Adicionar artigos"}
+        </h3>
+        <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+          Componha o documento para{" "}
+          <strong className="text-slate-700 dark:text-slate-300">
+            {clienteSelecionado?.nome || "Consumidor Final"}
+          </strong>
+          .
         </p>
+      </div>
 
-        {/* Form para Adicionar Linha */}
-        <Card className="p-4 bg-blue-50/60 border-blue-200 mb-6 rounded-xl shadow-sm">
-          <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-end">
-            <div className="sm:col-span-6">
-              <label className="text-xs font-semibold text-gray-700 block mb-1">
-                Artigo / Serviço <span className="text-red-500">*</span>
-              </label>
-              <Select value={artigoId} onValueChange={(v) => setArtigoId(v ?? "")}>
-                <SelectTrigger className="bg-white border-gray-300">
-                  <SelectValue placeholder="Pesquisar por código ou descrição..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {store.artigos.map((artigo) => (
-                    <SelectItem key={artigo.id} value={artigo.id}>
-                      <span className="font-mono text-xs font-bold text-gray-700 mr-2">[{artigo.codigo}]</span>
-                      {artigo.descricao} — {formatMoedaAOA(artigo.preco)} (IVA {artigo.taxaIVA}%)
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+      {/* Banner de Orientação para Nota de Crédito / Débito */}
+      {isRetificacao && documentoReferenciado && (
+        <div className="p-3.5 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/50 text-xs text-amber-900 dark:text-amber-200 space-y-1">
+          <p className="font-bold flex items-center gap-1.5">
+            <ClipboardList className="w-4 h-4 text-amber-700 dark:text-amber-400 shrink-0" />
+            Itens importados da Fatura de Origem: <span className="font-mono text-amber-700 dark:text-amber-300 font-extrabold">{documentoReferenciado}</span>
+          </p>
+          <p className="text-[11px] leading-relaxed text-amber-800 dark:text-amber-300">
+            Os artigos da fatura original foram carregados abaixo. Pode <strong>remover linhas</strong> (clicando no ícone do lixo), <strong>alterar quantidades/itens</strong> ou adicionar novos artigos que pretende {tipoDocumento === "NotaCredito" ? "creditar" : "debitar"}.
+          </p>
+        </div>
+      )}
 
-            <div className="sm:col-span-3">
-              <label className="text-xs font-semibold text-gray-700 block mb-1">
-                Quantidade <span className="text-red-500">*</span>
-              </label>
-              <Input
-                type="number"
-                min="1"
-                value={quantidade}
-                onChange={(e) => setQuantidade(Math.max(1, parseInt(e.target.value) || 1))}
-                className="bg-white border-gray-300"
-              />
-            </div>
+      {/* Form de adição de linha */}
+      <div className="border border-slate-200 dark:border-slate-800 rounded-[14px] p-4 bg-white dark:bg-slate-900">
+        <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-2">
+          Que artigo ou serviço quer incluir? <span className="text-red-500">*</span>
+        </label>
+        {/* Linha 1: Select de artigo — largura total */}
+        <div className="w-full">
+          <Select value={artigoId} onValueChange={(v) => setArtigoId(v ?? "")}>
+            <SelectTrigger className="w-full bg-white dark:bg-slate-950 border-slate-300 dark:border-slate-700 h-10 text-sm">
+              <SelectValue placeholder="Escolha um artigo ou serviço...">
+                {artigoId ? (() => {
+                  const a = store.getArtigoPorId(artigoId);
+                  return a ? a.descricao : undefined;
+                })() : undefined}
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent
+              className="w-[var(--radix-select-trigger-width)] min-w-[480px]"
+              sideOffset={4}
+            >
+              {store.artigos.map((artigo) => (
+                <SelectItem key={artigo.id} value={artigo.id} className="py-2.5">
+                  <div className="flex flex-col">
+                    <span className="text-sm font-semibold text-slate-900 dark:text-white">
+                      <span className="font-mono text-xs font-bold text-blue-600 dark:text-blue-400 mr-1.5">
+                        [{artigo.codigo}]
+                      </span>
+                      {artigo.descricao}
+                    </span>
+                    <span className="text-xs text-slate-400 mt-0.5">
+                      {formatMoedaAOA(artigo.preco)} · IVA {artigo.taxaIVA}%
+                    </span>
+                  </div>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
 
-            <div className="sm:col-span-3">
-              <Button
-                onClick={handleAddLinha}
-                disabled={!artigoId || quantidade <= 0}
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white"
-              >
-                <Plus className="w-4 h-4 mr-1.5" />
-                Adicionar Linha
-              </Button>
-            </div>
+        {/* Linha 2: Quantidade + Botão — sempre lado a lado */}
+        <div className="grid grid-cols-[1fr_auto] gap-3 items-end">
+          <div>
+            <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">
+              Quantidade
+            </label>
+            <Input
+              inputMode="numeric"
+              value={quantidade}
+              onChange={(e) => setQuantidade(e.target.value.replace(/\D/g, ""))}
+              className="bg-white dark:bg-slate-950 border-slate-300 dark:border-slate-700 h-10 text-sm"
+            />
           </div>
 
-          {/* Preview Rápido do Artigo Selecionado */}
-          {artigoSelecionado && (
-            <div className="mt-3 pt-3 border-t border-blue-200/60 flex items-center justify-between text-xs text-blue-900 font-medium">
-              <span>
-                Preço Unitário: <strong>{formatMoedaAOA(artigoSelecionado.preco)}</strong> | Taxa IVA: <strong>{artigoSelecionado.taxaIVA}%</strong>
-              </span>
-              <span>
-                Subtotal da Linha: <strong>{formatMoedaAOA(artigoSelecionado.preco * quantidade)}</strong>
-              </span>
-            </div>
-          )}
-        </Card>
+          <Button
+            onClick={handleAddLinha}
+            disabled={!artigoId || quantidadeNumerica <= 0}
+            className="bg-blue-600 hover:bg-blue-700 text-white h-10 whitespace-nowrap"
+          >
+            <Plus className="w-4 h-4 mr-1.5" />
+            Adicionar Linha
+          </Button>
+        </div>
 
-        {/* Tabela de Linhas */}
-        {linhas.length === 0 ? (
-          <div className="text-center py-10 bg-gray-50/80 rounded-xl border-2 border-dashed border-gray-200">
-            <Package className="w-8 h-8 text-gray-400 mx-auto mb-2" />
-            <p className="text-gray-600 font-medium text-sm">Nenhuma linha adicionada até ao momento</p>
-            <p className="text-gray-400 text-xs mt-1">Selecione um artigo acima e clique em "Adicionar Linha".</p>
-          </div>
-        ) : (
-          <div className="overflow-x-auto mb-6 border rounded-xl shadow-sm bg-white">
-            <Table>
-              <TableHeader className="bg-gray-50">
-                <TableRow>
-                  <TableHead className="font-semibold">Descrição</TableHead>
-                  <TableHead className="text-center font-semibold">Qtd</TableHead>
-                  <TableHead className="text-right font-semibold">Preço Unit.</TableHead>
-                  <TableHead className="text-center font-semibold">IVA</TableHead>
-                  <TableHead className="text-right font-semibold">Total Linha (c/ IVA)</TableHead>
-                  <TableHead className="text-center font-semibold w-16">Ação</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {linhas.map((linha) => {
-                  const totalLinhaComIVA = linha.total + (linha.total * linha.taxaIVA) / 100;
-                  return (
-                    <TableRow key={linha.id} className="hover:bg-blue-50/20">
-                      <TableCell className="font-medium text-gray-900">{linha.descricao}</TableCell>
-                      <TableCell className="text-center font-mono">{linha.quantidade}</TableCell>
-                      <TableCell className="text-right font-mono">{formatMoedaAOA(linha.preco)}</TableCell>
-                      <TableCell className="text-center">
-                        <Badge
-                          variant="secondary"
-                          className={`text-xs font-mono ${
-                            linha.taxaIVA === 0
-                              ? "bg-gray-100 text-gray-600"
-                              : linha.taxaIVA === 7
-                              ? "bg-amber-50 text-amber-600 border border-amber-100"
-                              : "bg-blue-50 text-blue-600 border border-blue-100"
-                          }`}
-                        >
-                          {linha.taxaIVA}%
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-right font-bold font-mono text-gray-900">
-                        {formatMoedaAOA(totalLinhaComIVA)}
-                      </TableCell>
-                      <TableCell className="text-center">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleDeleteLinha(linha.id)}
-                          className="hover:bg-red-50 hover:text-red-600"
-                          title="Remover linha"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
+        {/* Preview rápido do artigo selecionado */}
+        {artigoSelecionado && (
+          <div className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs text-slate-600 dark:text-slate-400 font-medium">
+            <span>
+              Preço unit.:{" "}
+              <strong className="text-slate-800 dark:text-slate-200">
+                {formatMoedaAOA(artigoSelecionado.preco)}
+              </strong>{" "}
+              · IVA:{" "}
+              <strong className="text-slate-800 dark:text-slate-200">
+                {artigoSelecionado.taxaIVA}%
+              </strong>
+            </span>
+            <span>
+              Subtotal da linha:{" "}
+              <strong className="text-slate-800 dark:text-slate-200">
+                {formatMoedaAOA(artigoSelecionado.preco * quantidadeNumerica)}
+              </strong>
+            </span>
           </div>
         )}
       </div>
 
-      {/* Card de Resumo de Valores */}
-      <Card className="bg-slate-900 text-white p-5 rounded-xl shadow-md">
-        <div className="space-y-2 text-sm">
-          <div className="flex justify-between text-slate-300">
-            <span>Subtotal (sem IVA):</span>
-            <span className="font-mono">{formatMoedaAOA(subtotal)}</span>
-          </div>
-          <div className="flex justify-between text-slate-300">
-            <span>Total IVA Calculado:</span>
-            <span className="font-mono">{formatMoedaAOA(totalIVA)}</span>
-          </div>
-          <div className="flex justify-between text-lg font-bold text-white border-t border-slate-700 pt-3 mt-2">
-            <span>TOTAL GERAL DA FATURA:</span>
-            <span className="font-mono text-blue-400">{formatMoedaAOA(total)}</span>
+      {/* Tabela de linhas adicionadas */}
+      {linhas.length === 0 ? (
+        <div className="text-center py-10 bg-slate-50 dark:bg-slate-800/50 rounded-xl border-2 border-dashed border-slate-200 dark:border-slate-700">
+          <Package className="w-8 h-8 text-slate-400 mx-auto mb-2" />
+          <p className="text-slate-600 dark:text-slate-300 font-medium text-sm">
+            Nenhuma linha adicionada ainda
+          </p>
+          <p className="text-slate-400 text-xs mt-1">
+            Escolha um artigo acima e clique em "Adicionar Linha".
+          </p>
+        </div>
+      ) : (
+        <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+          <Table>
+            <TableHeader className="bg-slate-50 dark:bg-slate-800/50">
+              <TableRow>
+                <TableHead className="font-semibold text-xs">Descrição</TableHead>
+                <TableHead className="text-center font-semibold text-xs">Qtd</TableHead>
+                <TableHead className="text-right font-semibold text-xs">Preço Unit.</TableHead>
+                <TableHead className="text-center font-semibold text-xs">IVA</TableHead>
+                <TableHead className="text-right font-semibold text-xs">Total c/ IVA</TableHead>
+                <TableHead className="text-center font-semibold text-xs w-14" />
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {linhas.map((linha) => {
+                const totalLinhaComIVA = linha.total + (linha.total * linha.taxaIVA) / 100;
+                return (
+                  <TableRow key={linha.id} className="hover:bg-blue-50/20 dark:hover:bg-blue-950/20">
+                    <TableCell className="font-medium text-sm text-slate-900 dark:text-white">
+                      {linha.descricao}
+                    </TableCell>
+                    <TableCell className="text-center font-mono text-sm">{linha.quantidade}</TableCell>
+                    <TableCell className="text-right font-mono text-sm">{formatMoedaAOA(linha.preco)}</TableCell>
+                    <TableCell className="text-center">
+                      <Badge
+                        variant="secondary"
+                        className={`text-xs font-mono ${
+                          linha.taxaIVA === 0
+                            ? "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400"
+                            : linha.taxaIVA === 7
+                            ? "bg-amber-50 text-amber-600 border border-amber-100 dark:bg-amber-950/30 dark:text-amber-400"
+                            : "bg-blue-50 text-blue-600 border border-blue-100 dark:bg-blue-950/30 dark:text-blue-400"
+                        }`}
+                      >
+                        {linha.taxaIVA}%
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-right font-bold font-mono text-sm text-slate-900 dark:text-white">
+                      {formatMoedaAOA(totalLinhaComIVA)}
+                    </TableCell>
+                    <TableCell className="text-center">
+                      <button
+                        onClick={() => handleDeleteLinha(linha.id)}
+                        className="text-red-400 hover:text-red-600 dark:hover:text-red-400 transition-colors p-1 rounded"
+                        title="Remover linha"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </div>
+      )}
+
+      {/* Totais — alinhados à direita */}
+      {linhas.length > 0 && (
+        <div className="flex justify-end">
+          <div className="w-full sm:w-64 space-y-1 text-sm">
+            <div className="flex justify-between text-slate-500 dark:text-slate-400">
+              <span>Subtotal</span>
+              <span className="font-mono">{formatMoedaAOA(subtotal)}</span>
+            </div>
+            <div className="flex justify-between text-slate-500 dark:text-slate-400">
+              <span>IVA</span>
+              <span className="font-mono">{formatMoedaAOA(totalIVA)}</span>
+            </div>
+            <div className="flex justify-between font-bold text-base text-slate-900 dark:text-white border-t border-slate-200 dark:border-slate-700 pt-2 mt-1">
+              <span>TOTAL</span>
+              <span className="font-mono text-blue-600 dark:text-blue-400">
+                {formatMoedaAOA(total)}
+              </span>
+            </div>
           </div>
         </div>
-      </Card>
+      )}
 
-      {/* Botões de Navegação */}
-      <div className="flex gap-3 justify-between pt-4 border-t">
-        <Button variant="outline" onClick={onBack}>
+      {/* Navegação */}
+      <div className="flex items-center justify-between gap-3 pt-4 border-t border-slate-100 dark:border-slate-800">
+        <Button variant="outline" onClick={onBack} className="text-sm">
           <ArrowLeft className="w-4 h-4 mr-2" />
           Voltar para Cliente
         </Button>
-        <Button
-          onClick={onNext}
-          disabled={linhas.length === 0}
-          className="bg-blue-600 hover:bg-blue-700 text-white px-6"
-        >
-          Próximo: Resumo e Emitir
-          <ArrowRight className="w-4 h-4 ml-2" />
-        </Button>
+        <div className="flex items-center gap-3">
+          {linhas.length > 0 && (
+            <span className="hidden sm:flex items-center gap-1.5 text-xs font-medium text-emerald-600 dark:text-emerald-400">
+              <CheckCircle2 className="w-4 h-4" />
+              {linhas.length} linha(s) adicionada(s)
+            </span>
+          )}
+          <Button
+            onClick={onNext}
+            disabled={linhas.length === 0}
+            className="bg-blue-600 hover:bg-blue-700 text-white px-5 text-sm"
+          >
+            Próximo: Rever e Emitir
+            <ArrowRight className="w-4 h-4 ml-2" />
+          </Button>
+        </div>
       </div>
     </div>
   );

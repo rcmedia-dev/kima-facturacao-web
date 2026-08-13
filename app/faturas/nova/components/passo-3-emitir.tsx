@@ -3,8 +3,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useAppStore } from "@/lib/store";
-import { Cliente, FaturaLinha } from "@/lib/types";
-import { Card } from "@/components/ui/card";
+import { Cliente, FaturaLinha, TipoDocumento } from "@/lib/types";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -15,14 +14,20 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import { formatMoedaAOA, formatData } from "@/lib/formatters";
 import { FORMAS_PAGAMENTO, DIAS_VENCIMENTO_DEFAULT } from "@/lib/constants";
-import { addDays } from "date-fns";
+import { addDays, format } from "date-fns";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { CheckCircle2, ArrowLeft, Send, Loader2, FileText } from "lucide-react";
-
-import { TipoDocumento } from "@/lib/types";
+import {
+  CheckCircle2,
+  ArrowLeft,
+  Send,
+  Loader2,
+  PencilLine,
+  XCircle,
+} from "lucide-react";
 
 interface Passo3EmitirProps {
   clienteSelecionado: Cliente | null;
@@ -31,6 +36,8 @@ interface Passo3EmitirProps {
   totalIVA: number;
   total: number;
   tipoDocumento: TipoDocumento;
+  dataVencimento: Date;
+  onChangeDataVencimento: (data: Date) => void;
   onBack: () => void;
 }
 
@@ -41,6 +48,8 @@ export function Passo3Emitir({
   totalIVA,
   total,
   tipoDocumento,
+  dataVencimento,
+  onChangeDataVencimento,
   onBack,
 }: Passo3EmitirProps) {
   const store = useAppStore();
@@ -50,10 +59,8 @@ export function Passo3Emitir({
   const [loading, setLoading] = useState(false);
   const [faturaCriada, setFaturaCriada] = useState<boolean>(false);
 
-  const dataVencimento = addDays(new Date(), DIAS_VENCIMENTO_DEFAULT);
-
   const handleEmitir = async () => {
-    if (!clienteSelecionado || linhas.length === 0) return;
+    if ((tipoDocumento !== "Simplificada" && !clienteSelecionado) || linhas.length === 0) return;
 
     setLoading(true);
     try {
@@ -65,7 +72,7 @@ export function Passo3Emitir({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             tipo: tipoDocumento,
-            clienteId: clienteSelecionado.id,
+            clienteId: clienteSelecionado?.id,
             linhas: linhas.map((l) => ({
               artigoId: l.artigoId,
               quantidade: l.quantidade,
@@ -88,8 +95,9 @@ export function Passo3Emitir({
         console.warn("Servidor backend offline ou falhou, salvando no localStorage...", err);
       }
 
-      // 2. Salvar no Zustand store local para disponibilidade instantânea e persistência em localStorage
+      // 2. Salvar no Zustand store local
       const proximoNumeroNum = store.documentos.length + 1;
+      const initialStatus = (tipoDocumento === "FaturaRecibo" || tipoDocumento === "Simplificada") ? "Pago" : "Pendente";
 
       const faturaLocal = store.addFatura({
         id: apiData?.id,
@@ -97,11 +105,12 @@ export function Passo3Emitir({
         serie: apiData?.serie || "A",
         numero: apiData?.numero || String(proximoNumeroNum),
         numeroCompleto: apiData?.numeroCompleto,
-        clienteId: clienteSelecionado.id,
+        clienteId: clienteSelecionado?.id,
         dataEmissao: apiData?.dataEmissao ? new Date(apiData.dataEmissao) : new Date(),
         dataVencimento: apiData?.dataVencimento ? new Date(apiData.dataVencimento) : dataVencimento,
         formaPagamento: formaPagamento as any,
-        status: "Pendente",
+        status: initialStatus as any,
+        dataPagamento: initialStatus === "Pago" ? new Date() : undefined,
         linhas,
         observacoes,
         subtotal,
@@ -110,10 +119,8 @@ export function Passo3Emitir({
       });
 
       const finalId = faturaLocal.id;
-
       setFaturaCriada(true);
 
-      // Redirecionar para os detalhes da fatura
       setTimeout(() => {
         router.push(`/faturas/${finalId}`);
       }, 1200);
@@ -122,15 +129,18 @@ export function Passo3Emitir({
     }
   };
 
+  // Estado de sucesso
   if (faturaCriada) {
     return (
-      <div className="space-y-4 text-center py-12 animate-in zoom-in-95">
-        <div className="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto shadow-sm">
+      <div className="space-y-4 text-center py-12 animate-in fade-in zoom-in-95 duration-300">
+        <div className="w-16 h-16 bg-emerald-100 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400 rounded-full flex items-center justify-center mx-auto shadow-sm">
           <CheckCircle2 className="w-10 h-10" />
         </div>
-        <h2 className="text-2xl font-bold text-gray-900">{tipoDocumento} Emitido com Sucesso!</h2>
-        <p className="text-sm text-gray-600">
-          O {tipoDocumento} foi gravado e o documento PDF foi gerado. A redirecionar...
+        <h2 className="text-2xl font-bold text-slate-900 dark:text-white">
+          {tipoDocumento} Emitido com Sucesso!
+        </h2>
+        <p className="text-sm text-slate-500 dark:text-slate-400">
+          O documento foi gravado. A redirecionar...
         </p>
         <div className="flex justify-center pt-2">
           <Loader2 className="w-5 h-5 text-blue-600 animate-spin" />
@@ -139,39 +149,96 @@ export function Passo3Emitir({
     );
   }
 
+  const temVencimento = tipoDocumento === "Fatura" || tipoDocumento === "Orcamento";
+  const temPagamentoDireto = tipoDocumento === "FaturaRecibo" || tipoDocumento === "Simplificada";
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
+      {/* Título do passo */}
       <div>
-        <h2 className="text-xl font-semibold text-gray-900 mb-1">
-          Passo 3: Revisão e Emissão do {tipoDocumento}
-        </h2>
-        <p className="text-sm text-gray-500 mb-6">
-          Confira os detalhes finais antes de emitir o {tipoDocumento}
+        <h3 className="text-base font-bold text-slate-900 dark:text-white">
+          3 · Rever e emitir
+        </h3>
+        <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+          Confirme os dados abaixo e emita a {tipoDocumento.toLowerCase()}.
         </p>
+      </div>
 
-        {/* Resumo do Cliente */}
-        <Card className="p-4 mb-6 bg-blue-50/70 border-blue-200 rounded-xl">
-          <div className="flex justify-between items-start">
-            <div>
-              <span className="text-xs font-semibold uppercase tracking-wider text-blue-700">Cliente Destinatário</span>
-              <h3 className="text-base font-bold text-gray-900 mt-0.5">{clienteSelecionado?.nome}</h3>
-              <p className="text-xs text-gray-600 mt-1">NIF: <strong className="font-mono text-gray-800">{clienteSelecionado?.nif}</strong></p>
-            </div>
-            <Badge variant="outline" className="bg-white border-blue-300 text-blue-800">
-              Passo Final
-            </Badge>
+      {/* Preview do documento */}
+      <div className="border border-slate-200 dark:border-slate-800 rounded-[14px] overflow-hidden bg-white dark:bg-slate-900">
+        {/* Cabeçalho do documento */}
+        <div className="flex justify-between items-start p-5 bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-700">
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+              {tipoDocumento}
+            </p>
+            <h3 className="text-base font-bold text-slate-900 dark:text-white mt-0.5">
+              {store.empresa?.nomeEmpresa || "Empresa Demonstrativa"}
+            </h3>
+            <p className="text-xs text-slate-500 mt-0.5">
+              NIF: {store.empresa?.nif || "5417082910"}
+            </p>
           </div>
-        </Card>
+          <Badge
+            variant="outline"
+            className="bg-white dark:bg-slate-900 border-emerald-300 dark:border-emerald-700 text-emerald-700 dark:text-emerald-400 text-xs"
+          >
+            Pré-visualização
+          </Badge>
+        </div>
 
-        {/* Resumo das Linhas */}
-        <Card className="p-4 mb-6 border-gray-200 rounded-xl shadow-sm">
-          <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
-            <FileText className="w-4 h-4 text-blue-600" />
-            Itens da Fatura ({linhas.length})
-          </h3>
-          <div className="overflow-x-auto">
+        <div className="p-5 space-y-4">
+          {/* Dados do cliente e vencimento/pagamento */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="sm:col-span-2">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
+                Faturado a
+              </p>
+              <p className="text-sm font-bold text-slate-900 dark:text-white">
+                {clienteSelecionado?.nome || "Consumidor Final"}
+              </p>
+              <p className="text-xs text-slate-500">
+                NIF: <span className="font-mono font-semibold">{clienteSelecionado?.nif || "Consumidor Final"}</span>
+              </p>
+            </div>
+            <div>
+              {temVencimento ? (
+                <>
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
+                    Vencimento
+                  </p>
+                  <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">
+                    {formatData(dataVencimento)}
+                  </p>
+                  <p className="text-xs text-slate-500">{DIAS_VENCIMENTO_DEFAULT} dias</p>
+                </>
+              ) : temPagamentoDireto ? (
+                <>
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 mb-1">
+                    Termos de Pagamento
+                  </p>
+                  <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-300">
+                    Pronto-Pagamento
+                  </p>
+                  <p className="text-xs text-slate-500">{formaPagamento}</p>
+                </>
+              ) : (
+                <>
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
+                    Data Emissão
+                  </p>
+                  <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">
+                    {formatData(new Date())}
+                  </p>
+                </>
+              )}
+            </div>
+          </div>
+
+          {/* Itens */}
+          <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800">
             <Table>
-              <TableHeader className="bg-gray-50">
+              <TableHeader className="bg-slate-50 dark:bg-slate-800/50">
                 <TableRow>
                   <TableHead className="text-xs font-semibold">Descrição</TableHead>
                   <TableHead className="text-center text-xs font-semibold">Qtd</TableHead>
@@ -185,46 +252,65 @@ export function Passo3Emitir({
                   const totalLinhaComIVA = linha.total + (linha.total * linha.taxaIVA) / 100;
                   return (
                     <TableRow key={linha.id}>
-                      <TableCell className="text-xs font-medium text-gray-900">{linha.descricao}</TableCell>
+                      <TableCell className="text-xs font-medium text-slate-900 dark:text-white">
+                        {linha.descricao}
+                      </TableCell>
                       <TableCell className="text-center text-xs font-mono">{linha.quantidade}</TableCell>
                       <TableCell className="text-right text-xs font-mono">{formatMoedaAOA(linha.preco)}</TableCell>
                       <TableCell className="text-center text-xs font-mono">{linha.taxaIVA}%</TableCell>
-                      <TableCell className="text-right text-xs font-bold font-mono">{formatMoedaAOA(totalLinhaComIVA)}</TableCell>
+                      <TableCell className="text-right text-xs font-bold font-mono">
+                        {formatMoedaAOA(totalLinhaComIVA)}
+                      </TableCell>
                     </TableRow>
                   );
                 })}
               </TableBody>
             </Table>
           </div>
-        </Card>
 
-        {/* Resumo de Valores Totais */}
-        <Card className="bg-slate-900 text-white p-5 mb-6 rounded-xl shadow-md">
-          <div className="space-y-2 text-sm">
-            <div className="flex justify-between text-slate-300">
-              <span>Subtotal Imponível:</span>
-              <span className="font-mono">{formatMoedaAOA(subtotal)}</span>
-            </div>
-            <div className="flex justify-between text-slate-300">
-              <span>Total IVA:</span>
-              <span className="font-mono">{formatMoedaAOA(totalIVA)}</span>
-            </div>
-            <div className="flex justify-between text-lg font-bold text-white border-t border-slate-700 pt-3 mt-2">
-              <span>TOTAL A PAGAR:</span>
-              <span className="font-mono text-blue-400">{formatMoedaAOA(total)}</span>
+          {/* Totais */}
+          <div className="flex justify-end">
+            <div className="w-full sm:w-64 space-y-1 text-sm">
+              <div className="flex justify-between text-slate-500 dark:text-slate-400">
+                <span>Subtotal Imponível:</span>
+                <span className="font-mono">{formatMoedaAOA(subtotal)}</span>
+              </div>
+              <div className="flex justify-between text-slate-500 dark:text-slate-400">
+                <span>Total IVA:</span>
+                <span className="font-mono">{formatMoedaAOA(totalIVA)}</span>
+              </div>
+              <div className="flex justify-between font-bold text-base text-slate-900 dark:text-white border-t border-slate-200 dark:border-slate-700 pt-2 mt-1">
+                <span>TOTAL A PAGAR:</span>
+                <span className="font-mono text-blue-600 dark:text-blue-400">
+                  {formatMoedaAOA(total)}
+                </span>
+              </div>
             </div>
           </div>
-        </Card>
 
-        {/* Condições de Pagamento e Observações */}
-        <Card className="p-5 mb-6 space-y-4 rounded-xl border-gray-200">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Observações (se preenchidas) */}
+          {observacoes && (
+            <div className="text-xs text-slate-500 dark:text-slate-400 border-t border-slate-100 dark:border-slate-800 pt-3">
+              <span className="font-semibold text-slate-600 dark:text-slate-300">Observações: </span>
+              {observacoes}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Condições de Pagamento e Observações */}
+      <div className="border border-slate-200 dark:border-slate-800 rounded-[14px] p-5 bg-white dark:bg-slate-900 space-y-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {temPagamentoDireto || tipoDocumento === "Fatura" ? (
             <div>
-              <label className="text-xs font-semibold text-gray-700 block mb-1.5">
-                Forma de Pagamento <span className="text-red-500">*</span>
+              <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1.5">
+                Forma de pagamento <span className="text-red-500">*</span>
               </label>
-              <Select value={formaPagamento} onValueChange={(v) => setFormaPagamento(v ?? "Transferência")}>
-                <SelectTrigger className="bg-white border-gray-300">
+              <Select
+                value={formaPagamento}
+                onValueChange={(v) => setFormaPagamento(v ?? "Transferência")}
+              >
+                <SelectTrigger className="bg-white dark:bg-slate-950 border-slate-300 dark:border-slate-700 h-10 text-sm">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -236,61 +322,81 @@ export function Passo3Emitir({
                 </SelectContent>
               </Select>
             </div>
+          ) : null}
 
+          {temVencimento ? (
             <div>
-              <label className="text-xs font-semibold text-gray-700 block mb-1.5">
+              <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1.5">
                 Data de Vencimento
               </label>
-              <div className="px-3 py-2 bg-gray-100 border border-gray-200 rounded-md text-xs font-medium text-gray-700">
-                {formatData(dataVencimento)} <span className="text-gray-400 font-normal">({DIAS_VENCIMENTO_DEFAULT} dias)</span>
-              </div>
+              <Input
+                type="date"
+                value={format(dataVencimento, "yyyy-MM-dd")}
+                onChange={(e) => {
+                  if (e.target.value) {
+                    const [y, m, d] = e.target.value.split("-").map(Number);
+                    onChangeDataVencimento(new Date(y, m - 1, d));
+                  }
+                }}
+                className="bg-white dark:bg-slate-950 border-slate-300 dark:border-slate-700 h-10 text-xs font-medium text-slate-900 dark:text-white"
+              />
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
+                {formatData(dataVencimento)}
+              </p>
             </div>
-          </div>
+          ) : null}
+        </div>
 
-          <div>
-            <label className="text-xs font-semibold text-gray-700 block mb-1.5">
-              Observações / Notas no Documento (opcional)
-            </label>
-            <Textarea
-              placeholder="Adicione observações ou instruções bancárias adicionais para o cliente..."
-              value={observacoes}
-              onChange={(e) => setObservacoes(e.target.value)}
-              className="h-20 text-xs border-gray-300"
-            />
-          </div>
-        </Card>
+        <div>
+          <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1.5">
+            Observações / Notas no Documento{" "}
+            <span className="text-slate-400 font-normal">(opcional)</span>
+          </label>
+          <Textarea
+            placeholder="Adicione observações ou instruções bancárias adicionais para o cliente..."
+            value={observacoes}
+            onChange={(e) => setObservacoes(e.target.value)}
+            className="h-20 text-xs border-slate-300 dark:border-slate-700"
+          />
+        </div>
       </div>
 
-      {/* Botões de Ação */}
-      <div className="flex gap-3 justify-between pt-4 border-t">
-        <Button variant="outline" onClick={onBack} disabled={loading}>
-          <ArrowLeft className="w-4 h-4 mr-2" />
-          Voltar para Linhas
-        </Button>
-        <div className="flex gap-3">
+      {/* Ações finais */}
+      <div className="flex flex-col sm:flex-row gap-3 justify-between pt-4 border-t border-slate-100 dark:border-slate-800">
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={onBack} disabled={loading} className="text-sm">
+            <PencilLine className="w-4 h-4 mr-2" />
+            Editar Itens
+          </Button>
           <Link href="/faturas">
-            <Button variant="ghost" disabled={loading} className="text-gray-600">
+            <Button
+              variant="ghost"
+              disabled={loading}
+              className="text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40"
+            >
+              <XCircle className="w-4 h-4 mr-2" />
               Cancelar
             </Button>
           </Link>
-          <Button
-            onClick={handleEmitir}
-            disabled={loading || !clienteSelecionado || linhas.length === 0}
-            className="min-w-48 bg-green-600 hover:bg-green-700 text-white font-semibold"
-          >
-            {loading ? (
-              <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Emitindo {tipoDocumento}...
-              </>
-            ) : (
-              <>
-                <Send className="w-4 h-4 mr-2" />
-                Emitir {tipoDocumento} Agora
-              </>
-            )}
-          </Button>
         </div>
+
+        <Button
+          onClick={handleEmitir}
+          disabled={loading || !clienteSelecionado || linhas.length === 0}
+          className="min-w-52 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-sm"
+        >
+          {loading ? (
+            <>
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              Emitindo {tipoDocumento}...
+            </>
+          ) : (
+            <>
+              <Send className="w-4 h-4 mr-2" />
+              Emitir {tipoDocumento} Agora
+            </>
+          )}
+        </Button>
       </div>
     </div>
   );

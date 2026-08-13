@@ -5,7 +5,7 @@ import { useAppStore } from "@/lib/store";
 
 export function useStoreInit() {
   useEffect(() => {
-    // Load from storage only once on mount
-    useAppStore.getState().loadFromStorage();
+    // Load all data from the API (Supabase) once on mount
+    useAppStore.getState().loadAll();
   }, []); // Empty dependency array - runs only once on mount
 }

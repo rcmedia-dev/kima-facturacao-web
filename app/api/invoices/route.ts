@@ -1,142 +1,152 @@
 import { NextResponse } from "next/server";
+import { db } from "@/db/client";
 import { obterDocumentos, criarDocumento } from "@/db/queries";
 import { faturaLinhaSchema } from "@/lib/schemas";
 import { z } from "zod";
+import { requireCompanyId } from "@/lib/company";
 
-const EMPRESA_ID_DEFAULT = "e1000000-0000-0000-0000-000000000001";
-
-// Schema de validação para emissão de fatura
-const criarFaturaSchema = z.object({
-  clienteId: z.string().min(1, "Cliente é obrigatório"),
-  linhas: z.array(faturaLinhaSchema).min(1, "A fatura deve ter pelo menos 1 linha"),
+const criarDocumentoSchema = z.object({
+  tipo: z.enum(["Fatura", "FaturaRecibo", "Simplificada", "NotaCredito", "NotaDebito", "Orcamento", "GuiaRemessa"]).default("Fatura"),
+  serie: z.string().default("A"),
+  clienteId: z.string().min(1, "Cliente é obrigatório").optional(),
+  fornecedorId: z.string().optional(),
+  linhas: z.array(faturaLinhaSchema).min(1, "O documento deve ter pelo menos 1 linha"),
   formaPagamento: z.enum(["Numerário", "Transferência", "Multicaixa", "POS", "Cheque", "Crédito"]).default("Transferência"),
+  status: z.enum(["Pago", "Pendente", "Cancelado", "Processado", "Rascunho"]).optional(),
+  dataVencimento: z.string().optional(),
   observacoes: z.string().optional().default(""),
 });
 
+async function proximoNumero(companyId: string, tipo: string, serie: string): Promise<number> {
+  const { data: serieRow } = await db
+    .from("series_numeracao")
+    .select("*")
+    .eq("company_id", companyId)
+    .eq("serie", serie)
+    .eq("tipo_documento", tipo)
+    .maybeSingle();
+
+  if (serieRow) {
+    const n = serieRow.proximo_numero;
+    await db
+      .from("series_numeracao")
+      .update({ proximo_numero: n + 1, ultimo_numero_utilizado: n })
+      .eq("id", serieRow.id);
+    return n;
+  }
+
+  const documentos = await obterDocumentos(companyId, tipo);
+  return documentos.length + 1;
+}
+
 export async function GET(request: Request) {
   try {
+    const companyId = requireCompanyId(request);
     const { searchParams } = new URL(request.url);
+    const tipo = searchParams.get("tipo") || undefined;
     const status = searchParams.get("status");
     const dataInicioStr = searchParams.get("dataInicio");
     const dataFimStr = searchParams.get("dataFim");
     const page = parseInt(searchParams.get("page") || "1", 10);
-    const limit = parseInt(searchParams.get("limit") || "10", 10);
+    const limit = parseInt(searchParams.get("limit") || "50", 10);
 
-    let faturas = await obterDocumentos(EMPRESA_ID_DEFAULT, "Fatura");
+    let documentos = await obterDocumentos(companyId, tipo);
 
-    // Filtrar por status
     if (status && status !== "Todos") {
-      faturas = faturas.filter(
-        (f) => f.status.toLowerCase() === status.toLowerCase()
-      );
+      documentos = documentos.filter((d) => d.status.toLowerCase() === status.toLowerCase());
     }
-
-    // Filtrar por intervalo de datas
     if (dataInicioStr) {
       const dataInicio = new Date(dataInicioStr);
-      faturas = faturas.filter(
-        (f) => new Date(f.dataEmissao) >= dataInicio
-      );
+      documentos = documentos.filter((d) => new Date(d.dataEmissao) >= dataInicio);
     }
     if (dataFimStr) {
       const dataFim = new Date(dataFimStr);
       dataFim.setHours(23, 59, 59, 999);
-      faturas = faturas.filter(
-        (f) => new Date(f.dataEmissao) <= dataFim
-      );
+      documentos = documentos.filter((d) => new Date(d.dataEmissao) <= dataFim);
     }
 
-    // Ordenar do mais recente para o mais antigo
-    faturas.sort(
+    documentos.sort(
       (a, b) => new Date(b.dataEmissao).getTime() - new Date(a.dataEmissao).getTime()
     );
 
-    // Paginação
-    const totalItems = faturas.length;
+    const totalItems = documentos.length;
     const totalPages = Math.ceil(totalItems / limit) || 1;
     const startIndex = (page - 1) * limit;
-    const paginatedFaturas = faturas.slice(startIndex, startIndex + limit);
+    const paginated = documentos.slice(startIndex, startIndex + limit);
 
     return NextResponse.json({
       success: true,
-      data: paginatedFaturas,
-      pagination: {
-        totalItems,
-        totalPages,
-        currentPage: page,
-        itemsPerPage: limit,
-      },
+      data: paginated,
+      pagination: { totalItems, totalPages, currentPage: page, itemsPerPage: limit },
     });
   } catch (error: any) {
     return NextResponse.json(
-      { success: false, error: error.message || "Erro ao obter faturas" },
-      { status: 500 }
+      { success: false, error: error.message || "Erro ao obter documentos" },
+      { status: error.status || 500 }
     );
   }
 }
 
 export async function POST(request: Request) {
   try {
+    const companyId = requireCompanyId(request);
     const body = await request.json();
-    const validatedData = criarFaturaSchema.parse(body);
+    const validatedData = criarDocumentoSchema.parse(body);
 
-    // Calcular subtotal, IVA por linha e total geral
     let subtotal = 0;
     let totalIVA = 0;
 
-    const linhasFormatadas = validatedData.linhas.map((linha) => {
+    const linhas = validatedData.linhas.map((linha) => {
       const valorBase = linha.quantidade * linha.preco;
       const valorIVA = (valorBase * linha.taxaIVA) / 100;
       const totalLinha = valorBase + valorIVA;
-
       subtotal += valorBase;
       totalIVA += valorIVA;
 
       return {
-        id: `linha-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+        id: crypto.randomUUID(),
         artigoId: linha.artigoId,
         descricao: linha.descricao,
         quantidade: linha.quantidade,
         preco: linha.preco,
-        taxaIVA: linha.taxaIVA,
+        taxaIVA: Number(linha.taxaIVA) as 0 | 7 | 14,
         unidadeMedida: "UN" as const,
         total: totalLinha,
       };
     });
 
     const total = subtotal + totalIVA;
+    const numero = await proximoNumero(companyId, validatedData.tipo, validatedData.serie);
 
-    // Buscar faturas existentes para numeração sequencial automática
-    const faturasExistentes = await obterDocumentos(EMPRESA_ID_DEFAULT, "Fatura");
-    const proximoNumero = faturasExistentes.length + 1;
-
-    // Data de vencimento padrão: 30 dias após hoje
     const dataEmissao = new Date();
-    const dataVencimento = new Date();
-    dataVencimento.setDate(dataEmissao.getDate() + 30);
+    const dataVencimento = validatedData.dataVencimento
+      ? new Date(validatedData.dataVencimento)
+      : new Date(dataEmissao.getTime() + 30 * 24 * 60 * 60 * 1000);
 
-    const novaFatura = await criarDocumento(EMPRESA_ID_DEFAULT, {
-      tipo: "Fatura",
-      serie: "A",
-      numero: String(proximoNumero),
+    const initialStatus =
+      validatedData.status ||
+      (validatedData.tipo === "FaturaRecibo" || validatedData.tipo === "Simplificada" ? "Pago" : "Pendente");
+
+    const novoDocumento = await criarDocumento(companyId, {
+      tipo: validatedData.tipo,
+      serie: validatedData.serie,
+      numero: String(numero),
       clienteId: validatedData.clienteId,
+      fornecedorId: validatedData.fornecedorId,
       dataEmissao,
       dataVencimento,
       formaPagamento: validatedData.formaPagamento,
-      status: "Pendente",
+      status: initialStatus,
       observacoes: validatedData.observacoes,
       subtotal,
       totalIVA,
       total,
-      linhas: linhasFormatadas,
+      dataPagamento: initialStatus === "Pago" ? dataEmissao : undefined,
+      linhas,
     });
 
     return NextResponse.json(
-      {
-        success: true,
-        data: novaFatura,
-        message: "Fatura emitida com sucesso",
-      },
+      { success: true, data: novoDocumento, message: "Documento emitido com sucesso" },
       { status: 201 }
     );
   } catch (error: any) {
@@ -147,7 +157,7 @@ export async function POST(request: Request) {
       );
     }
     return NextResponse.json(
-      { success: false, error: error.message || "Erro ao emitir fatura" },
+      { success: false, error: error.message || "Erro ao emitir documento" },
       { status: 500 }
     );
   }

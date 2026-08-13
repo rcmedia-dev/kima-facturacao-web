@@ -1,0 +1,955 @@
+<!DOCTYPE html>
+<html lang="pt-AO">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Amostras de Formatos de Impressão AGT · Kima Facturação</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-app: #0f172a;
+      --bg-card: #1e293b;
+      --text-main: #f8fafc;
+      --border-color: #334155;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg-app);
+      color: var(--text-main);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Topbar */
+    header {
+      background: #090d16;
+      border-bottom: 1px solid var(--border-color);
+      padding: 1rem 1.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .brand-logo {
+      width: 38px;
+      height: 38px;
+      background: linear-gradient(135deg, #2563eb, #1d4ed8);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: 800;
+      font-size: 1.1rem;
+      box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4);
+    }
+
+    .brand-title h1 {
+      font-size: 1.1rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+
+    .brand-title p {
+      font-size: 0.75rem;
+      color: #94a3b8;
+    }
+
+    .badge-agt {
+      background: #064e3b;
+      color: #34d399;
+      border: 1px solid #059669;
+      padding: 0.35rem 0.85rem;
+      border-radius: 20px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    /* Format selector tabs */
+    .tabs-nav {
+      background: #1e293b;
+      border-bottom: 1px solid var(--border-color);
+      padding: 0.5rem 1.5rem;
+      display: flex;
+      gap: 0.5rem;
+      overflow-x: auto;
+      scroll-behavior: smooth;
+    }
+
+    .tab-btn {
+      background: transparent;
+      border: 1px solid transparent;
+      color: #94a3b8;
+      padding: 0.65rem 1.1rem;
+      border-radius: 10px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .tab-btn:hover {
+      background: #334155;
+      color: white;
+    }
+
+    .tab-btn.active {
+      color: white;
+      border-color: currentColor;
+    }
+
+    /* Color themes for tabs */
+    .tab-btn[data-type="fatura"].active { background: #1e40af; border-color: #3b82f6; }
+    .tab-btn[data-type="fatura-recibo"].active { background: #065f46; border-color: #10b981; }
+    .tab-btn[data-type="simplificada"].active { background: #92400e; border-color: #f59e0b; }
+    .tab-btn[data-type="termico"].active { background: #475569; border-color: #94a3b8; }
+    .tab-btn[data-type="nota-credito"].active { background: #9f1239; border-color: #f43f5e; }
+    .tab-btn[data-type="nota-debito"].active { background: #9a3412; border-color: #f97316; }
+    .tab-btn[data-type="orcamento"].active { background: #5b21b6; border-color: #8b5cf6; }
+    .tab-btn[data-type="guia-remessa"].active { background: #334155; border-color: #64748b; }
+
+    /* Main view area */
+    main {
+      flex: 1;
+      padding: 2rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1.5rem;
+    }
+
+    .toolbar-info {
+      width: 100%;
+      max-width: 820px;
+      background: #1e293b;
+      border: 1px solid var(--border-color);
+      border-radius: 14px;
+      padding: 1rem 1.25rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+
+    .info-desc h2 {
+      font-size: 1rem;
+      font-weight: 700;
+    }
+    .info-desc p {
+      font-size: 0.8rem;
+      color: #94a3b8;
+      margin-top: 0.15rem;
+    }
+
+    .btn-print {
+      background: #2563eb;
+      color: white;
+      border: none;
+      padding: 0.6rem 1.3rem;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      transition: background 0.2s;
+    }
+
+    .btn-print:hover {
+      background: #1d4ed8;
+    }
+
+    /* Print Document Container */
+    .paper-canvas {
+      width: 100%;
+      display: flex;
+      justify-content: center;
+    }
+
+    /* Standard A4 Paper Simulation */
+    .a4-page {
+      width: 210mm;
+      min-height: 297mm;
+      background: white;
+      color: #1e293b;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+      border-radius: 4px;
+      position: relative;
+      overflow: hidden;
+      padding: 0;
+      font-size: 12px;
+      line-height: 1.4;
+    }
+
+    /* Top color accent bar */
+    .top-bar-accent {
+      height: 6px;
+      width: 100%;
+    }
+
+    .accent-fatura { background: #2563eb; }
+    .accent-fatura-recibo { background: #10b981; }
+    .accent-simplificada { background: #d97706; }
+    .accent-nota-credito { background: #e11d48; }
+    .accent-nota-debito { background: #ea580c; }
+    .accent-orcamento { background: #7c3aed; }
+    .accent-guia-remessa { background: #475569; }
+
+    .doc-content {
+      padding: 30px 40px;
+    }
+
+    /* Header section */
+    .doc-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 24px;
+    }
+
+    .company-brand {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .company-name {
+      font-size: 20px;
+      font-weight: 800;
+      color: #0f172a;
+      letter-spacing: -0.02em;
+    }
+
+    .company-sub {
+      font-size: 11px;
+      color: #64748b;
+    }
+
+    .doc-title-block {
+      text-align: right;
+    }
+
+    .doc-title-name {
+      font-size: 22px;
+      font-weight: 900;
+      letter-spacing: -0.03em;
+    }
+
+    .title-fatura { color: #2563eb; }
+    .title-fatura-recibo { color: #10b981; }
+    .title-simplificada { color: #d97706; }
+    .title-nota-credito { color: #e11d48; }
+    .title-nota-debito { color: #ea580c; }
+    .title-orcamento { color: #7c3aed; }
+    .title-guia-remessa { color: #475569; }
+
+    .doc-number {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      font-weight: 700;
+      color: #334155;
+      margin-top: 2px;
+    }
+
+    .divider {
+      height: 1px;
+      background: #e2e8f0;
+      margin: 16px 0 20px;
+    }
+
+    /* Two column info blocks */
+    .info-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 30px;
+      margin-bottom: 24px;
+    }
+
+    .info-box-title {
+      font-size: 10px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 6px;
+    }
+
+    .info-box-name {
+      font-size: 14px;
+      font-weight: 700;
+      color: #0f172a;
+      margin-bottom: 4px;
+    }
+
+    .info-box-line {
+      font-size: 11px;
+      color: #475569;
+      margin-bottom: 2px;
+    }
+
+    /* Callout box for NC/ND */
+    .retificacao-box {
+      border-radius: 8px;
+      padding: 12px 16px;
+      margin-bottom: 20px;
+      font-size: 11px;
+    }
+
+    .nc-box {
+      background: #fef2f2;
+      border: 1px solid #fecaca;
+      color: #991b1b;
+    }
+
+    .nd-box {
+      background: #fff7ed;
+      border: 1px solid #ffedd5;
+      color: #9a3412;
+    }
+
+    .retificacao-title {
+      font-weight: 800;
+      font-size: 11px;
+      margin-bottom: 3px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    /* Metadata Bar */
+    .meta-bar {
+      background: #f1f5f9;
+      border-radius: 8px;
+      padding: 10px 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      font-size: 11px;
+      font-weight: 600;
+      color: #475569;
+    }
+
+    .stamp-paid {
+      background: #ecfdf5;
+      border: 1px solid #a7f3d0;
+      color: #047857;
+      padding: 4px 12px;
+      border-radius: 6px;
+      font-weight: 800;
+      font-size: 11px;
+      letter-spacing: 0.05em;
+    }
+
+    /* Items Table */
+    .items-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 20px;
+    }
+
+    .items-table th {
+      background: #0f172a;
+      color: white;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      padding: 8px 12px;
+      text-align: left;
+    }
+
+    .items-table th.th-num { text-align: center; }
+    .items-table th.th-curr { text-align: right; }
+
+    .items-table td {
+      padding: 10px 12px;
+      border-bottom: 1px solid #e2e8f0;
+      font-size: 11.5px;
+      color: #334155;
+    }
+
+    .items-table tr:nth-child(even) td {
+      background: #f8fafc;
+    }
+
+    .td-desc { font-weight: 600; color: #0f172a; }
+    .td-mono { font-family: 'JetBrains Mono', monospace; }
+
+    /* Totals section */
+    .totals-wrapper {
+      display: flex;
+      justify-content: flex-end;
+      margin-bottom: 30px;
+    }
+
+    .totals-table {
+      width: 280px;
+    }
+
+    .totals-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 4px 0;
+      font-size: 11px;
+      color: #64748b;
+    }
+
+    .totals-row.grand-total {
+      border-top: 2px solid #e2e8f0;
+      margin-top: 6px;
+      padding-top: 8px;
+      font-size: 14px;
+      font-weight: 800;
+    }
+
+    /* Observations */
+    .obs-block {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 12px 16px;
+      margin-bottom: 40px;
+      font-size: 11px;
+      color: #475569;
+    }
+    .obs-title {
+      font-weight: 700;
+      color: #334155;
+      margin-bottom: 4px;
+    }
+
+    /* Footer Legal */
+    .doc-footer {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: #0f172a;
+      color: #94a3b8;
+      padding: 10px 40px;
+      text-align: center;
+      font-size: 10px;
+      font-weight: 500;
+    }
+
+    /* POS 80mm Thermal Receipt Simulation */
+    .pos-ticket {
+      width: 80mm;
+      min-height: 180mm;
+      background: #fffbeb;
+      color: #1c1917;
+      padding: 20px 15px;
+      box-shadow: 0 15px 35px rgba(0,0,0,0.6);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      line-height: 1.3;
+      border-radius: 2px;
+    }
+
+    .pos-header {
+      text-align: center;
+      margin-bottom: 12px;
+    }
+    .pos-store-name {
+      font-size: 14px;
+      font-weight: 800;
+      text-transform: uppercase;
+    }
+    .pos-sub {
+      font-size: 10px;
+      color: #57534e;
+    }
+    .pos-line {
+      border-top: 1px dashed #78716c;
+      margin: 8px 0;
+    }
+    .pos-title {
+      text-align: center;
+      font-weight: 800;
+      font-size: 12px;
+    }
+    .pos-item-row {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 4px;
+    }
+    .pos-item-desc {
+      font-weight: 700;
+    }
+    .pos-total-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 14px;
+      font-weight: 900;
+      margin: 8px 0;
+    }
+    .pos-barcode {
+      text-align: center;
+      margin-top: 15px;
+      font-size: 24px;
+      letter-spacing: 4px;
+    }
+
+    /* Responsive adjustments */
+    @media print {
+      body { background: white; }
+      header, .tabs-nav, .toolbar-info { display: none; }
+      main { padding: 0; }
+      .a4-page { box-shadow: none; width: 100%; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Header principal -->
+  <header>
+    <div class="brand">
+      <div class="brand-logo">K</div>
+      <div class="brand-title">
+        <h1>Kima Facturação · AGT</h1>
+        <p>Amostras de Formatos de Impressão Oficial</p>
+      </div>
+    </div>
+    <div class="badge-agt">
+      <span>✓ Certificado AGT Nº 999/2026</span>
+    </div>
+  </header>
+
+  <!-- Navegador de tipos de documentos (Tabs) -->
+  <nav class="tabs-nav" id="tabsNav">
+    <button class="tab-btn active" data-type="fatura">
+      Fatura (A Prazo / B2B)
+    </button>
+    <button class="tab-btn" data-type="fatura-recibo">
+      Fatura Recibo (Pronto-Pagamento)
+    </button>
+    <button class="tab-btn" data-type="simplificada">
+      Fatura Simplificada (A4)
+    </button>
+    <button class="tab-btn" data-type="termico">
+      Talão Térmico (POS 80mm)
+    </button>
+    <button class="tab-btn" data-type="nota-credito">
+      Nota de Crédito (Retificação)
+    </button>
+    <button class="tab-btn" data-type="nota-debito">
+      Nota de Débito (Acréscimo)
+    </button>
+    <button class="tab-btn" data-type="orcamento">
+      Orçamento Comercial
+    </button>
+    <button class="tab-btn" data-type="guia-remessa">
+      Guia de Remessa (Transporte)
+    </button>
+  </nav>
+
+  <!-- Zona de Exibição Principal -->
+  <main>
+    <div class="toolbar-info">
+      <div class="info-desc">
+        <h2 id="viewTitle">Fatura Comercial (A Prazo)</h2>
+        <p id="viewDesc">Documento B2B obrigatório em Angola. Comprova a transmissão de bens/serviços com vencimento estipulado.</p>
+      </div>
+      <button class="btn-print" onclick="window.print()">
+        Testar Impressão
+      </button>
+    </div>
+
+    <div class="paper-canvas" id="canvasArea">
+      <!-- O documento HTML é injetado dinamicamente via JS -->
+    </div>
+  </main>
+
+  <script>
+    const samples = {
+      'fatura': {
+        title: 'Fatura Comercial (A Prazo B2B)',
+        desc: 'Comprova a venda com pagamento agendado. Status: Pendente. Inclui data de vencimento.',
+        accentClass: 'accent-fatura',
+        titleClass: 'title-fatura',
+        docTitle: 'FATURA',
+        docNum: 'FT A/000142',
+        statusStamp: null,
+        metaText: 'Vencimento: 27 de Março de 2026',
+        clientName: 'Sonangol Distribuidora, S.A.',
+        clientNif: '5403189201',
+        clientAddress: 'Rua Rainha Ginga nº 45, Luanda',
+        retificacaoBox: null,
+        totalLabel: 'TOTAL A PAGAR (AOA):',
+        totalVal: '1.254.000,00 AOA',
+        obs: 'Condições de pagamento a 30 dias. Por favor efetue a transferência para o IBAN AO06.0040.0000.1234.5678.1014.5'
+      },
+
+      'fatura-recibo': {
+        title: 'Fatura Recibo (Pronto-Pagamento 2-em-1)',
+        desc: 'Serve simultaneamente como fatura e recibo comprovativo de pagamento efetuado no ato.',
+        accentClass: 'accent-fatura-recibo',
+        titleClass: 'title-fatura-recibo',
+        docTitle: 'FACTURA-RECIBO',
+        docNum: 'FR A/000891',
+        statusStamp: 'PAGO / LIQUIDADO',
+        metaText: 'Liquidação: Pronto-Pagamento · TPA Multicaixa',
+        clientName: 'Clinica Sagrada Esperança, Lda',
+        clientNif: '5001239845',
+        clientAddress: 'Avenida 4 de Fevereiro, Luanda',
+        retificacaoBox: null,
+        totalLabel: 'TOTAL PAGO (AOA):',
+        totalVal: '456.000,00 AOA',
+        obs: 'Pagamento recebido por TPA Multicaixa nº 4591. Obrigado pela preferência!'
+      },
+
+      'simplificada': {
+        title: 'Fatura Simplificada (Formato A4)',
+        desc: 'Para venda a retalho e balcão. Cliente com NIF facultativo.',
+        accentClass: 'accent-simplificada',
+        titleClass: 'title-simplificada',
+        docTitle: 'FATURA SIMPLIFICADA',
+        docNum: 'FS A/003410',
+        statusStamp: 'PAGO / LIQUIDADO',
+        metaText: 'Liquidação: Pronto-Pagamento · Numerário',
+        clientName: 'Consumidor Final',
+        clientNif: 'Consumidor Final',
+        clientAddress: 'Luanda, Angola',
+        retificacaoBox: null,
+        totalLabel: 'TOTAL PAGO (AOA):',
+        totalVal: '85.500,00 AOA',
+        obs: 'Fatura emitida ao abrigo do regime simplificado da AGT.'
+      },
+
+      'nota-credito': {
+        title: 'Nota de Crédito (Retificação de Fatura)',
+        desc: 'Documento retificativo para anular ou creditar valores de uma fatura emitida anteriormente.',
+        accentClass: 'accent-nota-credito',
+        titleClass: 'title-nota-credito',
+        docTitle: 'NOTA DE CRÉDITO',
+        docNum: 'NC A/000045',
+        statusStamp: null,
+        metaText: 'Emissão: 12 de Fevereiro de 2026',
+        clientName: 'Sonangol Distribuidora, S.A.',
+        clientNif: '5403189201',
+        clientAddress: 'Rua Rainha Ginga nº 45, Luanda',
+        retificacaoBox: `
+          <div class="retificacao-box nc-box">
+            <div class="retificacao-title">
+              DOCUMENTO DE RETIFICAÇÃO REFERENTE À FATURA: FT A/000142
+            </div>
+            <div>Motivo da Retificação: Devolução de 2x Servidores Danificados em Transporte</div>
+          </div>
+        `,
+        totalLabel: 'TOTAL A CREDITAR (AOA):',
+        totalVal: '320.000,00 AOA',
+        obs: 'O montante acima foi creditado na conta corrente do cliente.'
+      },
+
+      'nota-debito': {
+        title: 'Nota de Débito (Acréscimo de Encargos)',
+        desc: 'Documento retificativo para adicionar encargos ou juros a uma fatura anterior.',
+        accentClass: 'accent-nota-debito',
+        titleClass: 'title-nota-debito',
+        docTitle: 'NOTA DE DÉBITO',
+        docNum: 'ND A/000012',
+        statusStamp: null,
+        metaText: 'Vencimento: 20 de Fevereiro de 2026',
+        clientName: 'Distribuidora Kikolo, Lda',
+        clientNif: '5009876543',
+        clientAddress: 'Via Expressa Km 14, Viana',
+        retificacaoBox: `
+          <div class="retificacao-box nd-box">
+            <div class="retificacao-title">
+              DOCUMENTO DE RETIFICAÇÃO REFERENTE À FATURA: FT A/000098
+            </div>
+            <div>Motivo do Débito: Cobrança de Frete Especial e Juros de Mora de Pagamento Atrasado</div>
+          </div>
+        `,
+        totalLabel: 'TOTAL A DEBITAR (AOA):',
+        totalVal: '75.000,00 AOA',
+        obs: 'Valor debitado relativo ao custo de transporte rodoviário adicional.'
+      },
+
+      'orcamento': {
+        title: 'Orçamento Comercial (Proposta)',
+        desc: 'Proposta de preços prévia. Sem efeito de fatura fiscal perante a AGT.',
+        accentClass: 'accent-orcamento',
+        titleClass: 'title-orcamento',
+        docTitle: 'ORÇAMENTO',
+        docNum: 'OR A/000312',
+        statusStamp: null,
+        metaText: 'Validade da Proposta: 15 Dias (até 27 de Fevereiro de 2026)',
+        clientName: 'Grupo Ensa Seguros, S.A.',
+        clientNif: '5401123456',
+        clientAddress: 'Avenida Lenine nº 12, Luanda',
+        retificacaoBox: null,
+        totalLabel: 'TOTAL ESTIMADO (AOA):',
+        totalVal: '2.890.000,00 AOA',
+        obs: 'Este orçamento tem validade de 15 dias. Não serve como documento comprovativo de venda fiscal.'
+      },
+
+      'guia-remessa': {
+        title: 'Guia de Remessa (Transporte)',
+        desc: 'Acompanha o transporte de mercadorias. Especifica viatura e motorista.',
+        accentClass: 'accent-guia-remessa',
+        titleClass: 'title-guia-remessa',
+        docTitle: 'GUIA DE REMESSA',
+        docNum: 'GR A/000215',
+        statusStamp: null,
+        metaText: 'Viatura: LD-45-89-GH · Motorista: Manuel António',
+        clientName: 'Armazéns Viana, Lda',
+        clientNif: '5004567890',
+        clientAddress: 'Parque Industrial de Viana, Armazém 4',
+        retificacaoBox: null,
+        totalLabel: 'TOTAL MERCADORIA (AOA):',
+        totalVal: '1.800.000,00 AOA',
+        obs: 'Carga transportada sob responsabilidade da Transportadora Kikolo Express.'
+      }
+    };
+
+    function renderA4(key) {
+      const data = samples[key];
+      if (!data) return '';
+
+      return `
+        <div class="a4-page">
+          <div class="top-bar-accent ${data.accentClass}"></div>
+          
+          <div class="doc-content">
+            <!-- Header -->
+            <div class="doc-header">
+              <div class="company-brand">
+                <div class="company-name">KIMA FACTURAÇÃO, LDA</div>
+                <div class="company-sub">NIF: 5417082910 · Capital Social: 5.000.000 AOA</div>
+                <div class="company-sub">Rua Major Kanhangulo nº 112, Luanda - Angola</div>
+                <div class="company-sub">Tel: +244 923 123 456 · Email: comercial@kima.ao</div>
+              </div>
+
+              <div class="doc-title-block">
+                <div class="doc-title-name ${data.titleClass}">${data.docTitle}</div>
+                <div class="doc-number">Nº ${data.docNum}</div>
+                <div class="company-sub" style="margin-top:4px;">Via Original</div>
+              </div>
+            </div>
+
+            <div class="divider"></div>
+
+            <!-- Dados Emissor e Cliente -->
+            <div class="info-grid">
+              <div>
+                <div class="info-box-title" style="color:#2563eb;">EMISSOR DA VENDA</div>
+                <div class="info-box-name">KIMA FACTURAÇÃO, LDA</div>
+                <div class="info-box-line">NIF: 5417082910</div>
+                <div class="info-box-line">Luanda, Angola</div>
+              </div>
+
+              <div>
+                <div class="info-box-title" style="color:#2563eb;">DESTINATÁRIO / CLIENTE</div>
+                <div class="info-box-name">${data.clientName}</div>
+                <div class="info-box-line">NIF: ${data.clientNif}</div>
+                <div class="info-box-line">${data.clientAddress}</div>
+              </div>
+            </div>
+
+            <!-- Caixa de Retificação se existir -->
+            ${data.retificacaoBox || ''}
+
+            <!-- Metadata Bar -->
+            <div class="meta-bar">
+              <div>Emissão: 12 de Fevereiro de 2026</div>
+              <div>${data.metaText}</div>
+              ${data.statusStamp ? `<div class="stamp-paid">✓ ${data.statusStamp}</div>` : ''}
+            </div>
+
+            <!-- Tabela de Itens -->
+            <table class="items-table">
+              <thead>
+                <tr>
+                  <th>Descrição dos Bens / Serviços</th>
+                  <th class="th-num">Qtd</th>
+                  <th class="th-curr">Preço Unit.</th>
+                  <th class="th-num">IVA</th>
+                  <th class="th-curr">Total c/ IVA</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td class="td-desc">Licença de Software Kima ERP Empresarial (Anual)</td>
+                  <td class="td-mono" style="text-align:center;">1</td>
+                  <td class="td-mono" style="text-align:right;">350.000,00 AOA</td>
+                  <td class="td-mono" style="text-align:center;">14%</td>
+                  <td class="td-mono" style="text-align:right; font-weight:700;">399.000,00 AOA</td>
+                </tr>
+                <tr>
+                  <td class="td-desc">Serviço de Formação Técnica e Parametrização Inicial</td>
+                  <td class="td-mono" style="text-align:center;">2</td>
+                  <td class="td-mono" style="text-align:right;">100.000,00 AOA</td>
+                  <td class="td-mono" style="text-align:center;">14%</td>
+                  <td class="td-mono" style="text-align:right; font-weight:700;">228.000,00 AOA</td>
+                </tr>
+                <tr>
+                  <td class="td-desc">Suporte Técnico Dedicado 24/7 (Pacote Mensal)</td>
+                  <td class="td-mono" style="text-align:center;">1</td>
+                  <td class="td-mono" style="text-align:right;">150.000,00 AOA</td>
+                  <td class="td-mono" style="text-align:center;">14%</td>
+                  <td class="td-mono" style="text-align:right; font-weight:700;">171.000,00 AOA</td>
+                </tr>
+              </tbody>
+            </table>
+
+            <!-- Totais -->
+            <div class="totals-wrapper">
+              <div class="totals-table">
+                <div class="totals-row">
+                  <span>Subtotal Imponível:</span>
+                  <span class="td-mono">700.000,00 AOA</span>
+                </div>
+                <div class="totals-row">
+                  <span>Total IVA (14%):</span>
+                  <span class="td-mono">98.000,00 AOA</span>
+                </div>
+                <div class="totals-row grand-total" style="color:#0f172a;">
+                  <span>${data.totalLabel}</span>
+                  <span class="td-mono">${data.totalVal}</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Observações -->
+            <div class="obs-block">
+              <div class="obs-title">Observações / Notas Comerciais:</div>
+              <div>${data.obs}</div>
+            </div>
+
+            <!-- Rodapé Legal AGT -->
+            <div class="doc-footer">
+              Processado por programa certificado nº 999/AGT/2026 · Kima Facturação Web · Documento emitido eletronicamente
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderTermico() {
+      return `
+        <div class="pos-ticket">
+          <div class="pos-header">
+            <div class="pos-store-name">KIMA FACTURAÇÃO</div>
+            <div class="pos-sub">KIMA FACTURAÇÃO, LDA</div>
+            <div class="pos-sub">NIF: 5417082910</div>
+            <div class="pos-sub">Rua Major Kanhangulo nº 112, Luanda</div>
+          </div>
+
+          <div class="pos-line"></div>
+
+          <div class="pos-title">FATURA SIMPLIFICADA</div>
+          <div style="text-align:center; font-size:10px; margin-top:2px;">Nº FS A/003410</div>
+
+          <div class="pos-line"></div>
+
+          <div style="font-size:10px;">
+            <div>Data: 12/02/2026 14:32</div>
+            <div>Cliente: Consumidor Final</div>
+            <div>NIF: Consumidor Final</div>
+          </div>
+
+          <div class="pos-line"></div>
+
+          <div class="pos-item-row">
+            <span class="pos-item-desc">2x Coca-Cola 330ml</span>
+            <span>1.200,00</span>
+          </div>
+          <div class="pos-item-row">
+            <span class="pos-item-desc">1x Hambúrguer Especial Kima</span>
+            <span>3.500,00</span>
+          </div>
+          <div class="pos-item-row">
+            <span class="pos-item-desc">1x Batata Frita Grande</span>
+            <span>1.500,00</span>
+          </div>
+
+          <div class="pos-line"></div>
+
+          <div class="pos-item-row">
+            <span>Subtotal:</span>
+            <span>5.438,60</span>
+          </div>
+          <div class="pos-item-row">
+            <span>IVA (14%):</span>
+            <span>761,40</span>
+          </div>
+
+          <div class="pos-total-row">
+            <span>TOTAL:</span>
+            <span>6.200,00 AOA</span>
+          </div>
+
+          <div class="pos-line"></div>
+
+          <div style="font-size:10px; text-align:center;">
+            <div>Modo Pagamento: MULTICAIXA</div>
+            <div style="margin-top:6px;">Processado por software certificado</div>
+            <div>Nº 999/AGT/2026</div>
+            <div style="margin-top:8px; font-weight:bold;">Obrigado pela preferência!</div>
+          </div>
+
+          <div class="pos-barcode">||| |||| || ||||| |||</div>
+        </div>
+      `;
+    }
+
+    // Switch active tab
+    const tabs = document.querySelectorAll('.tab-btn');
+    const canvasArea = document.getElementById('canvasArea');
+    const viewTitle = document.getElementById('viewTitle');
+    const viewDesc = document.getElementById('viewDesc');
+
+    tabs.forEach(tab => {
+      tab.addEventListener('click', () => {
+        tabs.forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+
+        const docType = tab.getAttribute('data-type');
+        
+        if (docType === 'termico') {
+          viewTitle.innerText = 'Talão Térmico (POS 80mm)';
+          viewDesc.innerText = 'Formato compacto para impressoras térmicas de recibos (80mm) em lojas de retalho, balcão e restauração.';
+          canvasArea.innerHTML = renderTermico();
+        } else {
+          const s = samples[docType];
+          if (s) {
+            viewTitle.innerText = s.title;
+            viewDesc.innerText = s.desc;
+            canvasArea.innerHTML = renderA4(docType);
+          }
+        }
+      });
+    });
+
+    // Initial render
+    canvasArea.innerHTML = renderA4('fatura');
+  </script>
+</body>
+</html>

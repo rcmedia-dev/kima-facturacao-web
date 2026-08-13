@@ -1,21 +1,17 @@
 import { NextResponse } from "next/server";
-import { db } from "@/db/client";
-import { eq } from "drizzle-orm";
-import { artigos } from "@/db/schema";
+import { obterArtigoPorId } from "@/db/queries";
+import { atualizarArtigo, deletarArtigo } from "@/db/queries";
 import { artigoSchemaInput } from "@/lib/schemas";
+import { requireCompanyId } from "@/lib/company";
 
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const companyId = requireCompanyId(request);
     const { id } = await params;
-    const artigo = await db.query.artigos.findFirst({
-      where: eq(artigos.id, id),
-      with: {
-        fornecedor: true,
-      },
-    });
+    const artigo = await obterArtigoPorId(companyId, id);
 
     if (!artigo) {
       return NextResponse.json(
@@ -28,7 +24,7 @@ export async function GET(
   } catch (error: any) {
     return NextResponse.json(
       { success: false, error: error.message || "Erro ao buscar artigo" },
-      { status: 500 }
+      { status: error.status || 500 }
     );
   }
 }
@@ -38,27 +34,25 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const companyId = requireCompanyId(request);
     const { id } = await params;
     const body = await request.json();
     const validatedData = artigoSchemaInput.partial().parse(body);
 
-    const updatePayload: any = {
-      ...validatedData,
-      atualizadoEm: new Date(),
-    };
-
-    if (validatedData.preco !== undefined) {
-      updatePayload.preco = String(validatedData.preco);
-    }
-    if (validatedData.taxaIVA !== undefined) {
-      updatePayload.taxaIVA = parseInt(validatedData.taxaIVA);
-    }
-
-    const [artigoAtualizado] = await db
-      .update(artigos)
-      .set(updatePayload)
-      .where(eq(artigos.id, id))
-      .returning();
+    const artigoAtualizado = await atualizarArtigo(companyId, id, {
+      codigo: validatedData.codigo,
+      descricao: validatedData.descricao,
+      tipo: validatedData.tipo,
+      preco: validatedData.preco,
+      taxaIVA: validatedData.taxaIVA !== undefined
+        ? (Number(validatedData.taxaIVA) as 0 | 7 | 14)
+        : undefined,
+      categoria: validatedData.categoria,
+      unidadeMedida: validatedData.unidadeMedida,
+      stock: validatedData.stock,
+      stockMinimo: validatedData.stockMinimo,
+      ativo: validatedData.ativo,
+    });
 
     return NextResponse.json({ success: true, data: artigoAtualizado });
   } catch (error: any) {
@@ -80,16 +74,13 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const companyId = requireCompanyId(request);
     const { id } = await params;
-    const [artigoDeletado] = await db
-      .delete(artigos)
-      .where(eq(artigos.id, id))
-      .returning();
+    await deletarArtigo(companyId, id);
 
     return NextResponse.json({
       success: true,
       message: "Artigo removido com sucesso",
-      data: artigoDeletado,
     });
   } catch (error: any) {
     return NextResponse.json(

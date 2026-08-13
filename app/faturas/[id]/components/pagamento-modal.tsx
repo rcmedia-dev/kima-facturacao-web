@@ -14,6 +14,32 @@ import { Label } from "@/components/ui/label";
 import { formatData, formatMoedaAOA } from "@/lib/formatters";
 import { CreditCard, Calendar, DollarSign, CheckCircle2 } from "lucide-react";
 
+function parseValor(texto: string): number {
+  const normalizado = texto.replace(/\s/g, "").replace(/\./g, "").replace(",", ".");
+  const valor = parseFloat(normalizado);
+  return isNaN(valor) ? 0 : valor;
+}
+
+function formatarValorInput(raw: string): string {
+  const [int, dec] = raw.split(",");
+  const intLimpo = (int || "").replace(/\D/g, "");
+  const intFormatado = intLimpo.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+  if (!raw.includes(",")) return intFormatado;
+  const decLimpo = (dec || "").replace(/\D/g, "").slice(0, 2);
+  return `${intFormatado},${decLimpo}`;
+}
+
+function posCaretPosDigitos(formatado: string, numDigitos: number): number {
+  let count = 0;
+  for (let i = 0; i < formatado.length; i++) {
+    if (/\d/.test(formatado[i])) {
+      count++;
+      if (count === numDigitos) return i + 1;
+    }
+  }
+  return formatado.length;
+}
+
 type FormaPagamentoType = "Numerário" | "Transferência" | "Multicaixa" | "POS" | "Cheque" | "Crédito";
 
 interface PagamentoModalProps {
@@ -35,7 +61,9 @@ export function PagamentoModal({
   const [formaPagamento, setFormaPagamento] = useState<FormaPagamentoType>(
     (formaPagamentoInicial as FormaPagamentoType) || "Transferência"
   );
-  const [valor, setValor] = useState<number>(faturaTotal);
+  const [valor, setValor] = useState<string>(
+    faturaTotal > 0 ? formatarValorInput(String(faturaTotal).replace(".", ",")) : ""
+  );
   const [erro, setErro] = useState<string | null>(null);
 
   const handleConfirm = () => {
@@ -44,17 +72,18 @@ export function PagamentoModal({
       setErro("Selecione uma data de pagamento válida.");
       return;
     }
-    if (isNaN(valor) || valor <= 0) {
+    const valorNumerico = parseValor(valor);
+    if (isNaN(valorNumerico) || valorNumerico <= 0) {
       setErro("O valor do pagamento deve ser maior que zero.");
       return;
     }
-    if (faturaTotal > 0 && valor > faturaTotal) {
+    if (faturaTotal > 0 && valorNumerico > faturaTotal) {
       setErro(`O valor não pode exceder o total da fatura (${formatMoedaAOA(faturaTotal)}).`);
       return;
     }
 
     const data = new Date(dataPagamento);
-    onConfirm(data, formaPagamento, valor);
+    onConfirm(data, formaPagamento, valorNumerico);
   };
 
   return (
@@ -91,11 +120,22 @@ export function PagamentoModal({
               Valor a Pagar (AOA)
             </Label>
             <Input
-              type="number"
-              min={0}
-              step={0.01}
+              inputMode="decimal"
               value={valor}
-              onChange={(e) => setValor(parseFloat(e.target.value) || 0)}
+              onChange={(e) => {
+                const el = e.target;
+                const cursorAntes = el.selectionStart ?? el.value.length;
+                const textoAntesCursor = el.value.slice(0, cursorAntes);
+                const digitosAntesCursor = textoAntesCursor.replace(/\D/g, "");
+                const raw = el.value.replace(/[^\d,]/g, "");
+                const formatado = formatarValorInput(raw);
+                setValor(formatado);
+                requestAnimationFrame(() => {
+                  const novoCursor = posCaretPosDigitos(formatado, digitosAntesCursor.length);
+                  el.setSelectionRange(novoCursor, novoCursor);
+                });
+              }}
+              placeholder="0,00"
               className="rounded-xl font-mono font-medium"
             />
           </div>

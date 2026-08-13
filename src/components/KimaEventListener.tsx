@@ -17,7 +17,7 @@ export function KimaEventListener() {
 
     const { data: authListener } = supabase.auth.onAuthStateChange((event) => {
       if (event === 'SIGNED_OUT') {
-        window.location.href = `${process.env.NEXT_PUBLIC_KIMA_HUB_URL}/login?app=${MODULE_KEY}`;
+        window.location.href = '/login';
       }
     });
 
@@ -25,7 +25,7 @@ export function KimaEventListener() {
       .channel('kima-events')
       .on('broadcast', { event: 'LOGOUT' }, () => {
         supabase.auth.signOut();
-        window.location.href = `${process.env.NEXT_PUBLIC_KIMA_HUB_URL}/login?app=${MODULE_KEY}`;
+        window.location.href = '/login';
       })
       .on('broadcast', { event: 'COMPANY_SWITCHED' }, () => {
         router.refresh();

@@ -1,19 +1,17 @@
 import { NextResponse } from "next/server";
 import { atualizarCliente, deletarCliente } from "@/db/queries";
-import { db } from "@/db/client";
-import { eq } from "drizzle-orm";
-import { clientes } from "@/db/schema";
+import { obterClientePorId } from "@/db/queries";
 import { clienteSchema } from "@/lib/schemas";
+import { requireCompanyId } from "@/lib/company";
 
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const companyId = requireCompanyId(request);
     const { id } = await params;
-    const cliente = await db.query.clientes.findFirst({
-      where: eq(clientes.id, id),
-    });
+    const cliente = await obterClientePorId(companyId, id);
 
     if (!cliente) {
       return NextResponse.json(
@@ -26,7 +24,7 @@ export async function GET(
   } catch (error: any) {
     return NextResponse.json(
       { success: false, error: error.message || "Erro ao buscar cliente" },
-      { status: 500 }
+      { status: error.status || 500 }
     );
   }
 }
@@ -36,11 +34,12 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const companyId = requireCompanyId(request);
     const { id } = await params;
     const body = await request.json();
     const validatedData = clienteSchema.partial().parse(body);
 
-    const clienteAtualizado = await atualizarCliente(id, validatedData);
+    const clienteAtualizado = await atualizarCliente(companyId, id, validatedData);
 
     return NextResponse.json({ success: true, data: clienteAtualizado });
   } catch (error: any) {
@@ -62,13 +61,13 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const companyId = requireCompanyId(request);
     const { id } = await params;
-    const clienteDeletado = await deletarCliente(id);
+    await deletarCliente(companyId, id);
 
     return NextResponse.json({
       success: true,
       message: "Cliente removido com sucesso",
-      data: clienteDeletado,
     });
   } catch (error: any) {
     return NextResponse.json(

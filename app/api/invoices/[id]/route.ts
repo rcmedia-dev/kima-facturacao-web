@@ -1,27 +1,75 @@
 import { NextResponse } from "next/server";
-import { obterDocumentoPorId } from "@/db/queries";
-
-const EMPRESA_ID_DEFAULT = "e1000000-0000-0000-0000-000000000001";
+import { obterDocumentoPorId, atualizarDocumento, deletarDocumento } from "@/db/queries";
+import { requireCompanyId } from "@/lib/company";
 
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const companyId = requireCompanyId(request);
     const { id } = await params;
-    const fatura = await obterDocumentoPorId(EMPRESA_ID_DEFAULT, id);
+    const documento = await obterDocumentoPorId(companyId, id);
 
-    if (!fatura) {
+    if (!documento) {
       return NextResponse.json(
-        { success: false, error: "Fatura não encontrada" },
+        { success: false, error: "Documento não encontrado" },
         { status: 404 }
       );
     }
 
-    return NextResponse.json({ success: true, data: fatura });
+    return NextResponse.json({ success: true, data: documento });
   } catch (error: any) {
     return NextResponse.json(
-      { success: false, error: error.message || "Erro ao obter detalhes da fatura" },
+      { success: false, error: error.message || "Erro ao obter detalhes do documento" },
+      { status: error.status || 500 }
+    );
+  }
+}
+
+export async function PUT(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const companyId = requireCompanyId(request);
+    const { id } = await params;
+    const body = await request.json();
+
+    const documentoAtualizado = await atualizarDocumento(companyId, id, {
+      status: body.status,
+      formaPagamento: body.formaPagamento,
+      observacoes: body.observacoes,
+      dataPagamento: body.dataPagamento ? new Date(body.dataPagamento) : undefined,
+      motivo: body.motivo,
+      dataVencimento: body.dataVencimento ? new Date(body.dataVencimento) : undefined,
+    });
+
+    return NextResponse.json({ success: true, data: documentoAtualizado });
+  } catch (error: any) {
+    return NextResponse.json(
+      { success: false, error: error.message || "Erro ao atualizar documento" },
+      { status: error.status || 500 }
+    );
+  }
+}
+
+export async function DELETE(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const companyId = requireCompanyId(request);
+    const { id } = await params;
+    await deletarDocumento(companyId, id);
+
+    return NextResponse.json({
+      success: true,
+      message: "Documento removido com sucesso",
+    });
+  } catch (error: any) {
+    return NextResponse.json(
+      { success: false, error: error.message || "Erro ao deletar documento" },
       { status: 500 }
     );
   }

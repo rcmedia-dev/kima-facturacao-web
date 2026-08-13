@@ -1,0 +1,863 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Redesign — Tela de Faturas</title>
+<style>
+  :root {
+    --bg: #f1f5f9;
+    --card: #ffffff;
+    --border: #e2e8f0;
+    --text: #0f172a;
+    --muted: #64748b;
+    --blue: #2563eb;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    background: #eef2f7;
+    color: var(--text);
+  }
+
+  /* ── Barra superior de navegação ─────────────────── */
+  .topbar {
+    background: #0f172a;
+    color: #fff;
+    padding: 14px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    box-shadow: 0 4px 20px rgba(15,23,42,.35);
+  }
+  .topbar-brand { display: flex; align-items: center; gap: 10px; }
+  .topbar-logo {
+    width: 30px; height: 30px; border-radius: 8px;
+    background: linear-gradient(135deg, #2563eb, #6366f1);
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 800; font-size: 13px;
+  }
+  .topbar-title { font-weight: 700; font-size: 14px; }
+  .topbar-sub { font-size: 11px; color: #94a3b8; }
+  .nav-controls { display: flex; align-items: center; gap: 14px; }
+  .nav-btn {
+    border: 1px solid #334155;
+    background: #1e293b;
+    color: #e2e8f0;
+    padding: 8px 16px;
+    border-radius: 10px;
+    font-size: 12.5px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all .15s;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .nav-btn:hover:not(:disabled) { background: #2b3b50; color: #fff; }
+  .nav-btn:disabled { opacity: .4; cursor: not-allowed; }
+  .nav-btn.primary { background: var(--blue); border-color: var(--blue); color: #fff; }
+  .nav-btn.primary:hover:not(:disabled) { background: #1d4ed8; }
+  .step-counter {
+    font-size: 12.5px; font-weight: 600; color: #cbd5e1;
+    background: #1e293b; padding: 6px 12px; border-radius: 999px;
+  }
+  .dots { display: flex; gap: 6px; }
+  .dot {
+    width: 9px; height: 9px; border-radius: 999px; background: #334155;
+    cursor: pointer; transition: all .2s; border: none;
+  }
+  .dot.active { background: var(--blue); width: 26px; }
+
+  .stage { max-width: 1080px; margin: 26px auto 60px; }
+  .step { display: none; }
+  .step.active { display: block; animation: fade .35s ease; }
+  @keyframes fade { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+
+  .step-header { margin-bottom: 18px; }
+  .step-header h2 { font-size: 19px; font-weight: 800; color: var(--text); }
+  .step-header p { font-size: 12.5px; color: var(--muted); margin-top: 4px; }
+
+  .mock {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    box-shadow: 0 8px 30px rgba(15,23,42,.08);
+    overflow: hidden;
+  }
+  .mock-scroll { padding: 22px; }
+
+  /* ── Elementos reutilizáveis ─────────────────────── */
+  .btn {
+    display: inline-flex; align-items: center; gap: 7px;
+    padding: 9px 16px; border-radius: 10px;
+    font-size: 13px; font-weight: 600; cursor: pointer;
+    border: none; transition: all .15s;
+  }
+  .btn-primary { background: var(--blue); color: #fff; }
+  .btn-primary:hover { background: #1d4ed8; }
+  .btn-outline { background: #fff; border: 1px solid var(--border); color: #475569; }
+  .btn-outline:hover { border-color: #2563eb; color: #2563eb; }
+  .btn-sm { padding: 6px 12px; font-size: 12px; border-radius: 8px; }
+
+  .filters-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px;
+    margin-bottom: 14px;
+  }
+  .filters-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    align-items: end;
+  }
+  .field label {
+    display: block; font-size: 11px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: .05em;
+    color: #64748b; margin-bottom: 6px;
+  }
+  .field input, .field select {
+    width: 100%; padding: 9px 12px; border-radius: 8px;
+    border: 1px solid #cbd5e1; font-size: 13px; color: var(--text);
+    background: #fff; outline: none;
+  }
+  .field input:focus, .field select:focus { border-color: var(--blue); box-shadow: 0 0 0 3px rgba(37,99,235,.15); }
+  .search-wrap { position: relative; }
+  .search-wrap svg { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); opacity: .5; }
+
+  table { border-collapse: collapse; width: 100%; font-size: 13px; }
+  th {
+    text-align: left; padding: 11px 14px;
+    font-size: 11px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: .05em;
+    white-space: nowrap;
+  }
+  td { padding: 11px 14px; border-bottom: 1px solid #f1f5f9; }
+  tbody tr { transition: background .15s; }
+  .mono { font-family: Consolas, monospace; font-size: 12px; }
+  .num { text-align: right; font-variant-numeric: tabular-nums; }
+  .muted { color: #64748b; }
+  .strong { font-weight: 700; color: var(--text); }
+
+  .badge {
+    display: inline-block; font-size: 11px; font-weight: 700;
+    padding: 3px 10px; border-radius: 999px;
+  }
+  .badge-pago { background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; }
+  .badge-pendente { background: #fffbeb; color: #b45309; border: 1px solid #fde68a; }
+  .badge-parcial { background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; }
+  .badge-cancelado { background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
+
+  .dots-btn {
+    background: none; border: none; cursor: pointer;
+    color: #94a3b8; padding: 5px; border-radius: 7px;
+  }
+  .dots-btn:hover { background: #eff6ff; color: var(--blue); }
+
+  .pagination {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 16px;
+    border-top: 1px solid #eef2f7;
+    font-size: 12px; color: var(--muted);
+  }
+  .pagin-links { display: flex; gap: 6px; align-items: center; }
+  .pagin-btn {
+    min-width: 30px; height: 30px; display: flex; align-items: center; justify-content: center;
+    border: 1px solid var(--border); border-radius: 8px;
+    font-size: 12px; font-weight: 600; color: #475569; background: #fff; cursor: pointer;
+  }
+  .pagin-btn.active { background: var(--blue); border-color: var(--blue); color: #fff; }
+  .pagin-btn:hover:not(.active) { border-color: var(--blue); color: var(--blue); }
+
+  .row-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+  .row-title { display: flex; align-items: center; gap: 12px; }
+  .row-icon {
+    width: 38px; height: 38px; border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 17px;
+  }
+
+  /* ============ V1 — Atual refinado ============ */
+  .v1 .row-icon { background: #eff6ff; color: var(--blue); }
+  .v1 th { background: var(--blue); color: #fff; }
+  .v1 tbody tr:nth-child(even) { background: #f8fafc; }
+  .v1 tbody tr:hover { background: #eff6ff; }
+  .mock.v1 { border-radius: 10px; }
+  .mock.v1 .pagination { border-radius: 0 0 10px 10px; }
+
+  /* ============ V2 — Com métricas no topo ============ */
+  .metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 16px; }
+  .metric {
+    background: #fff; border: 1px solid var(--border); border-radius: 12px;
+    padding: 16px;
+  }
+  .metric .m-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+  .metric .m-value { font-size: 22px; font-weight: 800; margin-top: 6px; }
+  .metric .m-detail { font-size: 11.5px; color: var(--muted); margin-top: 3px; }
+  .metric .m-icon { width: 34px; height: 34px; border-radius: 9px; display: flex; align-items: center; justify-content: center; font-size: 15px; }
+  .m-head { display: flex; align-items: flex-start; justify-content: space-between; }
+  .v2 .row-icon { background: #eff6ff; color: var(--blue); }
+  .v2 th { background: var(--blue); color: #fff; }
+  .v2 tbody tr:nth-child(even) { background: #f8fafc; }
+  .v2 tbody tr:hover { background: #eff6ff; }
+  .mock.v2 { border-radius: 10px; }
+
+  /* ============ V3 — Minimalista ============ */
+  .mock.v3 { background: #fff; }
+  .v3 .row-head { padding: 6px 4px 0; }
+  .v3 .row-icon { background: #f1f5f9; color: #334155; }
+  .v3 .row-title h2 { font-size: 17px; }
+  .v3 .filters-card { background: #f8fafc; border-color: transparent; }
+  .v3 th { background: transparent; color: #94a3b8; border-bottom: 1.5px solid #e2e8f0; padding-bottom: 10px; }
+  .v3 td { border-color: #f1f5f9; }
+  .v3 tbody tr:hover { background: #f8fafc; }
+  .v3 .mock-scroll { padding-top: 14px; }
+  .v3 .pagination { background: #f8fafc; }
+
+  /* ============ V4 — Dark elegante ============ */
+  .mock.v4 {
+    background: #0f172a; border-color: #1e293b;
+    box-shadow: 0 12px 40px rgba(15,23,42,.35);
+  }
+  .v4 .row-head { padding: 4px; }
+  .v4 .row-icon {
+    background: linear-gradient(135deg, #1e40af, #312e81);
+    color: #dbeafe; border: 1px solid #334155;
+  }
+  .v4 .row-title h2 { color: #f8fafc; }
+  .v4 .row-title p { color: #94a3b8; }
+  .v4 .btn-primary { background: linear-gradient(135deg, #2563eb, #6366f1); }
+  .v4 .filters-card { background: #172136; border-color: #253349; }
+  .v4 .field label { color: #94a3b8; }
+  .v4 .field input, .v4 .field select { background: #0b1526; border-color: #253349; color: #e2e8f0; }
+  .v4 th { background: linear-gradient(135deg, #1d4ed8, #4338ca); color: #fff; }
+  .v4 tbody tr:nth-child(even) { background: #131c2f; }
+  .v4 td { color: #cbd5e1; border-color: #1e293b; }
+  .v4 td.strong, .v4 .strong { color: #f8fafc; }
+  .v4 tbody tr:hover { background: #1b2742; }
+  .v4 .pagination { border-color: #1e293b; color: #94a3b8; }
+  .v4 .pagin-btn { background: #172136; border-color: #253349; color: #cbd5e1; }
+  .v4 .pagin-btn.active { background: var(--blue); border-color: var(--blue); }
+
+  /* ============ V5 — Pro compacto ============ */
+  .v5 .row-head { padding: 0 4px; }
+  .v5 .row-icon { background: #f1f5f9; color: #334155; width: 34px; height: 34px; }
+  .v5 th { background: #f1f5f9; color: #475569; }
+  .v5 th, .v5 td { padding: 8px 12px; font-size: 12.5px; }
+  .v5 tbody tr { border-bottom: 1px solid #eef2f7; }
+  .v5 tbody tr:hover { background: #f8faff; }
+  .v5 .cell-actions { display: flex; gap: 4px; align-items: center; justify-content: flex-end; }
+  .v5 .icon-btn {
+    width: 26px; height: 26px; border-radius: 6px; border: 1px solid var(--border);
+    background: #fff; cursor: pointer; display: flex; align-items: center; justify-content: center;
+    font-size: 12px; color: #64748b;
+  }
+  .v5 .icon-btn:hover { border-color: var(--blue); color: var(--blue); }
+  .v5 .icon-btn.red:hover { border-color: #ef4444; color: #ef4444; }
+  .mock.v5 { border-radius: 8px; }
+  .mock.v5 .pagination { background: #f8fafc; }
+
+  @media (max-width: 860px) {
+    .filters-grid, .metrics { grid-template-columns: repeat(2, 1fr); }
+    .topbar { flex-wrap: wrap; }
+  }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-brand">
+    <div class="topbar-logo">K</div>
+    <div>
+      <div class="topbar-title">Kima Faturas — Redesign</div>
+      <div class="topbar-sub">Análise de variações do ecrã</div>
+    </div>
+  </div>
+  <div class="nav-controls">
+    <button class="nav-btn" id="prevBtn">‹ Anterior</button>
+    <span class="step-counter" id="counter">1 / 5</span>
+    <button class="nav-btn primary" id="nextBtn">Seguinte ›</button>
+  </div>
+</div>
+
+<div class="stage">
+  <!-- Indicadores -->
+  <div style="display:flex; justify-content:center; margin-bottom:20px;">
+    <div class="dots" id="dots"></div>
+  </div>
+
+  <!-- ═══════════ V1 — Atual refinado ═══════════ -->
+  <div class="step">
+    <div class="step-header">
+      <h2>1. Design Atual (Refinado)</h2>
+      <p>Base no ecrã existente, com header azul, zebra nas linhas e cantos 4px. O mínimo de mudança.</p>
+    </div>
+    <div class="mock v1">
+      <div class="mock-scroll">
+        <div class="row-head">
+          <div class="row-title">
+            <div class="row-icon">🧾</div>
+            <div>
+              <h2 style="font-size:16px; font-weight:800;">Faturas & Documentos</h2>
+              <p class="muted" style="font-size:11.5px;">32 documentos emitidos</p>
+            </div>
+          </div>
+          <button class="btn btn-primary">＋ Nova Fatura</button>
+        </div>
+
+        <div class="filters-card">
+          <div class="filters-grid">
+            <div class="field">
+              <label>Pesquisa</label>
+              <div class="search-wrap">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/></svg>
+                <input type="text" placeholder="Nº fatura ou cliente..." style="padding-left:30px" />
+              </div>
+            </div>
+            <div class="field">
+              <label>Estado</label>
+              <select><option>Todos os Estados</option><option>Pago</option><option>Pendente</option><option>Cancelado</option></select>
+            </div>
+            <div class="field">
+              <label>Data Inicial</label>
+              <input type="date" />
+            </div>
+            <div class="field">
+              <label>&nbsp;</label>
+              <span class="btn btn-outline" style="justify-content:center;">Limpar</span>
+            </div>
+          </div>
+        </div>
+
+        <div style="border:1px solid var(--border); border-radius:10px; overflow:hidden;">
+          <table>
+            <thead><tr>
+              <th>Nº Fatura</th><th>Cliente</th><th>Data Emissão</th><th>Vencimento</th><th class="num">Total (AOA)</th><th>Status</th><th></th>
+            </tr></thead>
+            <tbody>
+              <tr>
+                <td class="mono strong">FA/2026/0012</td><td class="strong">Angola Telecom, SA</td>
+                <td class="muted">12/08/2026</td><td class="muted">12/09/2026</td>
+                <td class="num strong">1 250 000,00</td>
+                <td><span class="badge badge-pendente">Pendente</span></td>
+                <td style="text-align:right"><button class="dots-btn">⋮</button></td>
+              </tr>
+              <tr>
+                <td class="mono strong">FA/2026/0011</td><td class="strong">Supermercado Kikolo</td>
+                <td class="muted">11/08/2026</td><td class="muted">11/09/2026</td>
+                <td class="num strong">3 420 000,00</td>
+                <td><span class="badge badge-parcial">Parcial</span></td>
+                <td style="text-align:right"><button class="dots-btn">⋮</button></td>
+              </tr>
+              <tr>
+                <td class="mono strong">FA/2026/0010</td><td class="strong">Maria dos Santos</td>
+                <td class="muted">10/08/2026</td><td class="muted">10/09/2026</td>
+                <td class="num strong">84 500,00</td>
+                <td><span class="badge badge-pago">Pago</span></td>
+                <td style="text-align:right"><button class="dots-btn">⋮</button></td>
+              </tr>
+              <tr>
+                <td class="mono strong">FA/2026/0009</td><td class="strong">João Baptista</td>
+                <td class="muted">09/08/2026</td><td class="muted">09/09/2026</td>
+                <td class="num strong">12 800,00</td>
+                <td><span class="badge badge-cancelado">Cancelado</span></td>
+                <td style="text-align:right"><button class="dots-btn">⋮</button></td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="pagination">
+            <span>Exibir 1 a 4 de 32 faturas</span>
+            <div class="pagin-links">
+              <button class="pagin-btn">‹</button>
+              <button class="pagin-btn active">1</button>
+              <button class="pagin-btn">2</button>
+              <button class="pagin-btn">3</button>
+              <button class="pagin-btn">›</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════ V2 — Com métricas no topo ═══════════ -->
+  <div class="step">
+    <div class="step-header">
+      <h2>2. Dashboard + Lista</h2>
+      <p>Adiciona métricas resumidas por cima da tabela (faturado, pendentes, pagas, canceladas). Contexto imediato.</p>
+    </div>
+    <div class="mock v2">
+      <div class="mock-scroll">
+        <div class="row-head">
+          <div class="row-title">
+            <div class="row-icon">🧾</div>
+            <div>
+              <h2 style="font-size:16px; font-weight:800;">Faturas & Documentos</h2>
+              <p class="muted" style="font-size:11.5px;">32 documentos emitidos</p>
+            </div>
+          </div>
+          <button class="btn btn-primary">＋ Nova Fatura</button>
+        </div>
+
+        <div class="metrics">
+          <div class="metric">
+            <div class="m-head">
+              <div class="m-label">Faturado (mês)</div>
+              <div class="m-icon" style="background:#eff6ff;color:#2563eb;">📈</div>
+            </div>
+            <div class="m-value">12 450 000,00</div>
+            <div class="m-detail">28 documentos emitidos</div>
+          </div>
+          <div class="metric">
+            <div class="m-head">
+              <div class="m-label">Pendentes</div>
+              <div class="m-icon" style="background:#fffbeb;color:#d97706;">🕐</div>
+            </div>
+            <div class="m-value">7</div>
+            <div class="m-detail">3 850 000,00 em aberto</div>
+          </div>
+          <div class="metric">
+            <div class="m-head">
+              <div class="m-label">Pagas</div>
+              <div class="m-icon" style="background:#ecfdf5;color:#059669;">✓</div>
+            </div>
+            <div class="m-value">21</div>
+            <div class="m-detail">Recebido no mês</div>
+          </div>
+          <div class="metric">
+            <div class="m-head">
+              <div class="m-label">Canceladas</div>
+              <div class="m-icon" style="background:#fef2f2;color:#dc2626;">✕</div>
+            </div>
+            <div class="m-value">4</div>
+            <div class="m-detail">Este mês</div>
+          </div>
+        </div>
+
+        <div class="filters-card">
+          <div class="filters-grid">
+            <div class="field">
+              <label>Pesquisa</label>
+              <div class="search-wrap">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/></svg>
+                <input type="text" placeholder="Nº fatura ou cliente..." style="padding-left:30px" />
+              </div>
+            </div>
+            <div class="field">
+              <label>Estado</label>
+              <select><option>Todos os Estados</option><option>Pago</option><option>Pendente</option><option>Cancelado</option></select>
+            </div>
+            <div class="field">
+              <label>Período</label>
+              <input type="date" />
+            </div>
+            <div class="field">
+              <label>&nbsp;</label>
+              <span class="btn btn-outline" style="justify-content:center;">Limpar</span>
+            </div>
+          </div>
+        </div>
+
+        <div style="border:1px solid var(--border); border-radius:10px; overflow:hidden;">
+          <table>
+            <thead><tr>
+              <th>Nº Fatura</th><th>Cliente</th><th>Data Emissão</th><th>Vencimento</th><th class="num">Total (AOA)</th><th>Status</th><th></th>
+            </tr></thead>
+            <tbody>
+              <tr>
+                <td class="mono strong">FA/2026/0012</td><td class="strong">Angola Telecom, SA</td>
+                <td class="muted">12/08/2026</td><td class="muted">12/09/2026</td>
+                <td class="num strong">1 250 000,00</td>
+                <td><span class="badge badge-pendente">Pendente</span></td>
+                <td style="text-align:right"><button class="dots-btn">⋮</button></td>
+              </tr>
+              <tr>
+                <td class="mono strong">FA/2026/0011</td><td class="strong">Supermercado Kikolo</td>
+                <td class="muted">11/08/2026</td><td class="muted">11/09/2026</td>
+                <td class="num strong">3 420 000,00</td>
+                <td><span class="badge badge-parcial">Parcial</span></td>
+                <td style="text-align:right"><button class="dots-btn">⋮</button></td>
+              </tr>
+              <tr>
+                <td class="mono strong">FA/2026/0010</td><td class="strong">Maria dos Santos</td>
+                <td class="muted">10/08/2026</td><td class="muted">10/09/2026</td>
+                <td class="num strong">84 500,00</td>
+                <td><span class="badge badge-pago">Pago</span></td>
+                <td style="text-align:right"><button class="dots-btn">⋮</button></td>
+              </tr>
+              <tr>
+                <td class="mono strong">FA/2026/0009</td><td class="strong">João Baptista</td>
+                <td class="muted">09/08/2026</td><td class="muted">09/09/2026</td>
+                <td class="num strong">12 800,00</td>
+                <td><span class="badge badge-cancelado">Cancelado</span></td>
+                <td style="text-align:right"><button class="dots-btn">⋮</button></td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="pagination">
+            <span>Exibir 1 a 4 de 32 faturas</span>
+            <div class="pagin-links">
+              <button class="pagin-btn">‹</button>
+              <button class="pagin-btn active">1</button>
+              <button class="pagin-btn">2</button>
+              <button class="pagin-btn">›</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════ V3 — Minimalista ═══════════ -->
+  <div class="step">
+    <div class="step-header">
+      <h2>3. Minimalista / Clean</h2>
+      <p>Sem cores fortes no header da tabela. Tipografia e espaçamento comandam o visual. Look muito limpo.</p>
+    </div>
+    <div class="mock v3">
+      <div class="mock-scroll">
+        <div class="row-head">
+          <div class="row-title">
+            <div class="row-icon">🧾</div>
+            <div>
+              <h2>Faturas & Documentos</h2>
+              <p class="muted" style="font-size:11.5px;">32 documentos emitidos</p>
+            </div>
+          </div>
+          <button class="btn btn-primary">＋ Nova Fatura</button>
+        </div>
+
+        <div class="filters-card">
+          <div class="filters-grid">
+            <div class="field">
+              <label>Pesquisa</label>
+              <div class="search-wrap">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/></svg>
+                <input type="text" placeholder="Nº fatura ou cliente..." style="padding-left:30px" />
+              </div>
+            </div>
+            <div class="field">
+              <label>Estado</label>
+              <select><option>Todos os Estados</option><option>Pago</option><option>Pendente</option><option>Cancelado</option></select>
+            </div>
+            <div class="field">
+              <label>Data Inicial</label>
+              <input type="date" />
+            </div>
+            <div class="field">
+              <label>&nbsp;</label>
+              <span class="btn btn-outline" style="justify-content:center;">Limpar</span>
+            </div>
+          </div>
+        </div>
+
+        <div style="border:1px solid var(--border); border-radius:10px; background:#fff; overflow:hidden;">
+          <table>
+            <thead><tr>
+              <th>Nº Fatura</th><th>Cliente</th><th>Data Emissão</th><th>Vencimento</th><th class="num">Total (AOA)</th><th>Status</th><th></th>
+            </tr></thead>
+            <tbody>
+              <tr>
+                <td class="mono strong">FA/2026/0012</td><td class="strong">Angola Telecom, SA</td>
+                <td class="muted">12/08/2026</td><td class="muted">12/09/2026</td>
+                <td class="num strong">1 250 000,00</td>
+                <td><span class="badge badge-pendente">Pendente</span></td>
+                <td style="text-align:right"><button class="dots-btn">⋮</button></td>
+              </tr>
+              <tr>
+                <td class="mono strong">FA/2026/0011</td><td class="strong">Supermercado Kikolo</td>
+                <td class="muted">11/08/2026</td><td class="muted">11/09/2026</td>
+                <td class="num strong">3 420 000,00</td>
+                <td><span class="badge badge-parcial">Parcial</span></td>
+                <td style="text-align:right"><button class="dots-btn">⋮</button></td>
+              </tr>
+              <tr>
+                <td class="mono strong">FA/2026/0010</td><td class="strong">Maria dos Santos</td>
+                <td class="muted">10/08/2026</td><td class="muted">10/09/2026</td>
+                <td class="num strong">84 500,00</td>
+                <td><span class="badge badge-pago">Pago</span></td>
+                <td style="text-align:right"><button class="dots-btn">⋮</button></td>
+              </tr>
+              <tr>
+                <td class="mono strong">FA/2026/0009</td><td class="strong">João Baptista</td>
+                <td class="muted">09/08/2026</td><td class="muted">09/09/2026</td>
+                <td class="num strong">12 800,00</td>
+                <td><span class="badge badge-cancelado">Cancelado</span></td>
+                <td style="text-align:right"><button class="dots-btn">⋮</button></td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="pagination">
+            <span>Exibir 1 a 4 de 32 faturas</span>
+            <div class="pagin-links">
+              <button class="pagin-btn">‹</button>
+              <button class="pagin-btn active">1</button>
+              <button class="pagin-btn">2</button>
+              <button class="pagin-btn">3</button>
+              <button class="pagin-btn">›</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════ V4 — Dark elegante ═══════════ -->
+  <div class="step">
+    <div class="step-header">
+      <h2>4. Dark Elegante</h2>
+      <p>Tema escuro com acentos em gradiente azul→índigo. Header da tabela com gradiente. Visual premium.</p>
+    </div>
+    <div class="mock v4">
+      <div class="mock-scroll">
+        <div class="row-head">
+          <div class="row-title">
+            <div class="row-icon">🧾</div>
+            <div>
+              <h2>Faturas & Documentos</h2>
+              <p>32 documentos emitidos</p>
+            </div>
+          </div>
+          <button class="btn btn-primary">＋ Nova Fatura</button>
+        </div>
+
+        <div class="filters-card">
+          <div class="filters-grid">
+            <div class="field">
+              <label>Pesquisa</label>
+              <div class="search-wrap">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/></svg>
+                <input type="text" placeholder="Nº fatura ou cliente..." style="padding-left:30px" />
+              </div>
+            </div>
+            <div class="field">
+              <label>Estado</label>
+              <select><option>Todos os Estados</option><option>Pago</option><option>Pendente</option><option>Cancelado</option></select>
+            </div>
+            <div class="field">
+              <label>Data Inicial</label>
+              <input type="date" />
+            </div>
+            <div class="field">
+              <label>&nbsp;</label>
+              <span class="btn btn-outline" style="justify-content:center; background:transparent; color:#cbd5e1; border-color:#334155;">Limpar</span>
+            </div>
+          </div>
+        </div>
+
+        <div style="border:1px solid #1e293b; border-radius:10px; overflow:hidden;">
+          <table>
+            <thead><tr>
+              <th>Nº Fatura</th><th>Cliente</th><th>Data Emissão</th><th>Vencimento</th><th class="num">Total (AOA)</th><th>Status</th><th></th>
+            </tr></thead>
+            <tbody>
+              <tr>
+                <td class="mono strong">FA/2026/0012</td><td class="strong">Angola Telecom, SA</td>
+                <td class="muted">12/08/2026</td><td class="muted">12/09/2026</td>
+                <td class="num strong">1 250 000,00</td>
+                <td><span class="badge badge-pendente">Pendente</span></td>
+                <td style="text-align:right"><button class="dots-btn">⋮</button></td>
+              </tr>
+              <tr>
+                <td class="mono strong">FA/2026/0011</td><td class="strong">Supermercado Kikolo</td>
+                <td class="muted">11/08/2026</td><td class="muted">11/09/2026</td>
+                <td class="num strong">3 420 000,00</td>
+                <td><span class="badge badge-parcial">Parcial</span></td>
+                <td style="text-align:right"><button class="dots-btn">⋮</button></td>
+              </tr>
+              <tr>
+                <td class="mono strong">FA/2026/0010</td><td class="strong">Maria dos Santos</td>
+                <td class="muted">10/08/2026</td><td class="muted">10/09/2026</td>
+                <td class="num strong">84 500,00</td>
+                <td><span class="badge badge-pago">Pago</span></td>
+                <td style="text-align:right"><button class="dots-btn">⋮</button></td>
+              </tr>
+              <tr>
+                <td class="mono strong">FA/2026/0009</td><td class="strong">João Baptista</td>
+                <td class="muted">09/08/2026</td><td class="muted">09/09/2026</td>
+                <td class="num strong">12 800,00</td>
+                <td><span class="badge badge-cancelado">Cancelado</span></td>
+                <td style="text-align:right"><button class="dots-btn">⋮</button></td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="pagination">
+            <span>Exibir 1 a 4 de 32 faturas</span>
+            <div class="pagin-links">
+              <button class="pagin-btn">‹</button>
+              <button class="pagin-btn active">1</button>
+              <button class="pagin-btn">2</button>
+              <button class="pagin-btn">›</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════ V5 — Pro compacto ═══════════ -->
+  <div class="step">
+    <div class="step-header">
+      <h2>5. Pro / Compacto</h2>
+      <p>Densidade alta para quem trata muitas faturas por dia. Ações rápidas em cada linha, tudo à mão.</p>
+    </div>
+    <div class="mock v5">
+      <div class="mock-scroll">
+        <div class="row-head">
+          <div class="row-title">
+            <div class="row-icon">🧾</div>
+            <div>
+              <h2 style="font-size:15.5px; font-weight:800;">Faturas & Documentos</h2>
+              <p class="muted" style="font-size:11px;">32 documentos · 7 pendentes</p>
+            </div>
+          </div>
+          <div style="display:flex; gap:8px; align-items:center;">
+            <button class="btn btn-outline btn-sm">Exportar CSV</button>
+            <button class="btn btn-primary btn-sm">＋ Nova Fatura</button>
+          </div>
+        </div>
+
+        <div class="filters-card" style="padding:12px;">
+          <div class="filters-grid">
+            <div class="field">
+              <label>Pesquisa</label>
+              <div class="search-wrap">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/></svg>
+                <input type="text" placeholder="Nº fatura ou cliente..." style="padding-left:28px" />
+              </div>
+            </div>
+            <div class="field">
+              <label>Estado</label>
+              <select><option>Todos</option><option>Pago</option><option>Pendente</option><option>Cancelado</option></select>
+            </div>
+            <div class="field">
+              <label>Data</label>
+              <input type="date" />
+            </div>
+            <div class="field">
+              <label>&nbsp;</label>
+              <span class="btn btn-outline btn-sm" style="justify-content:center;">Limpar</span>
+            </div>
+          </div>
+        </div>
+
+        <div style="border:1px solid var(--border); border-radius:8px; overflow:hidden;">
+          <table>
+            <thead><tr>
+              <th>Nº Fatura</th><th>Cliente</th><th>Emissão</th><th class="num">Total (AOA)</th><th style="text-align:center">Status</th><th style="text-align:right">Ações</th>
+            </tr></thead>
+            <tbody>
+              <tr>
+                <td class="mono strong">FA/2026/0012</td><td class="strong">Angola Telecom, SA</td>
+                <td class="muted">12/08</td>
+                <td class="num strong">1 250 000,00</td>
+                <td style="text-align:center"><span class="badge badge-pendente">Pendente</span></td>
+                <td>
+                  <div class="cell-actions">
+                    <button class="icon-btn" title="Ver">👁</button>
+                    <button class="icon-btn" title="Marcar paga">✓</button>
+                    <button class="icon-btn" title="Imprimir">🖨</button>
+                    <button class="icon-btn red" title="Eliminar">🗑</button>
+                  </div>
+                </td>
+              </tr>
+              <tr>
+                <td class="mono strong">FA/2026/0011</td><td class="strong">Supermercado Kikolo</td>
+                <td class="muted">11/08</td>
+                <td class="num strong">3 420 000,00</td>
+                <td style="text-align:center"><span class="badge badge-parcial">Parcial</span></td>
+                <td>
+                  <div class="cell-actions">
+                    <button class="icon-btn">👁</button>
+                    <button class="icon-btn">✓</button>
+                    <button class="icon-btn">🖨</button>
+                    <button class="icon-btn red">🗑</button>
+                  </div>
+                </td>
+              </tr>
+              <tr>
+                <td class="mono strong">FA/2026/0010</td><td class="strong">Maria dos Santos</td>
+                <td class="muted">10/08</td>
+                <td class="num strong">84 500,00</td>
+                <td style="text-align:center"><span class="badge badge-pago">Pago</span></td>
+                <td>
+                  <div class="cell-actions">
+                    <button class="icon-btn">👁</button>
+                    <button class="icon-btn">🖨</button>
+                    <button class="icon-btn red">🗑</button>
+                  </div>
+                </td>
+              </tr>
+              <tr>
+                <td class="mono strong">FA/2026/0009</td><td class="strong">João Baptista</td>
+                <td class="muted">09/08</td>
+                <td class="num strong">12 800,00</td>
+                <td style="text-align:center"><span class="badge badge-cancelado">Cancelado</span></td>
+                <td>
+                  <div class="cell-actions">
+                    <button class="icon-btn">👁</button>
+                    <button class="icon-btn red">🗑</button>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="pagination">
+            <span>Exibir 1 a 4 de 32 faturas</span>
+            <div class="pagin-links">
+              <button class="pagin-btn">‹</button>
+              <button class="pagin-btn active">1</button>
+              <button class="pagin-btn">2</button>
+              <button class="pagin-btn">3</button>
+              <button class="pagin-btn">4</button>
+              <button class="pagin-btn">5</button>
+              <button class="pagin-btn">8</button>
+              <button class="pagin-btn">›</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const steps = Array.from(document.querySelectorAll('.step'));
+  const dotsWrap = document.getElementById('dots');
+  let current = 0;
+
+  steps.forEach((_, i) => {
+    const d = document.createElement('button');
+    d.className = 'dot';
+    d.addEventListener('click', () => go(i));
+    dotsWrap.appendChild(d);
+  });
+  const dots = Array.from(dotsWrap.children);
+
+  function go(i) {
+    current = Math.max(0, Math.min(steps.length - 1, i));
+    steps.forEach((s, idx) => s.classList.toggle('active', idx === current));
+    dots.forEach((d, idx) => d.classList.toggle('active', idx === current));
+    document.getElementById('counter').textContent = (current + 1) + ' / ' + steps.length;
+    document.getElementById('prevBtn').disabled = current === 0;
+    document.getElementById('nextBtn').disabled = current === steps.length - 1;
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  document.getElementById('prevBtn').addEventListener('click', () => go(current - 1));
+  document.getElementById('nextBtn').addEventListener('click', () => go(current + 1));
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowRight') go(current + 1);
+    if (e.key === 'ArrowLeft') go(current - 1);
+  });
+
+  go(0);
+</script>
+</body>
+</html>

@@ -3,6 +3,8 @@ import { Fatura } from "@/lib/types";
 import { formatMoedaAOA, formatData } from "@/lib/formatters";
 import { useAppStore } from "@/lib/store";
 import { FileText } from "lucide-react";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { cn } from "@/lib/utils";
 
 interface DashboardFaturaTableProps {
   faturas: Fatura[];
@@ -49,49 +51,56 @@ export function DashboardFaturaTable({ faturas }: DashboardFaturaTableProps) {
 
   return (
     <div className="overflow-x-auto">
-      <table className="w-full table-kima">
-        <thead>
-          <tr>
-            <th>Nº Fatura</th>
-            <th>Cliente</th>
-            <th>Data</th>
-            <th className="text-right">Total</th>
-            <th>Estado</th>
-          </tr>
-        </thead>
-        <tbody>
-          {faturas.map((fatura) => {
+      <Table>
+        <TableHeader className="bg-blue-600 text-white">
+          <TableRow className="border-b border-blue-700">
+            <TableHead className="font-semibold text-xs text-white uppercase tracking-wider">Nº Fatura</TableHead>
+            <TableHead className="font-semibold text-xs text-white uppercase tracking-wider">Cliente</TableHead>
+            <TableHead className="font-semibold text-xs text-white uppercase tracking-wider">Data</TableHead>
+            <TableHead className="font-semibold text-xs text-white uppercase tracking-wider text-right">Total</TableHead>
+            <TableHead className="font-semibold text-xs text-white uppercase tracking-wider">Estado</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {faturas.map((fatura, index) => {
             const cliente = fatura.clienteId
               ? getClientePorId(fatura.clienteId)
               : undefined;
 
             return (
-              <tr key={fatura.id} className="cursor-pointer">
-                <td>
+              <TableRow
+                key={fatura.id}
+                className={cn(
+                  "cursor-pointer transition-colors border-b border-slate-100 dark:border-slate-800/80",
+                  index % 2 !== 0 && "bg-slate-50/60 dark:bg-slate-800/20",
+                  "hover:bg-blue-50/30 dark:hover:bg-slate-800/50"
+                )}
+              >
+                <TableCell>
                   <Link
                     href={`/faturas/${fatura.id}`}
                     className="font-semibold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors"
                   >
                     {fatura.numero}
                   </Link>
-                </td>
-                <td className="text-slate-700 dark:text-slate-300">
+                </TableCell>
+                <TableCell className="text-slate-700 dark:text-slate-300">
                   {cliente?.nome || "Cliente desconhecido"}
-                </td>
-                <td className="text-slate-500 dark:text-slate-400">
+                </TableCell>
+                <TableCell className="text-slate-500 dark:text-slate-400">
                   {formatData(fatura.dataEmissao)}
-                </td>
-                <td className="text-right font-semibold text-slate-800 dark:text-slate-200">
+                </TableCell>
+                <TableCell className="text-right font-semibold text-slate-800 dark:text-slate-200">
                   {formatMoedaAOA(fatura.total)}
-                </td>
-                <td>
+                </TableCell>
+                <TableCell>
                   <StatusBadge status={fatura.status} />
-                </td>
-              </tr>
+                </TableCell>
+              </TableRow>
             );
           })}
-        </tbody>
-      </table>
+        </TableBody>
+      </Table>
     </div>
   );
 }

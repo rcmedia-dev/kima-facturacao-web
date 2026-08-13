@@ -1,6 +1,7 @@
 export type TipoCliente = "PF" | "PJ";
 export type TipoDocumento = "Fatura" | "FaturaRecibo" | "Simplificada" | "NotaCredito" | "NotaDebito" | "Orcamento" | "GuiaRemessa";
 export type UnidadeMedida = "UN" | "KG" | "M" | "M2" | "L" | "H" | "DIA" | "MES";
+export type TipoArtigo = "Produto" | "Serviço";
 
 export interface Cliente {
   id: string;
@@ -44,6 +45,7 @@ export interface Artigo {
   dataCriacao: Date;
   ultimaAtualizacao: Date;
   ativo: boolean;
+  tipo?: TipoArtigo; // Produto | Serviço
 }
 
 export interface MovimentoStock {

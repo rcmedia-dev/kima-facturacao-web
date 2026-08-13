@@ -2,16 +2,16 @@ import { NextResponse } from "next/server";
 import { obterDocumentoPorId, obterEmpresa } from "@/db/queries";
 import { gerarPDFFatura } from "@/lib/pdf-generator";
 import { Documento, Cliente, ConfiguracaoEmpresa } from "@/lib/types";
-
-const EMPRESA_ID_DEFAULT = "e1000000-0000-0000-0000-000000000001";
+import { requireCompanyId } from "@/lib/company";
 
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const companyId = requireCompanyId(request);
     const { id } = await params;
-    const dbFatura = await obterDocumentoPorId(EMPRESA_ID_DEFAULT, id);
+    const dbFatura = await obterDocumentoPorId(companyId, id);
 
     if (!dbFatura) {
       return NextResponse.json(
@@ -20,20 +20,20 @@ export async function GET(
       );
     }
 
-    const dbEmpresa = await obterEmpresa(EMPRESA_ID_DEFAULT);
+    const dbEmpresa = await obterEmpresa(companyId);
 
-    // Mapear para tipos do aplicativo
     const fatura: Documento = {
       id: dbFatura.id,
-      tipo: dbFatura.tipo as any,
+      tipo: dbFatura.tipo,
       serie: dbFatura.serie,
       numero: String(dbFatura.numero),
       numeroCompleto: dbFatura.numeroCompleto,
       clienteId: dbFatura.clienteId || undefined,
+      fornecedorId: dbFatura.fornecedorId || undefined,
       dataEmissao: dbFatura.dataEmissao,
       dataVencimento: dbFatura.dataVencimento,
-      formaPagamento: dbFatura.formaPagamento as any,
-      status: dbFatura.status as any,
+      formaPagamento: dbFatura.formaPagamento,
+      status: dbFatura.status,
       linhas: dbFatura.linhas.map((l) => ({
         id: l.id,
         artigoId: l.artigoId || undefined,
@@ -42,27 +42,27 @@ export async function GET(
         preco: Number(l.preco),
         taxaIVA: Number(l.taxaIVA) as 0 | 7 | 14,
         total: Number(l.total),
-        unidadeMedida: (l.unidadeMedida || "UN") as any,
+        unidadeMedida: l.unidadeMedida || "UN",
       })),
       observacoes: dbFatura.observacoes || "",
       subtotal: Number(dbFatura.subtotal),
       totalIVA: Number(dbFatura.totalIVA),
       total: Number(dbFatura.total),
       dataPagamento: dbFatura.dataPagamento || undefined,
-      dataAtualizacao: dbFatura.atualizadoEm || new Date(),
+      dataAtualizacao: dbFatura.dataAtualizacao,
     };
 
     const cliente: Cliente | null = dbFatura.cliente
       ? {
           id: dbFatura.cliente.id,
           nome: dbFatura.cliente.nome,
-          tipo: (dbFatura.cliente.tipo || "PJ") as any,
+          tipo: dbFatura.cliente.tipo,
           nif: dbFatura.cliente.nif,
           morada: dbFatura.cliente.morada || "",
           telefone: dbFatura.cliente.telefone || "",
           email: dbFatura.cliente.email || "",
-          dataCriacao: dbFatura.cliente.criadoEm,
-          ultimaAtualizacao: dbFatura.cliente.atualizadoEm,
+          dataCriacao: dbFatura.cliente.dataCriacao,
+          ultimaAtualizacao: dbFatura.cliente.ultimaAtualizacao,
           ativo: dbFatura.cliente.ativo,
         }
       : null;
@@ -70,20 +70,23 @@ export async function GET(
     const empresa: ConfiguracaoEmpresa | null = dbEmpresa
       ? {
           id: dbEmpresa.id,
-          nomeEmpresa: dbEmpresa.nome,
+          nomeEmpresa: dbEmpresa.nomeEmpresa,
           nif: dbEmpresa.nif,
           morada: dbEmpresa.morada,
           telefone: dbEmpresa.telefone,
           email: dbEmpresa.email,
           logoUrl: dbEmpresa.logoUrl || undefined,
-          seriesPorTipo: [],
-          diasVencimentoPadrao: 30,
-          ultimaAtualizacao: dbEmpresa.atualizadoEm,
+          contaBancaria: dbEmpresa.contaBancaria,
+          banco: dbEmpresa.banco,
+          inscricaoSocial: dbEmpresa.inscricaoSocial,
+          nifRegional: dbEmpresa.nifRegional,
+          seriesPorTipo: dbEmpresa.seriesPorTipo || [],
+          diasVencimentoPadrao: dbEmpresa.diasVencimentoPadrao || 30,
+          ultimaAtualizacao: dbEmpresa.ultimaAtualizacao,
           criadoEm: dbEmpresa.criadoEm,
         }
       : null;
 
-    // Gerar o documento PDF via jsPDF
     const pdfDoc = gerarPDFFatura(fatura, cliente, empresa);
     const pdfBuffer = pdfDoc.output("arraybuffer");
 

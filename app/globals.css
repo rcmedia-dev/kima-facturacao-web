@@ -214,11 +214,33 @@
   from { transform: translateY(12px); opacity: 0; }
   to   { transform: translateY(0);    opacity: 1; }
 }
+@keyframes kima-float {
+  0%   { transform: translateY(0); }
+  50%  { transform: translateY(-10px); }
+  100% { transform: translateY(0); }
+}
+@keyframes kima-line-draw {
+  0%   { transform: scaleX(0); transform-origin: left; opacity: 0; }
+  30%  { opacity: 1; }
+  100% { transform: scaleX(1); transform-origin: left; opacity: 1; }
+}
+@keyframes kima-total-pulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.55; }
+}
 
 .animate-fade-in        { animation: kima-fade-in 0.2s ease-out forwards; }
 .animate-slide-in-right { animation: kima-slide-in-right 0.3s cubic-bezier(0.4,0,0.2,1) forwards; }
 .animate-scale-in       { animation: kima-scale-in 0.2s cubic-bezier(0.4,0,0.2,1) forwards; }
 .animate-slide-up       { animation: kima-slide-up 0.25s ease-out forwards; }
+.animate-kima-float      { animation: kima-float 3.5s ease-in-out infinite; }
+.animate-kima-float-delay { animation: kima-float 4s ease-in-out 0.8s infinite; }
+.animate-kima-float-slow { animation: kima-float 5s ease-in-out 1.6s infinite; }
+.animate-kima-line       { animation: kima-line-draw 2.2s ease-out infinite; }
+.animate-kima-line-delay { animation: kima-line-draw 2.2s ease-out 0.35s infinite; }
+.animate-kima-line-slow  { animation: kima-line-draw 2.2s ease-out 0.7s infinite; }
+.animate-kima-total      { animation: kima-total-pulse 1.8s ease-in-out infinite; }
+.animate-kima-check      { animation: kima-fade-in 0.5s ease-out 1.2s both infinite; }
 
 /* ============================================================
    COMPONENTS — apenas @apply com utilitários Tailwind standard

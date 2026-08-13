@@ -1,22 +1,28 @@
 "use client";
 
-import Link from "next/link";
-import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Fatura } from "@/lib/types";
-import { formatMoedaAOA, formatData } from "@/lib/formatters";
+import { formatMoedaAOA, formatDataCompleta } from "@/lib/formatters";
 import { useAppStore } from "@/lib/store";
-import { Eye, ChevronLeft, ChevronRight, FileText } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { Menu as MenuPrimitive } from "@base-ui/react/menu";
+import { MoreVertical, CheckCircle2, Clock, Trash2, ChevronLeft, ChevronRight, FileText } from "lucide-react";
 import { useState } from "react";
+import { useToastContext } from "@/components/ui/toast";
+import { FaturaDrawer } from "./fatura-drawer";
 
 interface FaturaTableProps {
   faturas: Fatura[];
   itemsPerPage?: number;
 }
 
-export function FaturaTable({ faturas, itemsPerPage = 10 }: FaturaTableProps) {
+export function FaturaTable({ faturas, itemsPerPage = 20 }: FaturaTableProps) {
   const getClientePorId = useAppStore((s) => s.getClientePorId);
+  const deleteFatura = useAppStore((s) => s.deleteFatura);
+  const updateFatura = useAppStore((s) => s.updateFatura);
+  const { success, error } = useToastContext();
   const [currentPage, setCurrentPage] = useState(1);
+  const [selectedFatura, setSelectedFatura] = useState<Fatura | null>(null);
 
   const totalPages = Math.ceil(faturas.length / itemsPerPage) || 1;
   const safePage = Math.min(Math.max(1, currentPage), totalPages);
@@ -81,13 +87,13 @@ export function FaturaTable({ faturas, itemsPerPage = 10 }: FaturaTableProps) {
         <Table>
           <TableHeader className="bg-blue-600 text-white">
             <TableRow className="border-b border-blue-700">
-              <TableHead className="font-semibold text-xs text-white">Nº Fatura</TableHead>
-              <TableHead className="font-semibold text-xs text-white">Cliente</TableHead>
-              <TableHead className="font-semibold text-xs text-white">Data Emissão</TableHead>
-              <TableHead className="font-semibold text-xs text-white">Vencimento</TableHead>
-              <TableHead className="font-semibold text-xs text-white text-right">Total (AOA)</TableHead>
-              <TableHead className="font-semibold text-xs text-white text-center">Status</TableHead>
-              <TableHead className="font-semibold text-xs text-white text-center w-20">Ações</TableHead>
+              <TableHead className="font-semibold text-xs text-white uppercase tracking-wider">Nº Fatura</TableHead>
+              <TableHead className="font-semibold text-xs text-white uppercase tracking-wider">Cliente</TableHead>
+              <TableHead className="font-semibold text-xs text-white uppercase tracking-wider">Data Emissão</TableHead>
+              <TableHead className="font-semibold text-xs text-white uppercase tracking-wider">Vencimento</TableHead>
+              <TableHead className="font-semibold text-xs text-white uppercase tracking-wider text-right">Total (AOA)</TableHead>
+              <TableHead className="font-semibold text-xs text-white uppercase tracking-wider text-center">Status</TableHead>
+              <TableHead className="font-semibold text-xs text-white uppercase tracking-wider text-center w-20">Ações</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -98,7 +104,14 @@ export function FaturaTable({ faturas, itemsPerPage = 10 }: FaturaTableProps) {
               return (
                 <TableRow
                   key={fatura.id}
-                  className="hover:bg-blue-50/30 dark:hover:bg-slate-800/50 transition-colors border-b border-slate-100 dark:border-slate-800/80"
+                  onClick={() => setSelectedFatura(fatura)}
+                  className={cn(
+                    "cursor-pointer transition-colors border-b border-slate-100 dark:border-slate-800/80",
+                    index % 2 !== 0 && "bg-slate-50/60 dark:bg-slate-800/20",
+                    "hover:bg-blue-50/30 dark:hover:bg-slate-800/50",
+                    "animate-in fade-in slide-in-from-bottom-1"
+                  )}
+                  style={{ animationDelay: `${index * 30}ms`, animationFillMode: "both" }}
                 >
                   <TableCell className="font-mono text-xs font-bold text-slate-900 dark:text-white">
                     {numFaturaDisplay}
@@ -106,11 +119,11 @@ export function FaturaTable({ faturas, itemsPerPage = 10 }: FaturaTableProps) {
                   <TableCell className="text-xs font-medium text-slate-800 dark:text-slate-200">
                     {cliente?.nome || "Consumidor Final"}
                   </TableCell>
-                  <TableCell className="text-xs text-slate-600 dark:text-slate-400">
-                    {formatData(new Date(fatura.dataEmissao))}
+                  <TableCell className="text-xs text-slate-600 dark:text-slate-400 whitespace-nowrap">
+                    {formatDataCompleta(new Date(fatura.dataEmissao))}
                   </TableCell>
-                  <TableCell className="text-xs text-slate-600 dark:text-slate-400">
-                    {formatData(new Date(fatura.dataVencimento))}
+                  <TableCell className="text-xs text-slate-600 dark:text-slate-400 whitespace-nowrap">
+                    {formatDataCompleta(new Date(fatura.dataVencimento))}
                   </TableCell>
                   <TableCell className="text-xs font-bold font-mono text-slate-900 dark:text-white text-right">
                     {formatMoedaAOA(fatura.total)}
@@ -119,15 +132,85 @@ export function FaturaTable({ faturas, itemsPerPage = 10 }: FaturaTableProps) {
                     {getStatusBadge(fatura.status)}
                   </TableCell>
                   <TableCell className="text-center">
-                    <Link href={`/faturas/${fatura.id}`}>
-                      <button
-                        type="button"
-                        className="p-1.5 rounded-lg text-slate-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-slate-800 transition-colors"
-                        title="Ver detalhes da fatura"
+                    <MenuPrimitive.Root>
+                      <MenuPrimitive.Trigger
+                        onClick={(e) => e.stopPropagation()}
+                        className="inline-flex items-center justify-center p-1.5 rounded-lg text-slate-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-slate-800 transition-colors"
+                        aria-label="Ações da fatura"
                       >
-                        <Eye size={16} />
-                      </button>
-                    </Link>
+                        <MoreVertical size={16} />
+                      </MenuPrimitive.Trigger>
+                      <MenuPrimitive.Portal>
+                        <MenuPrimitive.Positioner
+                          side="bottom"
+                          align="end"
+                          sideOffset={6}
+                          className="isolate z-50"
+                        >
+                          <MenuPrimitive.Popup className="relative min-w-[190px] origin-(--transform-origin) rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-lg p-1.5 animate-scale-in">
+                            <MenuPrimitive.Item
+                              onClick={async (e) => {
+                                e.stopPropagation();
+                                try {
+                                  await updateFatura(fatura.id, { status: "Pago" });
+                                  success("Fatura marcada como paga", `Fatura ${fatura.numeroCompleto || ""} atualizada.`);
+                                } catch (err) {
+                                  error("Erro", `Falha ao marcar fatura como paga: ${(err as Error).message}`);
+                                }
+                              }}
+                              className={cn(
+                                "flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-emerald-700 dark:text-emerald-400 outline-none select-none cursor-pointer transition-colors",
+                                "data-highlighted:bg-emerald-50 dark:data-highlighted:bg-emerald-950/40"
+                              )}
+                            >
+                              <CheckCircle2 size={16} className="shrink-0" />
+                              Fatura paga
+                            </MenuPrimitive.Item>
+                            <MenuPrimitive.Item
+                              onClick={async (e) => {
+                                e.stopPropagation();
+                                try {
+                                  await updateFatura(fatura.id, { status: "Pendente" });
+                                  success("Fatura marcada como pendente", `Fatura ${fatura.numeroCompleto || ""} atualizada.`);
+                                } catch (err) {
+                                  error("Erro", `Falha ao marcar fatura como pendente: ${(err as Error).message}`);
+                                }
+                              }}
+                              className={cn(
+                                "flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-amber-700 dark:text-amber-400 outline-none select-none cursor-pointer transition-colors",
+                                "data-highlighted:bg-amber-50 dark:data-highlighted:bg-amber-950/40"
+                              )}
+                            >
+                              <Clock size={16} className="shrink-0" />
+                              Fatura pendente
+                            </MenuPrimitive.Item>
+
+                            <MenuPrimitive.Separator className="my-1 h-px bg-slate-100 dark:bg-slate-800" />
+
+                            <MenuPrimitive.Item
+                              onClick={async (e) => {
+                                e.stopPropagation();
+                                if (confirm(`Eliminar a fatura ${fatura.numeroCompleto || ""}? Esta ação não pode ser revertida.`)) {
+                                  try {
+                                    await deleteFatura(fatura.id);
+                                    success("Fatura eliminada", `Fatura ${fatura.numeroCompleto || ""} removida.`);
+                                  } catch (err) {
+                                    error("Erro", `Falha ao eliminar fatura: ${(err as Error).message}`);
+                                  }
+                                }
+                              }}
+                              className={cn(
+                                "flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-semibold text-red-600 dark:text-red-400 outline-none select-none cursor-pointer transition-colors",
+                                "data-highlighted:bg-red-50 dark:data-highlighted:bg-red-950/40"
+                              )}
+                            >
+                              <Trash2 size={16} className="shrink-0" />
+                              Eliminar fatura
+                            </MenuPrimitive.Item>
+                          </MenuPrimitive.Popup>
+                        </MenuPrimitive.Positioner>
+                      </MenuPrimitive.Portal>
+                    </MenuPrimitive.Root>
                   </TableCell>
                 </TableRow>
               );
@@ -136,7 +219,7 @@ export function FaturaTable({ faturas, itemsPerPage = 10 }: FaturaTableProps) {
         </Table>
       </div>
 
-      {/* Controles de Paginação (10 itens por página) */}
+      {/* Controles de Paginação (20 itens por página) */}
       <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-6 py-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
         <p className="text-xs text-slate-500 dark:text-slate-400">
           A exibir <strong className="font-semibold text-slate-800 dark:text-slate-200">{startIndex + 1}</strong> a{" "}
@@ -183,6 +266,9 @@ export function FaturaTable({ faturas, itemsPerPage = 10 }: FaturaTableProps) {
           </div>
         )}
       </div>
+
+      {/* Drawer de detalhes da fatura */}
+      <FaturaDrawer fatura={selectedFatura} onClose={() => setSelectedFatura(null)} />
     </div>
   );
 }

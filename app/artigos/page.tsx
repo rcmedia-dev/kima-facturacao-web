@@ -3,8 +3,9 @@
 import { useEffect, useState } from "react";
 import { useAppStore } from "@/lib/store";
 import { useToastContext } from "@/components/ui/toast";
-import { Plus, Search, Package } from "lucide-react";
+import { Plus, Package, Boxes, AlertTriangle, CheckCircle2 } from "lucide-react";
 import { ArtigoTable } from "./components/artigo-table";
+import { ArtigoFilters } from "./components/artigo-filters";
 import { ArtigoFormModal } from "./components/artigo-form-modal";
 import { ConfirmModal } from "@/components/confirm-modal";
 
@@ -13,6 +14,8 @@ export default function ArtigosPage() {
   const { success, error } = useToastContext();
   const [mounted, setMounted] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const [ivaFiltro, setIvaFiltro] = useState<string>("Todos");
+  const [estadoFiltro, setEstadoFiltro] = useState<string>("Todos");
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
@@ -21,13 +24,13 @@ export default function ArtigosPage() {
     setMounted(true);
   }, []);
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (deleteId) {
       try {
-        store.deleteArtigo(deleteId);
+        await store.deleteArtigo(deleteId);
         success("Sucesso", "Artigo removido com sucesso.");
       } catch (e) {
-        error("Erro", "Falha ao remover artigo.");
+        error("Erro", `Falha ao remover artigo: ${(e as Error).message}`);
       }
       setDeleteId(null);
     }
@@ -43,13 +46,36 @@ export default function ArtigosPage() {
     );
   }
 
-  const filteredArtigos = store.artigos.filter(
-    (a) =>
-      a.codigo.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      a.descricao.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredArtigos = store.artigos.filter((a) => {
+    if (ivaFiltro !== "Todos" && String(a.taxaIVA) !== ivaFiltro) return false;
+
+    if (estadoFiltro === "Ativos" && !a.ativo) return false;
+    if (estadoFiltro === "Inativos" && a.ativo) return false;
+
+    if (searchTerm.trim() !== "") {
+      const term = searchTerm.toLowerCase();
+      const matchCodigo = a.codigo.toLowerCase().includes(term);
+      const matchDescricao = a.descricao.toLowerCase().includes(term);
+      const matchCategoria = a.categoria.toLowerCase().includes(term);
+      if (!matchCodigo && !matchDescricao && !matchCategoria) {
+        return false;
+      }
+    }
+
+    return true;
+  });
+
+  const hasActiveFilters =
+    searchTerm !== "" || ivaFiltro !== "Todos" || estadoFiltro !== "Todos";
 
   const artigoParaEditar = editingId ? store.getArtigoPorId(editingId) : undefined;
+
+  const totalArtigos = store.artigos.length;
+  const stockDisponivel = store.artigos.reduce((sum, a) => sum + (a.stock || 0), 0);
+  const artigosStockBaixo = store.artigos.filter(
+    (a) => a.stockMinimo > 0 && a.stock <= a.stockMinimo
+  ).length;
+  const artigosAtivos = store.artigos.filter((a) => a.ativo).length;
 
   return (
     <div className="max-w-7xl mx-auto px-2 py-2 space-y-5 animate-slide-up">
@@ -77,30 +103,96 @@ export default function ArtigosPage() {
         </button>
       </div>
 
-      {/* ── BARRA DE PESQUISA ────────────────────────── */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl px-4 py-3 shadow-sm flex items-center gap-3">
-        <Search size={16} className="text-slate-400 dark:text-slate-500 shrink-0" />
-        <input
-          id="artigos-search"
-          type="text"
-          placeholder="Pesquisar por código ou descrição..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="flex-1 bg-transparent text-sm text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none"
+      {/* ── MÉTRICAS ─────────────────────────────────── */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4">
+          <div className="flex items-start justify-between">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+              Total de Artigos
+            </span>
+            <span className="w-9 h-9 rounded-lg bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 flex items-center justify-center">
+              <Package size={16} />
+            </span>
+          </div>
+          <p className="text-[22px] font-extrabold leading-tight text-slate-900 dark:text-white mt-1.5">
+            {totalArtigos}
+          </p>
+          <p className="text-[11.5px] font-medium text-slate-500 dark:text-slate-400 mt-0.5">
+            {totalArtigos === 1 ? "Artigo catalogado" : "Artigos catalogados"}
+          </p>
+        </div>
+
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4">
+          <div className="flex items-start justify-between">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+              Stock Disponível
+            </span>
+            <span className="w-9 h-9 rounded-lg bg-teal-50 dark:bg-teal-900/30 text-teal-600 dark:text-teal-400 flex items-center justify-center">
+              <Boxes size={16} />
+            </span>
+          </div>
+          <p className="text-[22px] font-extrabold leading-tight text-slate-900 dark:text-white mt-1.5">
+            {stockDisponivel.toLocaleString("pt-PT")}
+          </p>
+          <p className="text-[11.5px] font-medium text-slate-500 dark:text-slate-400 mt-0.5">
+            Unidades em armazém
+          </p>
+        </div>
+
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4">
+          <div className="flex items-start justify-between">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+              Stock Baixo
+            </span>
+            <span className="w-9 h-9 rounded-lg bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 flex items-center justify-center">
+              <AlertTriangle size={16} />
+            </span>
+          </div>
+          <p className="text-[22px] font-extrabold leading-tight text-slate-900 dark:text-white mt-1.5">
+            {artigosStockBaixo}
+          </p>
+          <p className="text-[11.5px] font-medium text-slate-500 dark:text-slate-400 mt-0.5">
+            Precisam de reabastecer
+          </p>
+        </div>
+
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4">
+          <div className="flex items-start justify-between">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+              Artigos Ativos
+            </span>
+            <span className="w-9 h-9 rounded-lg bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
+              <CheckCircle2 size={16} />
+            </span>
+          </div>
+          <p className="text-[22px] font-extrabold leading-tight text-slate-900 dark:text-white mt-1.5">
+            {artigosAtivos}
+          </p>
+          <p className="text-[11.5px] font-medium text-slate-500 dark:text-slate-400 mt-0.5">
+            Em catálogo ativo
+          </p>
+        </div>
+      </div>
+
+      {/* ── FILTROS ──────────────────────────────────── */}
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 shadow-sm">
+        <ArtigoFilters
+          searchTerm={searchTerm}
+          onSearchTermChange={setSearchTerm}
+          ivaFiltro={ivaFiltro}
+          onIvaChange={setIvaFiltro}
+          estadoFiltro={estadoFiltro}
+          onEstadoChange={setEstadoFiltro}
         />
-        {searchTerm && (
-          <span className="text-xs text-slate-500 dark:text-slate-400 font-medium px-2 py-0.5 bg-slate-100 dark:bg-slate-800 rounded-full">
-            {filteredArtigos.length} resultado{filteredArtigos.length !== 1 ? "s" : ""}
-          </span>
-        )}
       </div>
 
       {/* ── TABELA ───────────────────────────────────── */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm overflow-hidden">
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm overflow-hidden">
         <ArtigoTable
           artigos={filteredArtigos}
           onEdit={(id) => { setEditingId(id); setShowModal(true); }}
           onDelete={(id) => setDeleteId(id)}
+          hasQuery={hasActiveFilters}
         />
       </div>
 
