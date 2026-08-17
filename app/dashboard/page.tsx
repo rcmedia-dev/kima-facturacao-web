@@ -2,9 +2,61 @@
 
 import { useAppStore } from "@/lib/store";
 import { formatMoedaAOA } from "@/lib/formatters";
-import { ArrowRight, TrendingUp, Clock, Users, Receipt } from "lucide-react";
+import { ArrowRight, TrendingUp, Clock, Users, Receipt, FileText, ShoppingBag, FileMinus, FileClock, HandCoins, Plus } from "lucide-react";
 import Link from "next/link";
+import { TipoDocumento } from "@/lib/types";
 import { DashboardFaturaTable } from "./components/dashboard-fatura-table";
+
+const QUICK_TIPOS: {
+  tipo: TipoDocumento;
+  label: string;
+  Icon: any;
+  btn: string;
+  icon: string;
+}[] = [
+  {
+    tipo: "Fatura",
+    label: "Factura",
+    Icon: FileText,
+    btn: "bg-blue-50 dark:bg-blue-950/30 border-blue-100 dark:border-blue-900 text-blue-800 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/40",
+    icon: "bg-blue-600",
+  },
+  {
+    tipo: "FaturaRecibo",
+    label: "Factura-Recibo",
+    Icon: Receipt,
+    btn: "bg-emerald-50 dark:bg-emerald-950/30 border-emerald-100 dark:border-emerald-900 text-emerald-800 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900/40",
+    icon: "bg-emerald-600",
+  },
+  {
+    tipo: "Simplificada",
+    label: "Talão de Venda",
+    Icon: ShoppingBag,
+    btn: "bg-amber-50 dark:bg-amber-950/30 border-amber-100 dark:border-amber-900 text-amber-800 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/40",
+    icon: "bg-amber-500",
+  },
+  {
+    tipo: "NotaCredito",
+    label: "Nota de Crédito",
+    Icon: FileMinus,
+    btn: "bg-rose-50 dark:bg-rose-950/30 border-rose-100 dark:border-rose-900 text-rose-800 dark:text-rose-300 hover:bg-rose-100 dark:hover:bg-rose-900/40",
+    icon: "bg-rose-600",
+  },
+  {
+    tipo: "Orcamento",
+    label: "Factura pro-forma",
+    Icon: FileClock,
+    btn: "bg-violet-50 dark:bg-violet-950/30 border-violet-100 dark:border-violet-900 text-violet-800 dark:text-violet-300 hover:bg-violet-100 dark:hover:bg-violet-900/40",
+    icon: "bg-violet-600",
+  },
+  {
+    tipo: "Recibo",
+    label: "Recibo",
+    Icon: HandCoins,
+    btn: "bg-green-50 dark:bg-green-950/30 border-green-100 dark:border-green-900 text-green-800 dark:text-green-300 hover:bg-green-100 dark:hover:bg-green-900/40",
+    icon: "bg-green-600",
+  },
+];
 
 export default function DashboardPage() {
   const documentos = useAppStore((s) => s.documentos);
@@ -106,6 +158,42 @@ export default function DashboardPage() {
           <p className="text-[11.5px] font-medium text-slate-500 dark:text-slate-400 mt-0.5">
             Documentos emitidos
           </p>
+        </div>
+      </div>
+
+      {/* ── CRIAÇÃO RÁPIDA ──────────────────────────── */}
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 shadow-sm">
+        <div className="flex items-center justify-between mb-3">
+          <div>
+            <h3 className="font-bold text-slate-900 dark:text-white text-sm">
+              Criação Rápida de Documentos
+            </h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+              Emita um documento em segundos — o tipo já vem selecionado
+            </p>
+          </div>
+          <Link
+            href="/faturas/nova"
+            className="inline-flex items-center gap-1 text-xs font-semibold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors"
+          >
+            Todas as opções
+            <ArrowRight size={13} />
+          </Link>
+        </div>
+
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+          {QUICK_TIPOS.map(({ tipo, label, Icon, btn, icon }) => (
+            <Link
+              key={tipo}
+              href={`/faturas/nova?tipo=${tipo}`}
+              className={`flex flex-col items-start gap-2 p-3 rounded-xl border transition-all duration-150 ${btn}`}
+            >
+              <span className={`w-8 h-8 rounded-lg ${icon} text-white flex items-center justify-center shadow-sm`}>
+                <Icon size={16} />
+              </span>
+              <span className="text-xs font-bold leading-tight">{label}</span>
+            </Link>
+          ))}
         </div>
       </div>
 

@@ -17,6 +17,8 @@ interface Profile {
 interface ProfileDropdownProps {
   /** Quando true (sidebar colapsada), mostra apenas o avatar. */
   collapsed?: boolean;
+  /** Quando 'sidebar', adapta as cores para o fundo azul primário. */
+  variant?: "default" | "sidebar";
 }
 
 function getInitials(name: string, email: string) {
@@ -28,7 +30,7 @@ function getInitials(name: string, email: string) {
   return (source[0] || "K").toUpperCase();
 }
 
-export function ProfileDropdown({ collapsed = false }: ProfileDropdownProps) {
+export function ProfileDropdown({ collapsed = false, variant = "default" }: ProfileDropdownProps) {
   const router = useRouter();
   const [profile, setProfile] = useState<Profile | null>(null);
 
@@ -68,14 +70,20 @@ export function ProfileDropdown({ collapsed = false }: ProfileDropdownProps) {
     <MenuPrimitive.Root>
       <MenuPrimitive.Trigger
         className={cn(
-          "flex items-center rounded-xl px-2 py-1.5 transition-colors outline-none select-none hover:bg-slate-100 dark:hover:bg-slate-800 focus-visible:ring-2 focus-visible:ring-blue-500",
+          "flex items-center rounded-xl px-2 py-1.5 transition-colors outline-none select-none focus-visible:ring-2 focus-visible:ring-blue-500",
+          variant === "sidebar"
+            ? "hover:bg-white/10"
+            : "hover:bg-slate-100 dark:hover:bg-slate-800",
           collapsed ? "justify-center w-full" : "gap-2.5"
         )}
         aria-label="Menu do utilizador"
         title={collapsed ? displayName : undefined}
       >
         {/* Avatar */}
-        <div className="flex items-center justify-center w-9 h-9 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-500 text-white text-sm font-bold shadow-md shrink-0">
+        <div className={cn(
+          "flex items-center justify-center w-9 h-9 rounded-full text-sm font-bold shadow-md shrink-0",
+          variant === "sidebar" ? "bg-white text-blue-600" : "bg-gradient-to-tr from-blue-600 to-indigo-500 text-white"
+        )}>
           {profile?.initials || <UserIcon size={16} />}
         </div>
 
@@ -83,15 +91,24 @@ export function ProfileDropdown({ collapsed = false }: ProfileDropdownProps) {
           <>
             {/* Nome */}
             <span className="hidden sm:flex flex-col items-start text-left leading-tight min-w-0">
-              <span className="text-sm font-semibold text-slate-800 dark:text-slate-200 max-w-[140px] truncate">
+              <span className={cn(
+                "text-sm font-semibold max-w-[140px] truncate",
+                variant === "sidebar" ? "text-white" : "text-slate-800 dark:text-slate-200"
+              )}>
                 {displayName}
               </span>
-              <span className="text-[11px] text-slate-400 dark:text-slate-500 max-w-[140px] truncate">
+              <span className={cn(
+                "text-[11px] max-w-[140px] truncate",
+                variant === "sidebar" ? "text-blue-100/80" : "text-slate-400 dark:text-slate-500"
+              )}>
                 {profile?.email || "Conta KIMA"}
               </span>
             </span>
 
-            <ChevronDown size={15} className="hidden sm:block text-slate-400 ml-auto" />
+            <ChevronDown size={15} className={cn(
+              "hidden sm:block ml-auto",
+              variant === "sidebar" ? "text-blue-100/80" : "text-slate-400"
+            )} />
           </>
         )}
       </MenuPrimitive.Trigger>

@@ -1,13 +1,14 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db/client";
-import { obterDocumentos, criarDocumento } from "@/db/queries";
+import { obterDocumentos, criarDocumento, obterSeriePredefinida } from "@/db/queries";
 import { faturaLinhaSchema } from "@/lib/schemas";
+import { gerarHashFiscal } from "@/lib/fiscal-hash";
 import { z } from "zod";
 import { requireCompanyId } from "@/lib/company";
 
 const criarDocumentoSchema = z.object({
-  tipo: z.enum(["Fatura", "FaturaRecibo", "Simplificada", "NotaCredito", "NotaDebito", "Orcamento", "GuiaRemessa"]).default("Fatura"),
-  serie: z.string().default("A"),
+  tipo: z.enum(["Fatura", "FaturaRecibo", "Simplificada", "NotaCredito", "NotaDebito", "Orcamento", "GuiaRemessa", "AvisoCobrancaRecibo", "FaturaGenerica", "FaturaGlobal", "FaturaAdiantamento", "Recibo"]).default("Fatura"),
+  serie: z.string().optional(),
   clienteId: z.string().min(1, "Cliente é obrigatório").optional(),
   fornecedorId: z.string().optional(),
   linhas: z.array(faturaLinhaSchema).min(1, "O documento deve ter pelo menos 1 linha"),
@@ -15,6 +16,10 @@ const criarDocumentoSchema = z.object({
   status: z.enum(["Pago", "Pendente", "Cancelado", "Processado", "Rascunho"]).optional(),
   dataVencimento: z.string().optional(),
   observacoes: z.string().optional().default(""),
+  motivoIsencaoIVA: z.string().optional(),
+  dataOperacao: z.string().optional(),
+  documentoReferenciado: z.string().optional(),
+  motivo: z.string().optional(),
 });
 
 async function proximoNumero(companyId: string, tipo: string, serie: string): Promise<number> {
@@ -116,7 +121,12 @@ export async function POST(request: Request) {
     });
 
     const total = subtotal + totalIVA;
-    const numero = await proximoNumero(companyId, validatedData.tipo, validatedData.serie);
+
+    // Série predefinida para o tipo de documento (Art. 10º b — DP 71/25)
+    const seriePredefinida = await obterSeriePredefinida(companyId, validatedData.tipo);
+    const serie = validatedData.serie || seriePredefinida.serie;
+
+    const numero = await proximoNumero(companyId, validatedData.tipo, serie);
 
     const dataEmissao = new Date();
     const dataVencimento = validatedData.dataVencimento
@@ -125,15 +135,40 @@ export async function POST(request: Request) {
 
     const initialStatus =
       validatedData.status ||
-      (validatedData.tipo === "FaturaRecibo" || validatedData.tipo === "Simplificada" ? "Pago" : "Pendente");
+      (validatedData.tipo === "FaturaRecibo" || validatedData.tipo === "Simplificada" || validatedData.tipo === "AvisoCobrancaRecibo" || validatedData.tipo === "FaturaAdiantamento" || validatedData.tipo === "Recibo" ? "Pago" : "Pendente");
+
+    const numeroCompleto = `${serie}/${String(numero).padStart(6, "0")}`;
+
+    const cliente = validatedData.clienteId
+      ? await db.from("clientes").select("nif").eq("id", validatedData.clienteId).maybeSingle()
+      : null;
+    const fornecedor = validatedData.fornecedorId
+      ? await db.from("fornecedores").select("nif").eq("id", validatedData.fornecedorId).maybeSingle()
+      : null;
+
+    const hash = await gerarHashFiscal({
+      tipo: validatedData.tipo,
+      serie,
+      numero: String(numero),
+      numeroCompleto,
+      dataEmissao,
+      clienteNif: cliente?.data?.nif || undefined,
+      fornecedorNif: fornecedor?.data?.nif || undefined,
+      subtotal,
+      totalIVA,
+      total,
+      formaPagamento: validatedData.formaPagamento,
+      linhas,
+    });
 
     const novoDocumento = await criarDocumento(companyId, {
       tipo: validatedData.tipo,
-      serie: validatedData.serie,
+      serie,
       numero: String(numero),
       clienteId: validatedData.clienteId,
       fornecedorId: validatedData.fornecedorId,
       dataEmissao,
+      dataOperacao: validatedData.dataOperacao ? new Date(validatedData.dataOperacao) : dataEmissao,
       dataVencimento,
       formaPagamento: validatedData.formaPagamento,
       status: initialStatus,
@@ -141,7 +176,11 @@ export async function POST(request: Request) {
       subtotal,
       totalIVA,
       total,
+      hash,
+      motivoIsencaoIVA: validatedData.motivoIsencaoIVA,
       dataPagamento: initialStatus === "Pago" ? dataEmissao : undefined,
+      documentoReferenciado: validatedData.documentoReferenciado,
+      motivo: validatedData.motivo,
       linhas,
     });
 

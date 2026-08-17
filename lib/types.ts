@@ -1,5 +1,17 @@
 export type TipoCliente = "PF" | "PJ";
-export type TipoDocumento = "Fatura" | "FaturaRecibo" | "Simplificada" | "NotaCredito" | "NotaDebito" | "Orcamento" | "GuiaRemessa";
+export type TipoDocumento =
+  | "Fatura"
+  | "FaturaRecibo"
+  | "Simplificada"
+  | "NotaCredito"
+  | "NotaDebito"
+  | "Orcamento"
+  | "GuiaRemessa"
+  | "AvisoCobrancaRecibo"
+  | "FaturaGenerica"
+  | "FaturaGlobal"
+  | "FaturaAdiantamento"
+  | "Recibo";
 export type UnidadeMedida = "UN" | "KG" | "M" | "M2" | "L" | "H" | "DIA" | "MES";
 export type TipoArtigo = "Produto" | "Serviço";
 
@@ -29,6 +41,24 @@ export interface Fornecedor {
   dataCriacao: Date;
   ultimaAtualizacao: Date;
   ativo: boolean;
+}
+
+export type FormaPagamento = "Numerário" | "Transferência" | "Multicaixa" | "POS" | "Cheque" | "Crédito";
+
+export interface Despesa {
+  id: string;
+  descricao: string;
+  fornecedorId?: string;
+  categoria: string;
+  valor: number; // valor base (sem IVA) em AOA
+  taxaIVA: 0 | 7 | 14;
+  total: number; // valor com IVA em AOA
+  data: Date;
+  formaPagamento: Exclude<FormaPagamento, "Crédito">;
+  estado: "Paga" | "Pendente";
+  observacoes?: string;
+  dataCriacao: Date;
+  ultimaAtualizacao: Date;
 }
 
 export interface Artigo {
@@ -87,6 +117,9 @@ export interface Documento {
   totalIVA: number;
   total: number;
   dataPagamento?: Date;
+  hash?: string; // Código hash fiscal (Art. 10º j — DP 71/25)
+  motivoIsencaoIVA?: string; // Motivo da não liquidação do imposto (Art. 10º f)
+  dataOperacao?: Date; // Data da operação que deu causa à emissão (Art. 8º)
   
   // Campos de auditoria
   criadoPor?: string;
@@ -94,7 +127,7 @@ export interface Documento {
   dataAtualizacao: Date;
   
   // Referências
-  documentoReferenciado?: string; // Para notas de crédito/débito
+  documentoReferenciado?: string; // Para notas de crédito/débito e recibos (fatura a que se refere)
   motivo?: string; // Motivo de cancelamento ou nota
 }
 
@@ -102,10 +135,13 @@ export interface Documento {
 export type Fatura = Documento;
 
 export interface SerieNumeracao {
+  id?: string;
   serie: string; // A, B, C, etc
   tipoDocumento: TipoDocumento;
   proximoNumero: number;
   ultimoNumeroUtilizado: number;
+  ano?: number; // Ano económico da série
+  predefinida?: boolean; // Série predefinida para o tipo de documento
 }
 
 export interface ConfiguracaoEmpresa {
@@ -129,6 +165,8 @@ export interface ConfiguracaoEmpresa {
   // Conformidade fiscal
   inscricaoSocial?: string;
   nifRegional?: string;
+  softwareNome?: string; // Identificação do software de facturação (Art. 10º j)
+  softwareCertificacaoNumero?: string; // Nº de certificação AGT
   
   ultimaAtualizacao: Date;
   criadoEm: Date;

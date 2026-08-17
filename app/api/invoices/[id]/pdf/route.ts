@@ -49,6 +49,9 @@ export async function GET(
       totalIVA: Number(dbFatura.totalIVA),
       total: Number(dbFatura.total),
       dataPagamento: dbFatura.dataPagamento || undefined,
+      hash: dbFatura.hash || undefined,
+      motivoIsencaoIVA: dbFatura.motivoIsencaoIVA || undefined,
+      dataOperacao: dbFatura.dataOperacao || undefined,
       dataAtualizacao: dbFatura.dataAtualizacao,
     };
 
@@ -80,6 +83,8 @@ export async function GET(
           banco: dbEmpresa.banco,
           inscricaoSocial: dbEmpresa.inscricaoSocial,
           nifRegional: dbEmpresa.nifRegional,
+          softwareNome: dbEmpresa.softwareNome,
+          softwareCertificacaoNumero: dbEmpresa.softwareCertificacaoNumero,
           seriesPorTipo: dbEmpresa.seriesPorTipo || [],
           diasVencimentoPadrao: dbEmpresa.diasVencimentoPadrao || 30,
           ultimaAtualizacao: dbEmpresa.ultimaAtualizacao,
@@ -87,7 +92,7 @@ export async function GET(
         }
       : null;
 
-    const pdfDoc = gerarPDFFatura(fatura, cliente, empresa);
+    const pdfDoc = await gerarPDFFatura(fatura, cliente, empresa);
     const pdfBuffer = pdfDoc.output("arraybuffer");
 
     const fileName = `Fatura_${fatura.numeroCompleto || fatura.numero}.pdf`.replace(/[\/\\?%*:|"<>]/g, "_");

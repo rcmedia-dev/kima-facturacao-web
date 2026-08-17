@@ -49,10 +49,10 @@ export function FaturaDrawer({ fatura, onClose }: FaturaDrawerProps) {
 
   const cliente = displayFatura?.clienteId ? getClientePorId(displayFatura.clienteId) : undefined;
 
-  const handleDownloadPDF = () => {
+  const handleDownloadPDF = async () => {
     if (!displayFatura) return;
     try {
-      const pdf = gerarPDFFatura(displayFatura, cliente || null, empresa);
+      const pdf = await gerarPDFFatura(displayFatura, cliente || null, empresa);
       const fileName = `Fatura_${displayFatura.numeroCompleto || displayFatura.numero}.pdf`.replace(/[\\/\\\\?%*:|\"<>]/g, "_");
       pdf.save(fileName);
     } catch (error) {

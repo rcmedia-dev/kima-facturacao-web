@@ -62,3 +62,31 @@ export function validarNIFAngolano(nifRaw: string): { valido: boolean; mensagem?
   };
 }
 
+/**
+ * Nº de dias úteis entre duas datas (sábado e domingo excluídos).
+ * A factura deve ser emitida até ao 5.º dia útil seguinte à operação (Art. 8º — DP 71/25).
+ */
+export function diasUteisEntre(inicio: Date, fim: Date): number {
+  const start = new Date(inicio);
+  start.setHours(0, 0, 0, 0);
+  const end = new Date(fim);
+  end.setHours(0, 0, 0, 0);
+
+  let dias = 0;
+  const cursor = new Date(start);
+  while (cursor < end) {
+    const dia = cursor.getDay();
+    if (dia !== 0 && dia !== 6) dias++;
+    cursor.setDate(cursor.getDate() + 1);
+  }
+  return dias;
+}
+
+/** Verifica se a emissão ocorreu fora do prazo legal de 5 dias úteis após a operação. */
+export function emissaoForaDoPrazo(dataOperacao: Date | string, dataEmissao: Date | string): boolean {
+  const op = typeof dataOperacao === "string" ? new Date(dataOperacao) : dataOperacao;
+  const emi = typeof dataEmissao === "string" ? new Date(dataEmissao) : dataEmissao;
+  if (isNaN(op.getTime()) || isNaN(emi.getTime())) return false;
+  return diasUteisEntre(op, emi) > 5;
+}
+

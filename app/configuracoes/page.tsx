@@ -5,6 +5,7 @@ import { useAppStore } from "@/lib/store";
 import { useToastContext } from "@/components/ui/toast";
 import { ConfiguracaoEmpresa } from "@/lib/types";
 import { validarNIFAngolano } from "@/lib/utils";
+import { SeriesManager } from "./components/series-manager";
 import {
   Upload,
   Building2,
@@ -12,6 +13,7 @@ import {
   AlertCircle,
   Loader2,
   Settings,
+  ShieldCheck,
 } from "lucide-react";
 
 export default function ConfiguracoesPage() {
@@ -29,6 +31,8 @@ export default function ConfiguracoesPage() {
     telefone: "",
     email: "",
     logoUrl: "" as string | undefined | null,
+    softwareNome: "",
+    softwareCertificacaoNumero: "",
   });
 
   const [nifError, setNifError] = useState<string | null>(null);
@@ -42,6 +46,8 @@ export default function ConfiguracoesPage() {
         telefone: store.empresa.telefone || "",
         email: store.empresa.email || "",
         logoUrl: store.empresa.logoUrl || null,
+        softwareNome: store.empresa.softwareNome || "",
+        softwareCertificacaoNumero: store.empresa.softwareCertificacaoNumero || "",
       });
     }
     setMounted(true);
@@ -131,6 +137,8 @@ export default function ConfiguracoesPage() {
         telefone: formData.telefone,
         email: formData.email,
         logoUrl: formData.logoUrl || undefined,
+        softwareNome: formData.softwareNome || undefined,
+        softwareCertificacaoNumero: formData.softwareCertificacaoNumero || undefined,
         seriesPorTipo: store.empresa?.seriesPorTipo || [],
         diasVencimentoPadrao: store.empresa?.diasVencimentoPadrao || 30,
         criadoEm: store.empresa?.criadoEm || new Date(),
@@ -323,6 +331,47 @@ export default function ConfiguracoesPage() {
               </div>
             </div>
 
+            {/* Identificação do Software de Facturação AGT (Art. 10º j — DP 71/25) */}
+            <div className="pb-5 pt-2 border-t border-slate-100 dark:border-slate-800">
+              <div className="flex items-center gap-2 mb-1">
+                <ShieldCheck size={15} className="text-emerald-600 dark:text-emerald-400" />
+                <h4 className="text-sm font-bold text-slate-900 dark:text-white">
+                  Software de Facturação (AGT)
+                </h4>
+              </div>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">
+                Estes dados constam nas facturas e documentos fiscais emitidos (Art. 10º, alínea j, do Decreto Presidencial nº 71/25).
+              </p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div>
+                  <label htmlFor="softwareNome" className="label-kima">
+                    Nome do Software
+                  </label>
+                  <input
+                    id="softwareNome"
+                    name="softwareNome"
+                    value={formData.softwareNome}
+                    onChange={handleChange}
+                    placeholder="Ex: Kima Facturação"
+                    className="input-kima"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="softwareCertificacaoNumero" className="label-kima">
+                    Nº de Certificação AGT
+                  </label>
+                  <input
+                    id="softwareCertificacaoNumero"
+                    name="softwareCertificacaoNumero"
+                    value={formData.softwareCertificacaoNumero}
+                    onChange={handleChange}
+                    placeholder="Ex: 123/AGT/2026"
+                    className="input-kima"
+                  />
+                </div>
+              </div>
+            </div>
+
             <div className="flex justify-end pt-4 border-t border-slate-100 dark:border-slate-800">
               <button
                 id="config-btn-guardar"
@@ -344,6 +393,9 @@ export default function ConfiguracoesPage() {
           </form>
         </div>
       </div>
+
+      {/* ── CARD: SÉRIES E NUMERAÇÃO ────────────────── */}
+      <SeriesManager />
     </div>
   );
 }

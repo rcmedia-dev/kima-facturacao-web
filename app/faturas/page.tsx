@@ -23,7 +23,10 @@ export default function FaturasPage() {
     (d) => d.tipo === "Fatura" || d.tipo === "FaturaRecibo" || d.tipo === "Simplificada"
   );
 
-  const filteredFaturas = todasFaturas.filter((fatura) => {
+  // Listagem completa de todos os tipos de documento (faturas, notas, avisos, etc.)
+  const todosDocumentos = documentos;
+
+  const filteredFaturas = todosDocumentos.filter((fatura) => {
     if (statusFiltro !== "Todos" && fatura.status !== statusFiltro) return false;
 
     if (dataInicio && new Date(fatura.dataEmissao) < dataInicio) return false;
@@ -78,7 +81,7 @@ export default function FaturasPage() {
           <div>
             <h2 className="text-xl font-bold text-slate-900 dark:text-white">Faturas & Documentos</h2>
             <p className="text-xs text-slate-500 dark:text-slate-400">
-              {todasFaturas.length} {todasFaturas.length === 1 ? "documento emitido" : "documentos emitidos"}
+              {todosDocumentos.length} {todosDocumentos.length === 1 ? "documento emitido" : "documentos emitidos"}
             </p>
           </div>
         </div>

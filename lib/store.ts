@@ -12,6 +12,7 @@ import {
   MovimentoStock,
   LogAuditoria,
   TipoDocumento,
+  Despesa,
 } from "./types";
 
 async function apiFetch<T>(
@@ -58,6 +59,18 @@ function normalizarFornecedor(f: any): Fornecedor {
   };
 }
 
+function normalizarDespesa(d: any): Despesa {
+  return {
+    ...d,
+    valor: Number(d.valor),
+    taxaIVA: Number(d.taxaIVA),
+    total: Number(d.total),
+    data: new Date(d.data),
+    dataCriacao: new Date(d.dataCriacao),
+    ultimaAtualizacao: new Date(d.ultimaAtualizacao),
+  };
+}
+
 function normalizarDocumento(d: any): Documento {
   return {
     ...d,
@@ -97,6 +110,13 @@ interface AppStore {
   updateFornecedor: (id: string, fornecedor: Partial<Omit<Fornecedor, "id" | "dataCriacao">>) => Promise<Fornecedor>;
   deleteFornecedor: (id: string) => Promise<void>;
   getFornecedorPorId: (id: string) => Fornecedor | undefined;
+
+  // Despesas
+  despesas: Despesa[];
+  addDespesa: (despesa: Omit<Despesa, "id" | "dataCriacao" | "ultimaAtualizacao" | "total">) => Promise<Despesa>;
+  updateDespesa: (id: string, despesa: Partial<Omit<Despesa, "id" | "dataCriacao">>) => Promise<Despesa>;
+  deleteDespesa: (id: string) => Promise<void>;
+  getDespesaPorId: (id: string) => Despesa | undefined;
 
   // Documentos
   documentos: Documento[];
@@ -143,6 +163,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
   clientes: [],
   artigos: [],
   fornecedores: [],
+  despesas: [],
   documentos: [],
   movimentosStock: [],
   logs: [],
@@ -243,6 +264,44 @@ export const useAppStore = create<AppStore>((set, get) => ({
   },
 
   getFornecedorPorId: (id) => get().fornecedores.find((f) => f.id === id),
+
+  // Despesas
+  addDespesa: async (despesa) => {
+    const d = await apiFetch<any>("/api/expenses", {
+      method: "POST",
+      body: JSON.stringify({
+        ...despesa,
+        taxaIVA: String(despesa.taxaIVA),
+        data: despesa.data.toISOString(),
+      }),
+    });
+    const nova = normalizarDespesa(d);
+    set((state) => ({ despesas: [...state.despesas, nova] }));
+    return nova;
+  },
+
+  updateDespesa: async (id, despesa) => {
+    const d = await apiFetch<any>(`/api/expenses/${id}`, {
+      method: "PUT",
+      body: JSON.stringify({
+        ...despesa,
+        taxaIVA: despesa.taxaIVA !== undefined ? String(despesa.taxaIVA) : undefined,
+        data: despesa.data ? despesa.data.toISOString() : undefined,
+      }),
+    });
+    const atualizada = normalizarDespesa(d);
+    set((state) => ({
+      despesas: state.despesas.map((x) => (x.id === id ? atualizada : x)),
+    }));
+    return atualizada;
+  },
+
+  deleteDespesa: async (id) => {
+    await apiFetch<any>(`/api/expenses/${id}`, { method: "DELETE" });
+    set((state) => ({ despesas: state.despesas.filter((d) => d.id !== id) }));
+  },
+
+  getDespesaPorId: (id) => get().despesas.find((d) => d.id === id),
 
   // Documentos
   addDocumento: (documento) => {
@@ -373,6 +432,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
       clientes: [],
       artigos: [],
       fornecedores: [],
+      despesas: [],
       documentos: [],
       movimentosStock: [],
       logs: [],
@@ -383,11 +443,12 @@ export const useAppStore = create<AppStore>((set, get) => ({
 
   loadAll: async () => {
     try {
-      const [clientes, artigos, fornecedores, documentos, empresa] =
+      const [clientes, artigos, fornecedores, despesas, documentos, empresa] =
         await Promise.all([
           apiFetch<any[]>("/api/clients"),
           apiFetch<any[]>("/api/products"),
           apiFetch<any[]>("/api/suppliers"),
+          apiFetch<any[]>("/api/expenses"),
           apiFetch<any[]>("/api/invoices"),
           apiFetch<any>("/api/company"),
         ]);
@@ -396,6 +457,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
         clientes: (clientes || []).map(normalizarCliente),
         artigos: (artigos || []).map(normalizarArtigo),
         fornecedores: (fornecedores || []).map(normalizarFornecedor),
+        despesas: (despesas || []).map(normalizarDespesa),
         documentos: (documentos || []).map(normalizarDocumento),
         empresa: empresa || null,
       });

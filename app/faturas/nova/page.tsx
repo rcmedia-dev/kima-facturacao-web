@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAppStore } from "@/lib/store";
 import { Cliente, FaturaLinha, TipoDocumento } from "@/lib/types";
@@ -10,8 +11,23 @@ import { Passo3Emitir } from "./components/passo-3-emitir";
 import { Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatMoedaAOA, formatData } from "@/lib/formatters";
-import { DIAS_VENCIMENTO_DEFAULT } from "@/lib/constants";
+import { DIAS_VENCIMENTO_DEFAULT, LABELS_DOCUMENTO } from "@/lib/constants";
 import { addDays } from "date-fns";
+
+const TIPOS_VALIDOS: TipoDocumento[] = [
+  "Fatura",
+  "FaturaRecibo",
+  "Simplificada",
+  "NotaCredito",
+  "NotaDebito",
+  "Orcamento",
+  "GuiaRemessa",
+  "AvisoCobrancaRecibo",
+  "FaturaGenerica",
+  "FaturaGlobal",
+  "FaturaAdiantamento",
+  "Recibo",
+];
 
 const passos = [
   { id: "passo1", numero: 1, rotulo: "Cliente" },
@@ -19,13 +35,17 @@ const passos = [
   { id: "passo3", numero: 3, rotulo: "Emitir" },
 ];
 
-export default function NovaFaturaPage() {
+function NovaFaturaContent() {
+  const searchParams = useSearchParams();
   const store = useAppStore();
   const [mounted, setMounted] = useState(false);
   const [activeTab, setActiveTab] = useState("passo1");
 
   // Estado da fatura
-  const [tipoDocumento, setTipoDocumento] = useState<TipoDocumento>("Fatura");
+  const [tipoDocumento, setTipoDocumento] = useState<TipoDocumento>(() => {
+    const t = searchParams.get("tipo") as TipoDocumento | null;
+    return t && TIPOS_VALIDOS.includes(t) ? t : "Fatura";
+  });
   const [clienteSelecionado, setClienteSelecionado] = useState<Cliente | null>(null);
   const [linhas, setLinhas] = useState<FaturaLinha[]>([]);
   const [documentoReferenciado, setDocumentoReferenciado] = useState<string>("");
@@ -65,11 +85,11 @@ export default function NovaFaturaPage() {
       {/* Header */}
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
-          Nova {tipoDocumento}
+          Nova {LABELS_DOCUMENTO[tipoDocumento] || tipoDocumento}
         </h1>
         <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
           Preencha os dados abaixo para emitir{" "}
-          {tipoDocumento === "Orcamento" ? "um orçamento" : "uma " + tipoDocumento.toLowerCase()}
+          {(LABELS_DOCUMENTO[tipoDocumento] || tipoDocumento).toLowerCase()}
         </p>
       </div>
 
@@ -185,6 +205,8 @@ export default function NovaFaturaPage() {
                 tipoDocumento={tipoDocumento}
                 dataVencimento={dataVencimento}
                 onChangeDataVencimento={setDataVencimento}
+                documentoReferenciado={documentoReferenciado}
+                motivo={motivo}
                 onBack={() => setActiveTab("passo2")}
               />
             </TabsContent>
@@ -203,7 +225,7 @@ export default function NovaFaturaPage() {
             {clienteSelecionado
               ? `${tipoDocumento} · NIF ${clienteSelecionado.nif}`
               : tipoDocumento === "Simplificada"
-              ? "Fatura Simplificada (sem NIF)"
+              ? "Talão de Venda ou Prestação de Serviço (sem NIF)"
               : "Selecione um cliente no passo 1."}
           </p>
 
@@ -232,5 +254,19 @@ export default function NovaFaturaPage() {
         </aside>
       </div>
     </div>
+  );
+}
+
+export default function NovaFaturaPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="max-w-5xl mx-auto px-4 py-8 animate-pulse text-slate-500">
+          Carregando...
+        </div>
+      }
+    >
+      <NovaFaturaContent />
+    </Suspense>
   );
 }

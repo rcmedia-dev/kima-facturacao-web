@@ -16,7 +16,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { formatMoedaAOA, formatData } from "@/lib/formatters";
-import { FORMAS_PAGAMENTO, DIAS_VENCIMENTO_DEFAULT } from "@/lib/constants";
+import { FORMAS_PAGAMENTO, DIAS_VENCIMENTO_DEFAULT, LABELS_DOCUMENTO } from "@/lib/constants";
 import { addDays, format } from "date-fns";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -38,8 +38,12 @@ interface Passo3EmitirProps {
   tipoDocumento: TipoDocumento;
   dataVencimento: Date;
   onChangeDataVencimento: (data: Date) => void;
+  documentoReferenciado?: string;
+  motivo?: string;
   onBack: () => void;
 }
+
+const ROTULO_DOCUMENTO = LABELS_DOCUMENTO;
 
 export function Passo3Emitir({
   clienteSelecionado,
@@ -50,14 +54,20 @@ export function Passo3Emitir({
   tipoDocumento,
   dataVencimento,
   onChangeDataVencimento,
+  documentoReferenciado = "",
+  motivo = "",
   onBack,
 }: Passo3EmitirProps) {
   const store = useAppStore();
   const router = useRouter();
   const [formaPagamento, setFormaPagamento] = useState<string>("Transferência");
   const [observacoes, setObservacoes] = useState<string>("");
+  const [motivoIsencaoIVA, setMotivoIsencaoIVA] = useState<string>("");
+  const [dataOperacao, setDataOperacao] = useState<string>(format(new Date(), "yyyy-MM-dd"));
   const [loading, setLoading] = useState(false);
   const [faturaCriada, setFaturaCriada] = useState<boolean>(false);
+
+  const rotulo = ROTULO_DOCUMENTO[tipoDocumento] || tipoDocumento;
 
   const handleEmitir = async () => {
     if ((tipoDocumento !== "Simplificada" && !clienteSelecionado) || linhas.length === 0) return;
@@ -82,6 +92,10 @@ export function Passo3Emitir({
             })),
             formaPagamento,
             observacoes,
+            motivoIsencaoIVA,
+            dataOperacao,
+            documentoReferenciado: documentoReferenciado || undefined,
+            motivo: motivo || undefined,
           }),
         });
 
@@ -97,7 +111,7 @@ export function Passo3Emitir({
 
       // 2. Salvar no Zustand store local
       const proximoNumeroNum = store.documentos.length + 1;
-      const initialStatus = (tipoDocumento === "FaturaRecibo" || tipoDocumento === "Simplificada") ? "Pago" : "Pendente";
+      const initialStatus = (tipoDocumento === "FaturaRecibo" || tipoDocumento === "Simplificada" || tipoDocumento === "AvisoCobrancaRecibo" || tipoDocumento === "FaturaAdiantamento" || tipoDocumento === "Recibo") ? "Pago" : "Pendente";
 
       const faturaLocal = store.addFatura({
         id: apiData?.id,
@@ -116,6 +130,9 @@ export function Passo3Emitir({
         subtotal,
         totalIVA,
         total,
+        dataOperacao: dataOperacao ? new Date(dataOperacao) : undefined,
+        documentoReferenciado: documentoReferenciado || undefined,
+        motivo: motivo || undefined,
       });
 
       const finalId = faturaLocal.id;
@@ -137,7 +154,7 @@ export function Passo3Emitir({
           <CheckCircle2 className="w-10 h-10" />
         </div>
         <h2 className="text-2xl font-bold text-slate-900 dark:text-white">
-          {tipoDocumento} Emitido com Sucesso!
+          {rotulo} Emitido com Sucesso!
         </h2>
         <p className="text-sm text-slate-500 dark:text-slate-400">
           O documento foi gravado. A redirecionar...
@@ -149,8 +166,9 @@ export function Passo3Emitir({
     );
   }
 
-  const temVencimento = tipoDocumento === "Fatura" || tipoDocumento === "Orcamento";
-  const temPagamentoDireto = tipoDocumento === "FaturaRecibo" || tipoDocumento === "Simplificada";
+  const temVencimento = tipoDocumento === "Fatura" || tipoDocumento === "Orcamento" || tipoDocumento === "FaturaGenerica" || tipoDocumento === "FaturaGlobal";
+  const temPagamentoDireto = tipoDocumento === "FaturaRecibo" || tipoDocumento === "Simplificada" || tipoDocumento === "AvisoCobrancaRecibo" || tipoDocumento === "FaturaAdiantamento" || tipoDocumento === "Recibo";
+  const semIVA = totalIVA === 0 && linhas.length > 0;
 
   return (
     <div className="space-y-5">
@@ -160,7 +178,7 @@ export function Passo3Emitir({
           3 · Rever e emitir
         </h3>
         <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-          Confirme os dados abaixo e emita a {tipoDocumento.toLowerCase()}.
+          Confirme os dados abaixo e emita {rotulo.toLowerCase()}.
         </p>
       </div>
 
@@ -170,7 +188,7 @@ export function Passo3Emitir({
         <div className="flex justify-between items-start p-5 bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-700">
           <div>
             <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-              {tipoDocumento}
+              {rotulo}
             </p>
             <h3 className="text-base font-bold text-slate-900 dark:text-white mt-0.5">
               {store.empresa?.nomeEmpresa || "Empresa Demonstrativa"}
@@ -359,6 +377,40 @@ export function Passo3Emitir({
             className="h-20 text-xs border-slate-300 dark:border-slate-700"
           />
         </div>
+
+        {/* Data da Operação (Art. 8º — DP 71/25) */}
+        <div>
+          <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1.5">
+            Data da Operação{" "}
+            <span className="text-slate-400 font-normal">(prazo de emissão: 5 dias úteis)</span>
+          </label>
+          <Input
+            type="date"
+            value={dataOperacao}
+            max={format(new Date(), "yyyy-MM-dd")}
+            onChange={(e) => setDataOperacao(e.target.value)}
+            className="bg-white dark:bg-slate-950 border-slate-300 dark:border-slate-700 h-10 text-xs font-medium text-slate-900 dark:text-white"
+          />
+        </div>
+
+        {/* Motivo da não liquidação do IVA (Art. 10º, alínea f — DP 71/25) */}
+        {semIVA && (
+          <div className="p-3.5 rounded-xl border border-amber-200 dark:border-amber-900/60 bg-amber-50/50 dark:bg-amber-950/20">
+            <label className="text-xs font-semibold text-amber-900 dark:text-amber-300 block mb-1">
+              Motivo da não liquidação do IVA <span className="text-red-500">*</span>
+            </label>
+            <p className="text-[11px] text-amber-800 dark:text-amber-400 mb-2">
+              Este documento tem IVA não liquidado. Indique o motivo justificativo e a norma legal que o fundamenta
+              (obrigatório por lei — Art. 10º, alínea f).
+            </p>
+            <Input
+              placeholder="ex: Isento ao abrigo do Art. 19º do CIVA (exportação)"
+              value={motivoIsencaoIVA}
+              onChange={(e) => setMotivoIsencaoIVA(e.target.value)}
+              className="bg-white dark:bg-slate-950 border-slate-300 dark:border-slate-700 h-10 text-xs"
+            />
+          </div>
+        )}
       </div>
 
       {/* Ações finais */}
@@ -388,12 +440,12 @@ export function Passo3Emitir({
           {loading ? (
             <>
               <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              Emitindo {tipoDocumento}...
+              Emitindo {rotulo}...
             </>
           ) : (
             <>
               <Send className="w-4 h-4 mr-2" />
-              Emitir {tipoDocumento} Agora
+              Emitir {rotulo} Agora
             </>
           )}
         </Button>

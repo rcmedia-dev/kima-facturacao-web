@@ -32,6 +32,8 @@ export async function PUT(request: Request) {
       telefone: validatedData.telefone,
       email: validatedData.email,
       logoUrl: validatedData.logoUrl || undefined,
+      softwareNome: validatedData.softwareNome || undefined,
+      softwareCertificacaoNumero: validatedData.softwareCertificacaoNumero || undefined,
     });
 
     return NextResponse.json({ success: true, data: empresaAtualizada });

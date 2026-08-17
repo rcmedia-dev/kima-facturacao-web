@@ -1,26 +1,38 @@
 import { jsPDF } from "jspdf";
 import type { Documento, Cliente, ConfiguracaoEmpresa, TipoDocumento } from "./types";
-import { formatMoedaAOA, formatData } from "./formatters";
+import { formatMoedaAOA, formatData, valorPorExtenso } from "./formatters";
+import { gerarHashFiscal, formatarHash } from "./fiscal-hash";
 
 /**
- * Retorna o título oficial do documento de acordo com as normas comerciais da AGT em Angola.
+ * Retorna o título oficial do documento de acordo com o Decreto Presidencial nº 71/25
+ * (Art. 3º e Art. 4º, nº 9).
  */
 export function getTituloDocumento(tipo: TipoDocumento): string {
   switch (tipo) {
     case "Fatura":
-      return "FATURA";
+      return "FACTURA";
     case "FaturaRecibo":
       return "FACTURA-RECIBO";
     case "Simplificada":
-      return "FATURA SIMPLIFICADA";
+      return "TALÃO DE VENDA OU PRESTAÇÃO DE SERVIÇO";
     case "NotaCredito":
       return "NOTA DE CRÉDITO";
     case "NotaDebito":
       return "NOTA DE DÉBITO";
     case "Orcamento":
-      return "ORÇAMENTO";
+      return "FACTURA PRO-FORMA";
     case "GuiaRemessa":
-      return "GUIA DE REMESSA";
+      return "GUIA DE REMESSA OU TRANSPORTE";
+    case "AvisoCobrancaRecibo":
+      return "AVISO DE COBRANÇA-RECIBO";
+    case "FaturaGenerica":
+      return "FACTURA GENÉRICA";
+    case "FaturaGlobal":
+      return "FACTURA GLOBAL";
+    case "FaturaAdiantamento":
+      return "FACTURA ADIANTAMENTO";
+    case "Recibo":
+      return "RECIBO";
     default:
       return "DOCUMENTO COMMERCIAL";
   }
@@ -28,17 +40,38 @@ export function getTituloDocumento(tipo: TipoDocumento): string {
 
 /**
  * Serviço de Geração de PDF profissional para todos os tipos de documentos comerciais no Kima Facturação.
+ * Inclui requisitos fiscais do Decreto Presidencial nº 71/25: hash, identificação do software AGT,
+ * valor por extenso e menção Original / 2.ª via.
  */
-export function gerarPDFFatura(
+export async function gerarPDFFatura(
   fatura: Documento,
   cliente: Cliente | null,
   empresa: ConfiguracaoEmpresa | null,
-  options?: { formato?: "a4" | "pos80" }
+  options?: { formato?: "a4" | "pos80"; via?: "original" | "2via" }
 ) {
   const isThermal = options?.formato === "pos80";
+  const via = options?.via || "original";
 
   if (isThermal) {
-    return gerarPDFTermico80mm(fatura, cliente, empresa);
+    return gerarPDFTermico80mm(fatura, cliente, empresa, via);
+  }
+
+  // Hash fiscal determinístico (Art. 10º j — DP 71/25)
+  let hash = fatura.hash || "";
+  if (!hash) {
+    hash = await gerarHashFiscal({
+      tipo: fatura.tipo,
+      serie: fatura.serie,
+      numero: String(fatura.numero),
+      numeroCompleto: fatura.numeroCompleto || `${fatura.serie}/${String(fatura.numero).padStart(6, "0")}`,
+      dataEmissao: fatura.dataEmissao,
+      clienteNif: cliente?.nif,
+      subtotal: fatura.subtotal,
+      totalIVA: fatura.totalIVA,
+      total: fatura.total,
+      formaPagamento: fatura.formaPagamento,
+      linhas: fatura.linhas || [],
+    });
   }
 
   const doc = new jsPDF({
@@ -65,6 +98,16 @@ export function gerarPDFFatura(
     barColor = [124, 58, 237]; // violeta (Orçamento)
   } else if (fatura.tipo === "GuiaRemessa") {
     barColor = [71, 85, 105]; // slate (Guia de Remessa)
+  } else if (fatura.tipo === "AvisoCobrancaRecibo") {
+    barColor = [6, 182, 212]; // ciano (Aviso de Cobrança-Recibo)
+  } else if (fatura.tipo === "FaturaGenerica") {
+    barColor = [5, 150, 105]; // verde escuro (Fatura Genérica)
+  } else if (fatura.tipo === "FaturaGlobal") {
+    barColor = [75, 85, 99]; // cinzento (Fatura Global)
+  } else if (fatura.tipo === "FaturaAdiantamento") {
+    barColor = [79, 70, 229]; // índigo (Fatura de Adiantamento)
+  } else if (fatura.tipo === "Recibo") {
+    barColor = [16, 185, 129]; // verde (Recibo)
   }
 
   doc.setFillColor(barColor[0], barColor[1], barColor[2]);
@@ -105,6 +148,17 @@ export function gerarPDFFatura(
   doc.setTextColor(100, 116, 139);
   const numCompleto = fatura.numeroCompleto || `${fatura.serie}/${String(fatura.numero).padStart(6, "0")}`;
   doc.text(`Nº: ${numCompleto}`, pageWidth - 15, y + 8, { align: "right" });
+
+  // Menção Original / 2.ª via (Art. 7º, n.ºs 4 e 5 — DP 71/25)
+  doc.setFontSize(8);
+  doc.setFont("helvetica", "bold");
+  doc.setTextColor(via === "2via" ? 148 : 100, via === "2via" ? 163 : 116, via === "2via" ? 184 : 139);
+  doc.text(
+    via === "2via" ? "2.ª VIA, EM CONFORMIDADE COM A ORIGINAL" : "ORIGINAL",
+    pageWidth - 15,
+    y + 12.5,
+    { align: "right" }
+  );
 
   y += 22;
 
@@ -188,6 +242,29 @@ export function gerarPDFFatura(
     y += 18;
   }
 
+  // Se for Recibo, insere caixa de referência à fatura liquidada (Art. 6º — DP 71/25)
+  if (fatura.tipo === "Recibo" && fatura.documentoReferenciado) {
+    doc.setFillColor(236, 253, 245);
+    doc.setDrawColor(16, 185, 129);
+    doc.roundedRect(15, y, pageWidth - 30, 11, 2, 2, "FD");
+
+    doc.setFontSize(8);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(5, 150, 105);
+    doc.text(`RECIBO REFERENTE À FATURA: ${fatura.documentoReferenciado}`, 20, y + 4.5);
+
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(71, 85, 105);
+    const dataRecibo = fatura.dataPagamento
+      ? formatData(new Date(fatura.dataPagamento))
+      : fatura.dataEmissao
+        ? formatData(new Date(fatura.dataEmissao))
+        : "—";
+    doc.text(`Pagamento de ${formatMoedaAOA(fatura.total)} recebido a ${dataRecibo}`, 20, y + 9);
+
+    y += 15;
+  }
+
   // 5. Caixa de metadados (Emissão / Vencimento / Pagamento / Status)
   doc.setFillColor(241, 245, 249);
   doc.roundedRect(15, y, pageWidth - 30, 11, 2, 2, "F");
@@ -200,7 +277,7 @@ export function gerarPDFFatura(
   doc.setTextColor(71, 85, 105);
   doc.text(`Emissão: ${dataEmissao}`, 20, y + 7.5);
   
-  if (fatura.tipo === "FaturaRecibo" || fatura.tipo === "Simplificada") {
+  if (fatura.tipo === "FaturaRecibo" || fatura.tipo === "Simplificada" || fatura.tipo === "FaturaAdiantamento" || fatura.tipo === "Recibo") {
     doc.text(`Liquidação: Pronto-Pagamento`, pageWidth / 2, y + 7.5, { align: "center" });
   } else if (fatura.tipo === "Orcamento") {
     doc.text(`Validade da Proposta: ${dataVenc}`, pageWidth / 2, y + 7.5, { align: "center" });
@@ -303,12 +380,42 @@ export function gerarPDFFatura(
     labelTotal = "TOTAL ESTIMADO (AOA):";
   } else if (fatura.tipo === "GuiaRemessa") {
     labelTotal = "TOTAL MERCADORIA (AOA):";
+  } else if (fatura.tipo === "FaturaAdiantamento") {
+    labelTotal = "TOTAL ADIANTADO (AOA):";
+  } else if (fatura.tipo === "Recibo") {
+    labelTotal = "TOTAL RECEBIDO (AOA):";
   }
 
   doc.text(labelTotal, totaisX, y + 4);
   doc.text(formatMoedaAOA(fatura.total), pageWidth - 17, y + 4, { align: "right" });
 
   y += 16;
+
+  // Valor por extenso (Art. 10º, alínea d — DP 71/25)
+  doc.setFontSize(7.5);
+  doc.setFont("helvetica", "normal");
+  doc.setTextColor(71, 85, 105);
+  const porExtenso = valorPorExtenso(fatura.total);
+  const extensoLinhas = doc.splitTextToSize(`Valor por extenso: ${porExtenso}`, pageWidth - 30) as string[];
+  extensoLinhas.forEach((line, i) => {
+    doc.text(line, 15, y + i * 4);
+  });
+  y += extensoLinhas.length * 4 + 2;
+
+  // Motivo da não liquidação do IVA (Art. 10º, alínea f — DP 71/25)
+  if (fatura.motivoIsencaoIVA) {
+    doc.setFontSize(7.5);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(120, 53, 15);
+    const isencaoLinhas = doc.splitTextToSize(
+      `IVA não liquidado — ${fatura.motivoIsencaoIVA}`,
+      pageWidth - 30
+    ) as string[];
+    isencaoLinhas.forEach((line, i) => {
+      doc.text(line, 15, y + i * 4);
+    });
+    y += isencaoLinhas.length * 4 + 2;
+  }
 
   // 8. Observações (se existirem)
   if (fatura.observacoes && fatura.observacoes.trim()) {
@@ -325,19 +432,25 @@ export function gerarPDFFatura(
     });
   }
 
-  // 9. Rodapé legal certificado AGT
+  // 9. Rodapé legal certificado AGT (Art. 10º j — DP 71/25)
   doc.setFillColor(barColor[0], barColor[1], barColor[2]);
   doc.rect(0, pageHeight - 8, pageWidth, 8, "F");
+
+  const softwareNome = empresa?.softwareNome || "Kima Facturação";
+  const certNum = empresa?.softwareCertificacaoNumero || "nº de certificação não definido";
+  const hashCurto = formatarHash(hash, 4, 8);
 
   doc.setFontSize(7);
   doc.setFont("helvetica", "normal");
   doc.setTextColor(255, 255, 255);
   doc.text(
-    "Processado por programa certificado nº 999/AGT/2026 · Kima Facturação · Documento emitido eletronicamente",
+    `Processado por ${softwareNome} · Certificação AGT ${certNum} · Documento emitido eletronicamente`,
     pageWidth / 2,
-    pageHeight - 3.5,
+    pageHeight - 6,
     { align: "center" }
   );
+  doc.setFont("helvetica", "bold");
+  doc.text(`Código Hash: ${hashCurto}`, pageWidth / 2, pageHeight - 2.5, { align: "center" });
 
   return doc;
 }
@@ -348,7 +461,8 @@ export function gerarPDFFatura(
 export function gerarPDFTermico80mm(
   fatura: Documento,
   cliente: Cliente | null,
-  empresa: ConfiguracaoEmpresa | null
+  empresa: ConfiguracaoEmpresa | null,
+  via: "original" | "2via" = "original"
 ) {
   const doc = new jsPDF({
     orientation: "portrait",
@@ -431,9 +545,13 @@ export function gerarPDFTermico80mm(
   doc.setFontSize(7.5);
   doc.setFont("helvetica", "normal");
   doc.text(`Forma Pagamento: ${fatura.formaPagamento}`, 5, y);
-  y += 6;
+  y += 4;
+  doc.setFont("helvetica", "bold");
+  doc.text(via === "2via" ? "2.ª VIA, EM CONFORMIDADE COM A ORIGINAL" : "ORIGINAL", pageWidth / 2, y, { align: "center" });
+  y += 5;
 
-  doc.text("Processado por programa certificado nº 999/AGT/2026", pageWidth / 2, y, { align: "center" });
+  doc.setFont("helvetica", "normal");
+  doc.text(`Processado por ${empresa?.softwareNome || "Kima Facturação"} · Certificação AGT ${empresa?.softwareCertificacaoNumero || "não definido"}`, pageWidth / 2, y, { align: "center" });
   y += 4;
   doc.text("Obrigado pela preferência!", pageWidth / 2, y, { align: "center" });
 

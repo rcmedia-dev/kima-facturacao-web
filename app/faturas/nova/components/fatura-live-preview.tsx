@@ -50,6 +50,16 @@ export function FaturaLivePreview({
         return { accent: "from-slate-700 to-zinc-800", badgeBg: "bg-slate-100 text-slate-800 border-slate-300", border: "border-slate-500", glow: "shadow-slate-500/10" };
       case "GuiaRemessa":
         return { accent: "from-cyan-600 to-blue-700", badgeBg: "bg-cyan-50 text-cyan-700 border-cyan-200", border: "border-cyan-500", glow: "shadow-cyan-500/10" };
+      case "AvisoCobrancaRecibo":
+        return { accent: "from-cyan-500 to-teal-600", badgeBg: "bg-cyan-50 text-cyan-700 border-cyan-200", border: "border-cyan-500", glow: "shadow-cyan-500/10" };
+      case "FaturaGenerica":
+        return { accent: "from-teal-600 to-emerald-700", badgeBg: "bg-teal-50 text-teal-700 border-teal-200", border: "border-teal-500", glow: "shadow-teal-500/10" };
+      case "FaturaGlobal":
+        return { accent: "from-gray-600 to-slate-700", badgeBg: "bg-gray-50 text-gray-700 border-gray-200", border: "border-gray-500", glow: "shadow-gray-500/10" };
+      case "FaturaAdiantamento":
+        return { accent: "from-indigo-600 to-violet-700", badgeBg: "bg-indigo-50 text-indigo-700 border-indigo-200", border: "border-indigo-500", glow: "shadow-indigo-500/10" };
+      case "Recibo":
+        return { accent: "from-emerald-600 to-green-700", badgeBg: "bg-emerald-50 text-emerald-700 border-emerald-200", border: "border-emerald-500", glow: "shadow-emerald-500/10" };
       default:
         return { accent: "from-blue-600 to-indigo-600", badgeBg: "bg-blue-50 text-blue-700 border-blue-200", border: "border-blue-500", glow: "shadow-blue-500/10" };
     }

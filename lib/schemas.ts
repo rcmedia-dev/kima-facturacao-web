@@ -47,6 +47,24 @@ export const fornecedorSchema = z.object({
   ativo: z.boolean().default(true),
 });
 
+export const despesaSchemaInput = z.object({
+  descricao: z.string().min(1, "Descrição é obrigatória").min(3, "Descrição deve ter pelo menos 3 caracteres"),
+  fornecedorId: z.string().optional(),
+  categoria: z.string().min(1, "Categoria é obrigatória").default("Geral"),
+  valor: z.number().min(0, "Valor deve ser maior ou igual a 0"),
+  taxaIVA: z.enum(["0", "7", "14"]).default("0"),
+  data: z.string().min(1, "Data é obrigatória"),
+  formaPagamento: z.enum(["Numerário", "Transferência", "Multicaixa", "POS", "Cheque"]).default("Numerário"),
+  estado: z.enum(["Paga", "Pendente"]).default("Paga"),
+  observacoes: z.string().optional(),
+});
+
+export const despesaSchema = despesaSchemaInput.transform((data) => ({
+  ...data,
+  taxaIVA: parseInt(data.taxaIVA) as 0 | 7 | 14,
+  data: new Date(data.data),
+}));
+
 export const faturaLinhaSchema = z.object({
   artigoId: z.string().min(1, "Artigo é obrigatório"),
   quantidade: z.number().min(1, "Quantidade deve ser maior que 0"),
@@ -64,6 +82,8 @@ export const empresaSchema = z.object({
   telefone: z.string().min(1, "Telefone é obrigatório"),
   email: z.string().email("Email inválido"),
   logoUrl: z.string().optional().nullable(),
+  softwareNome: z.string().optional().nullable(),
+  softwareCertificacaoNumero: z.string().optional().nullable(),
 });
 
 export const loginSchema = z.object({
@@ -93,3 +113,7 @@ export type ArtigoFormInput = z.input<typeof artigoSchema>;
 // Tipo de OUTPUT do form (após o transform, para o store)
 export type ArtigoFormData = z.output<typeof artigoSchema>;
 export type EmpresaFormData = z.infer<typeof empresaSchema>;
+export type FornecedorFormInput = z.input<typeof fornecedorSchema>;
+export type FornecedorFormData = z.output<typeof fornecedorSchema>;
+export type DespesaFormInput = z.input<typeof despesaSchema>;
+export type DespesaFormData = z.output<typeof despesaSchema>;

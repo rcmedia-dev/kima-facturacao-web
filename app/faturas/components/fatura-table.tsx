@@ -6,10 +6,11 @@ import { formatMoedaAOA, formatDataCompleta } from "@/lib/formatters";
 import { useAppStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { Menu as MenuPrimitive } from "@base-ui/react/menu";
-import { MoreVertical, CheckCircle2, Clock, Trash2, ChevronLeft, ChevronRight, FileText } from "lucide-react";
+import { MoreVertical, CheckCircle2, Clock, Trash2, ChevronLeft, ChevronRight, FileText, AlertTriangle } from "lucide-react";
 import { useState } from "react";
 import { useToastContext } from "@/components/ui/toast";
 import { FaturaDrawer } from "./fatura-drawer";
+import { emissaoForaDoPrazo } from "@/lib/utils";
 
 interface FaturaTableProps {
   faturas: Fatura[];
@@ -115,6 +116,14 @@ export function FaturaTable({ faturas, itemsPerPage = 20 }: FaturaTableProps) {
                 >
                   <TableCell className="font-mono text-xs font-bold text-slate-900 dark:text-white">
                     {numFaturaDisplay}
+                    {fatura.dataOperacao && fatura.status !== "Cancelado" && emissaoForaDoPrazo(fatura.dataOperacao, fatura.dataEmissao) && (
+                      <span
+                        className="ml-2 inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-red-50 text-red-600 dark:bg-red-950/50 dark:text-red-400 border border-red-200 dark:border-red-800"
+                        title="Emitido fora do prazo legal de 5 dias úteis após a operação (Art. 8º — DP 71/25)"
+                      >
+                        <AlertTriangle className="w-2.5 h-2.5" /> Prazo
+                      </span>
+                    )}
                   </TableCell>
                   <TableCell className="text-xs font-medium text-slate-800 dark:text-slate-200">
                     {cliente?.nome || "Consumidor Final"}

@@ -11,6 +11,7 @@ import {
   LogAuditoria,
   ConfiguracaoEmpresa,
   SerieNumeracao,
+  Despesa,
 } from '@/lib/types';
 import { usuarioAtual } from '@/lib/session';
 
@@ -82,6 +83,24 @@ function mapearFornecedor(r: any): Fornecedor {
   };
 }
 
+function mapearDespesa(r: any): Despesa {
+  return {
+    id: r.id,
+    descricao: r.descricao,
+    fornecedorId: r.fornecedor_id || undefined,
+    categoria: r.categoria || 'Geral',
+    valor: Number(r.valor),
+    taxaIVA: Number(r.taxa_iva) as Despesa['taxaIVA'],
+    total: Number(r.total),
+    data: new Date(r.data),
+    formaPagamento: r.forma_pagamento,
+    estado: r.estado,
+    observacoes: r.observacoes || undefined,
+    dataCriacao: new Date(r.created_at),
+    ultimaAtualizacao: new Date(r.updated_at || r.created_at),
+  };
+}
+
 function mapearArtigo(r: any): Artigo {
   return {
     id: r.id,
@@ -120,6 +139,9 @@ function mapearDocumento(r: any): Documento {
     totalIVA: Number(r.total_iva),
     total: Number(r.total),
     dataPagamento: r.data_pagamento ? new Date(r.data_pagamento) : undefined,
+    hash: r.hash || undefined,
+    motivoIsencaoIVA: r.motivo_isencao_iva || undefined,
+    dataOperacao: r.data_operacao ? new Date(r.data_operacao) : undefined,
     criadoPor: r.created_by || undefined,
     atualizadoPor: r.updated_by || undefined,
     dataAtualizacao: new Date(r.updated_at || r.created_at),
@@ -331,6 +353,103 @@ export async function deletarFornecedor(companyId: string, id: string) {
   return data;
 }
 
+// ─── DESPESAS ────────────────────────────────────────────────────────────────
+
+export async function obterDespesas(companyId: string) {
+  const { data, error } = await db
+    .from('despesas')
+    .select('*')
+    .eq('company_id', companyId)
+    .order('data', { ascending: false });
+  if (error) throw new Error(error.message);
+  return (data || []).map(mapearDespesa);
+}
+
+export async function obterDespesaPorId(companyId: string, id: string) {
+  const { data, error } = await db
+    .from('despesas')
+    .select('*')
+    .eq('company_id', companyId)
+    .eq('id', id)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  return data ? mapearDespesa(data) : null;
+}
+
+export async function criarDespesa(
+  companyId: string,
+  despesa: Omit<Despesa, 'id' | 'dataCriacao' | 'ultimaAtualizacao' | 'total'>
+) {
+  const total = despesa.valor * (1 + despesa.taxaIVA / 100);
+  const { data, error } = await db
+    .from('despesas')
+    .insert({
+      company_id: companyId,
+      descricao: despesa.descricao,
+      fornecedor_id: despesa.fornecedorId || null,
+      categoria: despesa.categoria || 'Geral',
+      valor: String(despesa.valor),
+      taxa_iva: despesa.taxaIVA,
+      total: String(total),
+      data: despesa.data.toISOString(),
+      forma_pagamento: despesa.formaPagamento,
+      estado: despesa.estado,
+      observacoes: despesa.observacoes || null,
+    })
+    .select()
+    .single();
+  if (error) throw new Error(error.message);
+  await registarAuditoria(companyId, 'CRIAR', 'Despesa', data.id, null, data);
+  return mapearDespesa(data);
+}
+
+export async function atualizarDespesa(
+  companyId: string,
+  id: string,
+  despesa: Partial<Despesa>
+) {
+  const anteriores = await obterDespesaPorId(companyId, id);
+  if (!anteriores) throw new Error('Despesa não encontrada');
+
+  const valor = despesa.valor ?? anteriores.valor;
+  const taxaIVA = despesa.taxaIVA ?? anteriores.taxaIVA;
+  const total = valor * (1 + taxaIVA / 100);
+
+  const { data, error } = await db
+    .from('despesas')
+    .update({
+      descricao: despesa.descricao ?? anteriores.descricao,
+      fornecedor_id: despesa.fornecedorId !== undefined ? despesa.fornecedorId || null : undefined,
+      categoria: despesa.categoria !== undefined ? despesa.categoria : undefined,
+      valor: despesa.valor !== undefined ? String(despesa.valor) : undefined,
+      taxa_iva: despesa.taxaIVA,
+      total: String(total),
+      data: despesa.data ? despesa.data.toISOString() : undefined,
+      forma_pagamento: despesa.formaPagamento,
+      estado: despesa.estado,
+      observacoes: despesa.observacoes !== undefined ? despesa.observacoes || null : undefined,
+    })
+    .eq('company_id', companyId)
+    .eq('id', id)
+    .select()
+    .single();
+  if (error) throw new Error(error.message);
+  await registarAuditoria(companyId, 'ATUALIZAR', 'Despesa', id, anteriores as any, data);
+  return mapearDespesa(data);
+}
+
+export async function deletarDespesa(companyId: string, id: string) {
+  const anteriores = await obterDespesaPorId(companyId, id);
+  const { data, error } = await db
+    .from('despesas')
+    .delete()
+    .eq('company_id', companyId)
+    .eq('id', id);
+  if (error) throw new Error(error.message);
+  await registarAuditoria(companyId, 'DELETAR', 'Despesa', id, anteriores as any, null);
+  return data;
+}
+
 // ─── ARTIGOS ─────────────────────────────────────────────────────────────────
 
 export async function obterArtigos(companyId: string) {
@@ -504,6 +623,9 @@ export async function criarDocumento(
       data_pagamento: documento.dataPagamento ? documento.dataPagamento.toISOString() : null,
       documento_referenciado: documento.documentoReferenciado || null,
       motivo: documento.motivo || null,
+      hash: documento.hash || null,
+      motivo_isencao_iva: documento.motivoIsencaoIVA || null,
+      data_operacao: documento.dataOperacao ? documento.dataOperacao.toISOString() : null,
     })
     .select()
     .single();
@@ -594,6 +716,123 @@ export async function registrarPagamento(
     dataPagamento,
     formaPagamento,
   });
+}
+
+// ─── SÉRIES / NUMERAÇÃO ───────────────────────────────────────────────────────
+
+export async function obterSeries(companyId: string): Promise<SerieNumeracao[]> {
+  const { data, error } = await db
+    .from('series_numeracao')
+    .select('*')
+    .eq('company_id', companyId)
+    .order('tipo_documento', { ascending: true })
+    .order('serie', { ascending: true });
+  if (error) throw new Error(error.message);
+
+  return (data || []).map((r: any): SerieNumeracao => ({
+    id: r.id,
+    serie: r.serie,
+    tipoDocumento: r.tipo_documento,
+    proximoNumero: r.proximo_numero,
+    ultimoNumeroUtilizado: r.ultimo_numero_utilizado,
+    ano: r.ano || undefined,
+    predefinida: r.predefinida || false,
+  }));
+}
+
+export async function criarSerie(
+  companyId: string,
+  dados: { serie: string; tipoDocumento: string; proximoNumero?: number; predefinida?: boolean }
+) {
+  const { data: existente } = await db
+    .from('series_numeracao')
+    .select('id')
+    .eq('company_id', companyId)
+    .eq('serie', dados.serie)
+    .eq('tipo_documento', dados.tipoDocumento)
+    .maybeSingle();
+  if (existente) throw new Error('Já existe uma série com esta letra para este tipo de documento');
+
+  const anoAtual = new Date().getFullYear();
+
+  const { data, error } = await db
+    .from('series_numeracao')
+    .insert({
+      company_id: companyId,
+      serie: dados.serie,
+      tipo_documento: dados.tipoDocumento,
+      proximo_numero: dados.proximoNumero ?? 1,
+      ultimo_numero_utilizado: 0,
+      ano: anoAtual,
+      predefinida: dados.predefinida ?? false,
+    })
+    .select()
+    .single();
+  if (error) throw new Error(error.message);
+  await registarAuditoria(companyId, 'CRIAR', 'SerieNumeracao', data.id, null, data);
+  return data;
+}
+
+export async function atualizarSerie(
+  companyId: string,
+  id: string,
+  dados: Partial<{ serie: string; tipoDocumento: string; proximoNumero: number; predefinida: boolean }>
+) {
+  const { data, error } = await db
+    .from('series_numeracao')
+    .update({
+      serie: dados.serie,
+      tipo_documento: dados.tipoDocumento,
+      proximo_numero: dados.proximoNumero,
+      predefinida: dados.predefinida,
+    })
+    .eq('company_id', companyId)
+    .eq('id', id)
+    .select()
+    .single();
+  if (error) throw new Error(error.message);
+  await registarAuditoria(companyId, 'ATUALIZAR', 'SerieNumeracao', id, null, data);
+  return data;
+}
+
+export async function deletarSerie(companyId: string, id: string) {
+  const { data, error } = await db
+    .from('series_numeracao')
+    .delete()
+    .eq('company_id', companyId)
+    .eq('id', id);
+  if (error) throw new Error(error.message);
+  await registarAuditoria(companyId, 'DELETAR', 'SerieNumeracao', id, null, null);
+  return data;
+}
+
+/** Série predefinida para um tipo de documento; cria a série "A" se não existir. */
+export async function obterSeriePredefinida(companyId: string, tipo: string) {
+  const { data: series } = await db
+    .from('series_numeracao')
+    .select('*')
+    .eq('company_id', companyId)
+    .eq('tipo_documento', tipo)
+    .order('predefinida', { ascending: false })
+    .order('serie', { ascending: true });
+
+  if (series && series.length > 0) return series[0];
+
+  const { data: criada, error } = await db
+    .from('series_numeracao')
+    .insert({
+      company_id: companyId,
+      serie: 'A',
+      tipo_documento: tipo,
+      proximo_numero: 1,
+      ultimo_numero_utilizado: 0,
+      ano: new Date().getFullYear(),
+      predefinida: true,
+    })
+    .select()
+    .single();
+  if (error) throw new Error(error.message);
+  return criada;
 }
 
 // ─── MOVIMENTOS DE STOCK ─────────────────────────────────────────────────────
@@ -719,12 +958,17 @@ export async function obterEmpresa(
     banco: s.banco || undefined,
     inscricaoSocial: s.inscricao_social || undefined,
     nifRegional: s.nif_regional || undefined,
+    softwareNome: s.software_nome || undefined,
+    softwareCertificacaoNumero: s.software_certificacao_numero || undefined,
     diasVencimentoPadrao: s.dias_vencimento_padrao || 30,
     seriesPorTipo: (series || []).map((sr: any): SerieNumeracao => ({
+      id: sr.id,
       serie: sr.serie,
       tipoDocumento: sr.tipo_documento,
       proximoNumero: sr.proximo_numero,
       ultimoNumeroUtilizado: sr.ultimo_numero_utilizado,
+      ano: sr.ano || undefined,
+      predefinida: sr.predefinida || false,
     })),
     ultimaAtualizacao: s.updated_at ? new Date(s.updated_at) : new Date(company.created_at),
     criadoEm: new Date(company.created_at),
@@ -757,6 +1001,8 @@ export async function atualizarEmpresa(
     banco: dados.banco !== undefined ? dados.banco : empresa?.banco,
     inscricao_social: dados.inscricaoSocial !== undefined ? dados.inscricaoSocial : empresa?.inscricaoSocial,
     nif_regional: dados.nifRegional !== undefined ? dados.nifRegional : empresa?.nifRegional,
+    software_nome: dados.softwareNome !== undefined ? dados.softwareNome : empresa?.softwareNome,
+    software_certificacao_numero: dados.softwareCertificacaoNumero !== undefined ? dados.softwareCertificacaoNumero : empresa?.softwareCertificacaoNumero,
     dias_vencimento_padrao: dados.diasVencimentoPadrao !== undefined ? dados.diasVencimentoPadrao : empresa?.diasVencimentoPadrao || 30,
   };
 

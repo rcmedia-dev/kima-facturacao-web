@@ -11,6 +11,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { ArrowLeft, Download, Printer, CreditCard, CheckCircle2, FileText, Share2 } from "lucide-react";
 import Link from "next/link";
 import { gerarPDFFatura } from "@/lib/pdf-generator";
+import { gerarHashFiscal, formatarHash } from "@/lib/fiscal-hash";
+import { LABELS_DOCUMENTO } from "@/lib/constants";
 import { PagamentoModal } from "./components/pagamento-modal";
 
 export default function FaturaDetailPage() {
@@ -20,6 +22,7 @@ export default function FaturaDetailPage() {
   const [apiFatura, setApiFatura] = useState<any>(null);
   const [loadingApi, setLoadingApi] = useState(false);
   const [showPagamentoModal, setShowPagamentoModal] = useState(false);
+  const [hashFiscal, setHashFiscal] = useState<string | null>(null);
 
   const faturaLocal = params.id ? store.getFaturaPorId(params.id as string) : null;
   const fatura = faturaLocal || apiFatura;
@@ -73,6 +76,31 @@ export default function FaturaDetailPage() {
     }
   }, [params.id]);
 
+  // Hash fiscal determinístico para exibição (Art. 10º j — DP 71/25)
+  useEffect(() => {
+    if (!fatura) return;
+    const hashExistente = (fatura as any).hash;
+    if (hashExistente) {
+      setHashFiscal(hashExistente);
+      return;
+    }
+    gerarHashFiscal({
+      tipo: fatura.tipo,
+      serie: fatura.serie,
+      numero: String(fatura.numero),
+      numeroCompleto: fatura.numeroCompleto || `${fatura.serie}/${String(fatura.numero).padStart(6, "0")}`,
+      dataEmissao: fatura.dataEmissao,
+      clienteNif: cliente?.nif,
+      subtotal: fatura.subtotal,
+      totalIVA: fatura.totalIVA,
+      total: fatura.total,
+      formaPagamento: fatura.formaPagamento,
+      linhas: fatura.linhas || [],
+    })
+      .then(setHashFiscal)
+      .catch(() => setHashFiscal(null));
+  }, [fatura, cliente?.nif]);
+
   if (!mounted || loadingApi) {
     return <div className="max-w-6xl mx-auto px-4 py-8 animate-pulse text-slate-500">Carregando fatura...</div>;
   }
@@ -119,9 +147,9 @@ export default function FaturaDetailPage() {
     }
   };
 
-  const handleDownloadPDF = () => {
+  const handleDownloadPDF = async (via: "original" | "2via" = "original") => {
     try {
-      const pdf = gerarPDFFatura(fatura, cliente, store.empresa);
+      const pdf = await gerarPDFFatura(fatura, cliente, store.empresa, { via });
       const fileName = `${fatura.tipo || "Documento"}_${fatura.numeroCompleto || fatura.numero}.pdf`.replace(/[\/\\?%*:|"<>]/g, "_");
       pdf.save(fileName);
     } catch (error) {
@@ -129,9 +157,9 @@ export default function FaturaDetailPage() {
     }
   };
 
-  const handleDownloadPOS80 = () => {
+  const handleDownloadPOS80 = async () => {
     try {
-      const pdf = gerarPDFFatura(fatura, cliente, store.empresa, { formato: "pos80" });
+      const pdf = await gerarPDFFatura(fatura, cliente, store.empresa, { formato: "pos80" });
       const fileName = `Talao_${fatura.numeroCompleto || fatura.numero}.pdf`.replace(/[\/\\?%*:|"<>]/g, "_");
       pdf.save(fileName);
     } catch (error) {
@@ -193,17 +221,23 @@ export default function FaturaDetailPage() {
               {formatMoedaAOA(fatura.total)}
             </p>
             <p className="text-xs text-slate-300 mt-1">
-              Vence a {formatData(new Date(fatura.dataVencimento))}
+              {fatura.status === "Pago" ? (
+                <>
+                  Liquidado a {formatData(new Date(fatura.dataPagamento || fatura.dataEmissao))}
+                </>
+              ) : (
+                <>Vence a {formatData(new Date(fatura.dataVencimento))}</>
+              )}
             </p>
           </div>
 
           {/* Ação Principal: Baixar PDF A4 */}
           <Button
-            onClick={handleDownloadPDF}
+            onClick={() => handleDownloadPDF("original")}
             className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-xl shadow-sm text-sm"
           >
             <Download className="w-4 h-4 mr-2" />
-            Baixar {fatura.tipo || "Documento"} em PDF (A4)
+            Baixar {(LABELS_DOCUMENTO[fatura.tipo] || fatura.tipo || "Documento")} em PDF (A4)
           </Button>
 
           {/* Opção para Fatura Simplificada: Talão Térmico 80mm */}
@@ -226,6 +260,16 @@ export default function FaturaDetailPage() {
           >
             <Printer className="w-4 h-4 mr-2" />
             Imprimir Documento
+          </Button>
+
+          {/* Reimpressão: 2.ª via (Art. 7º, n.ºs 4 e 5 — DP 71/25) */}
+          <Button
+            variant="outline"
+            onClick={() => handleDownloadPDF("2via")}
+            className="w-full rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-300"
+          >
+            <Printer className="w-4 h-4 mr-2" />
+            Reimprimir (2.ª via)
           </Button>
 
           {/* Registar Pagamento (se não estiver pago) */}
@@ -282,7 +326,7 @@ export default function FaturaDetailPage() {
             </div>
             <div className="text-right">
               <span className="text-xs font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400">
-                {fatura.tipo || "FATURA"}
+                {(LABELS_DOCUMENTO[fatura.tipo] || fatura.tipo || "FATURA").toUpperCase()}
               </span>
               <p className="text-base font-bold font-mono text-slate-900 dark:text-white mt-0.5">
                 {fatura.numeroCompleto || `${fatura.serie}/${fatura.numero}`}
@@ -316,6 +360,12 @@ export default function FaturaDetailPage() {
               <p className="text-slate-600 dark:text-slate-300 mt-0.5">
                 Forma de Pagamento: <strong>{fatura.formaPagamento}</strong>
               </p>
+              {fatura.documentoReferenciado && (
+                <p className="text-slate-600 dark:text-slate-300 mt-0.5">
+                  {fatura.tipo === "Recibo" ? "Fatura Liquidada: " : "Fatura de Origem: "}
+                  <strong className="font-mono">{fatura.documentoReferenciado}</strong>
+                </p>
+              )}
               {fatura.dataPagamento && (
                 <p className="text-emerald-600 dark:text-emerald-400 font-semibold mt-0.5">
                   Pago a: {formatData(new Date(fatura.dataPagamento))}
@@ -387,8 +437,13 @@ export default function FaturaDetailPage() {
 
           {/* Rodapé técnico certificação AGT */}
           <div className="border-t border-dashed border-slate-200 dark:border-slate-800 pt-4 flex flex-col sm:flex-row justify-between items-center text-[11px] text-slate-400 gap-1">
-            <p>Processado por programa certificado nº 999/AGT/2026 · Kima Facturação</p>
-            <p className="font-mono text-[10px]">Hash: a8f9-2c41-9901-kima</p>
+            <p>
+              Processado por {store.empresa?.softwareNome || "Kima Facturação"} · Certificação AGT{" "}
+              {store.empresa?.softwareCertificacaoNumero || "não definido"}
+            </p>
+            {hashFiscal && (
+              <p className="font-mono text-[10px]">Hash: {formatarHash(hashFiscal, 4, 8)}</p>
+            )}
           </div>
         </main>
       </div>

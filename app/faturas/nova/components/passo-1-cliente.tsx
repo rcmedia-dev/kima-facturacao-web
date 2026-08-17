@@ -32,45 +32,75 @@ interface Passo1ClienteProps {
 const TIPOS_OPCOES: { value: TipoDocumento; label: string; desc: string; color: string }[] = [
   {
     value: "Fatura",
-    label: "Fatura",
+    label: "Factura",
     color: "blue",
-    desc: "Documento de venda a prazo (B2B). Comprova a transmissão de bens ou serviços, com valor a ser liquidado no vencimento.",
+    desc: "Documento comercial que formaliza e comprova a transmissão onerosa de bens ou prestação de serviços, com valor a ser liquidado no vencimento (Art. 3º f — DP 71/25).",
   },
   {
     value: "FaturaRecibo",
-    label: "Fatura Recibo",
+    label: "Factura-Recibo",
     color: "emerald",
-    desc: "Documento 2-em-1 (Venda + Recibo). Prova a venda e a liquidação no mesmo instante (Pronto-pagamento).",
+    desc: "Documento 2-em-1 (Factura + Recibo). Prova a venda e a liquidação no mesmo instante (Pronto-pagamento) (Art. 3º k — DP 71/25).",
   },
   {
     value: "Simplificada",
-    label: "Simplificada",
+    label: "Talão de Venda ou Prestação de Serviço",
     color: "amber",
-    desc: "Fatura simplificada para comércio a retalho e restauração (talões de caixa). Cliente é opcional — ideal para balcão.",
+    desc: "Documento que comprova a transmissão de bens e prestação de serviços, bem como o seu pagamento — comércio a retalho e balcão. Cliente é opcional (Art. 3º p — DP 71/25).",
   },
   {
     value: "NotaCredito",
     label: "Nota de Crédito",
     color: "rose",
-    desc: "Documento retificativo para anular ou creditar valor de uma fatura emitida anteriormente (devoluções, descontos ou erros).",
+    desc: "Documento comercial de anulação ou rectificação de factura emitida, sempre que a operação económica deixa de ter lugar ou o respectivo valor seja reduzido (Art. 3º l — DP 71/25).",
   },
   {
     value: "NotaDebito",
     label: "Nota de Débito",
     color: "orange",
-    desc: "Documento retificativo para aumentar o valor de uma dívida anteriormente faturada (juros, frete ou encargos esquecidos).",
+    desc: "Documento comercial que suporta situações de débito quando haja obrigação de emissão de factura, no qual não deve haver liquidação de imposto (Art. 3º m — DP 71/25).",
   },
   {
     value: "Orcamento",
-    label: "Orçamento",
+    label: "Factura pro-forma",
     color: "violet",
-    desc: "Proposta comercial prévia sem efeito fiscal de fatura. Válido por prazo definido.",
+    desc: "Proposta comercial prévia, considerada factura para efeitos fiscais (Art. 4º, nº 9, alínea b — DP 71/25).",
   },
   {
     value: "GuiaRemessa",
-    label: "Guia de Remessa",
+    label: "Guia de Remessa ou Transporte",
     color: "slate",
-    desc: "Documento para acompanhamento do transporte e entrega de mercadorias.",
+    desc: "Documento considerado factura que acompanha a transmissão/transporte de mercadorias (Art. 4º, nº 9, alínea c — DP 71/25).",
+  },
+  {
+    value: "AvisoCobrancaRecibo",
+    label: "Aviso de Cobrança-Recibo",
+    color: "cyan",
+    desc: "Documento emitido por empresas seguradoras que formaliza e comprova os serviços prestados (Art. 3º d — DP 71/25).",
+  },
+  {
+    value: "FaturaGenerica",
+    label: "Factura Genérica",
+    color: "teal",
+    desc: "Factura única com periodicidade mensal, emitida por instituições financeiras, que compreende todos os serviços cobrados ao cliente nesse período (Art. 3º i — DP 71/25).",
+  },
+  {
+    value: "FaturaGlobal",
+    label: "Factura Global",
+    color: "gray",
+    desc: "Documento com periodicidade máxima mensal que engloba todas as transmissões de bens e prestações de serviços do período, suportado por documentos que as individualizam (Art. 3º j — DP 71/25).",
+  },
+  {
+    value: "FaturaAdiantamento",
+    label: "Factura Adiantamento",
+    color: "indigo",
+    desc: "Documento comercial que comprova financeiramente quaisquer adiantamentos ou antecipações de pagamento referentes a uma operação futura de transmissão de bens ou prestação de serviços (Art. 3º g — DP 71/25).",
+  },
+  {
+    value: "Recibo",
+    label: "Recibo",
+    color: "emerald",
+    desc: "Documento comercial que comprova o pagamento parcial ou total do bem ou serviço facturado. Emitido sempre que haja pagamento de uma factura (Art. 3º o e Art. 6º — DP 71/25).",
   },
 ];
 
@@ -82,9 +112,17 @@ const CLIENTE_OBRIGATORIO: TipoDocumento[] = [
   "NotaDebito",
   "Orcamento",
   "GuiaRemessa",
+  "AvisoCobrancaRecibo",
+  "FaturaGenerica",
+  "FaturaGlobal",
+  "FaturaAdiantamento",
+  "Recibo",
 ];
 
 const RETIFICACAO: TipoDocumento[] = ["NotaCredito", "NotaDebito"];
+
+/** Tipos que exigem referência a uma fatura de origem (retificações e recibos) */
+const REFERENCIA_FATURA: TipoDocumento[] = ["NotaCredito", "NotaDebito", "Recibo"];
 
 const CHIP_ACTIVE: Record<string, string> = {
   blue: "bg-blue-600 border-blue-600 text-white shadow-sm shadow-blue-200 dark:shadow-blue-900/40",
@@ -94,6 +132,10 @@ const CHIP_ACTIVE: Record<string, string> = {
   orange: "bg-orange-500 border-orange-500 text-white shadow-sm shadow-orange-200 dark:shadow-orange-900/40",
   violet: "bg-violet-600 border-violet-600 text-white shadow-sm shadow-violet-200 dark:shadow-violet-900/40",
   slate: "bg-slate-600 border-slate-600 text-white shadow-sm shadow-slate-200 dark:shadow-slate-900/40",
+  cyan: "bg-cyan-600 border-cyan-600 text-white shadow-sm shadow-cyan-200 dark:shadow-cyan-900/40",
+  teal: "bg-teal-600 border-teal-600 text-white shadow-sm shadow-teal-200 dark:shadow-teal-900/40",
+  gray: "bg-gray-600 border-gray-600 text-white shadow-sm shadow-gray-200 dark:shadow-gray-900/40",
+  indigo: "bg-indigo-600 border-indigo-600 text-white shadow-sm shadow-indigo-200 dark:shadow-indigo-900/40",
 };
 
 const CALLOUT_BG: Record<string, string> = {
@@ -104,6 +146,10 @@ const CALLOUT_BG: Record<string, string> = {
   orange: "bg-orange-50/70 dark:bg-orange-950/30 border-orange-100 dark:border-orange-900 text-orange-950 dark:text-orange-200",
   violet: "bg-violet-50/70 dark:bg-violet-950/30 border-violet-100 dark:border-violet-900 text-violet-950 dark:text-violet-200",
   slate: "bg-slate-50/70 dark:bg-slate-800/30 border-slate-100 dark:border-slate-700 text-slate-700 dark:text-slate-300",
+  cyan: "bg-cyan-50/70 dark:bg-cyan-950/30 border-cyan-100 dark:border-cyan-900 text-cyan-950 dark:text-cyan-200",
+  teal: "bg-teal-50/70 dark:bg-teal-950/30 border-teal-100 dark:border-teal-900 text-teal-950 dark:text-teal-200",
+  gray: "bg-gray-50/70 dark:bg-gray-800/30 border-gray-100 dark:border-gray-700 text-gray-700 dark:text-gray-300",
+  indigo: "bg-indigo-50/70 dark:bg-indigo-950/30 border-indigo-100 dark:border-indigo-900 text-indigo-950 dark:text-indigo-200",
 };
 
 const ICON_COLOR: Record<string, string> = {
@@ -114,6 +160,10 @@ const ICON_COLOR: Record<string, string> = {
   orange: "text-orange-500 dark:text-orange-400",
   violet: "text-violet-600 dark:text-violet-400",
   slate: "text-slate-600 dark:text-slate-400",
+  cyan: "text-cyan-600 dark:text-cyan-400",
+  teal: "text-teal-600 dark:text-teal-400",
+  gray: "text-gray-600 dark:text-gray-400",
+  indigo: "text-indigo-600 dark:text-indigo-400",
 };
 
 export function Passo1Cliente({
@@ -170,12 +220,14 @@ export function Passo1Cliente({
 
   const tipoAtualInfo = TIPOS_OPCOES.find((t) => t.value === tipoDocumento);
   const isRetificacao = RETIFICACAO.includes(tipoDocumento);
+  const isRecibo = tipoDocumento === "Recibo";
+  const precisaReferencia = REFERENCIA_FATURA.includes(tipoDocumento);
   const clienteObrigatorio = CLIENTE_OBRIGATORIO.includes(tipoDocumento);
   const isSimplificada = tipoDocumento === "Simplificada";
 
   const canGoNext = clienteObrigatorio
-    ? clienteSelecionado !== null && (!isRetificacao || !!documentoReferenciado)
-    : !isRetificacao || !!documentoReferenciado;
+    ? clienteSelecionado !== null && (!precisaReferencia || !!documentoReferenciado)
+    : !precisaReferencia || !!documentoReferenciado;
 
   const cor = tipoAtualInfo?.color ?? "blue";
 
@@ -228,55 +280,60 @@ export function Passo1Cliente({
         )}
       </div>
 
-      {/* Campos de Retificação (Nota de Crédito / Nota de Débito) */}
-      {isRetificacao && (
+      {/* Referência a fatura (Nota de Crédito / Nota de Débito / Recibo) */}
+      {(isRetificacao || isRecibo) && (
         <div className="p-4 rounded-xl border border-amber-200 dark:border-amber-900/60 bg-amber-50/50 dark:bg-amber-950/20 space-y-3">
           <div className="flex items-center gap-2 text-amber-900 dark:text-amber-300 font-bold text-xs">
             <FileSpreadsheet className="w-4 h-4" />
-            Dados Obrigatórios de Retificação AGT
+            {isRecibo ? "Dados do Recibo — AGT" : "Dados Obrigatórios de Retificação AGT"}
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className={`grid grid-cols-1 gap-3 ${isRetificacao ? "sm:grid-cols-2" : ""}`}>
             <div>
               <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                Fatura de Origem (Nº da Fatura) <span className="text-red-500">*</span>
+                {isRecibo ? "Fatura a liquidar (Nº da Fatura)" : "Fatura de Origem (Nº da Fatura)"}{" "}
+                <span className="text-red-500">*</span>
               </label>
               <Select
                 value={documentoReferenciado ?? undefined}
                 onValueChange={handleSelectDocumentoOrigem}
               >
                 <SelectTrigger className="bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700 h-10 text-xs">
-                  <SelectValue placeholder="Selecione a fatura a retificar..." />
+                  <SelectValue placeholder={isRecibo ? "Selecione a fatura a liquidar..." : "Selecione a fatura a retificar..."} />
                 </SelectTrigger>
                 <SelectContent sideOffset={4}>
-                  {store.documentos.map((doc) => (
-                    <SelectItem key={doc.id} value={doc.numeroCompleto || doc.numero || doc.id}>
-                      <span className="font-mono font-bold text-slate-900 dark:text-white mr-2">
-                        {doc.numeroCompleto || doc.numero}
-                      </span>
-                      ({doc.total ? `${doc.total} Kz` : ""})
-                    </SelectItem>
-                  ))}
+                  {store.documentos
+                    .filter((doc) => (isRecibo ? doc.tipo === "Fatura" || doc.tipo === "FaturaRecibo" : true))
+                    .map((doc) => (
+                      <SelectItem key={doc.id} value={doc.numeroCompleto || doc.numero || doc.id}>
+                        <span className="font-mono font-bold text-slate-900 dark:text-white mr-2">
+                          {doc.numeroCompleto || doc.numero}
+                        </span>
+                        ({doc.total ? `${doc.total} Kz` : ""})
+                      </SelectItem>
+                    ))}
                 </SelectContent>
               </Select>
             </div>
 
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                Motivo da Retificação <span className="text-red-500">*</span>
-              </label>
-              <Input
-                type="text"
-                placeholder={
-                  tipoDocumento === "NotaCredito"
-                    ? "ex: Devolução de mercadoria / Erro de cálculo"
-                    : "ex: Juros de mora / Frete adicional"
-                }
-                value={motivo}
-                onChange={(e) => setMotivo && setMotivo(e.target.value)}
-                className="bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700 h-10 text-xs"
-              />
-            </div>
+            {isRetificacao && (
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  Motivo da Retificação <span className="text-red-500">*</span>
+                </label>
+                <Input
+                  type="text"
+                  placeholder={
+                    tipoDocumento === "NotaCredito"
+                      ? "ex: Devolução de mercadoria / Erro de cálculo"
+                      : "ex: Juros de mora / Frete adicional"
+                  }
+                  value={motivo}
+                  onChange={(e) => setMotivo && setMotivo(e.target.value)}
+                  className="bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700 h-10 text-xs"
+                />
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -294,7 +351,7 @@ export function Passo1Cliente({
         {isSimplificada && (
           <div className="flex items-start gap-2 p-2.5 rounded-lg bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/40 text-xs text-amber-800 dark:text-amber-300 mb-3">
             <ReceiptText className="w-3.5 h-3.5 shrink-0 mt-0.5" />
-            <span>Para Fatura Simplificada, o NIF do cliente é facultativo. Pode prosseguir diretamente para os artigos sem identificar o cliente.</span>
+            <span>Para o Talão de Venda ou Prestação de Serviço, o NIF do cliente é facultativo. Pode prosseguir diretamente para os artigos sem identificar o cliente.</span>
           </div>
         )}
 

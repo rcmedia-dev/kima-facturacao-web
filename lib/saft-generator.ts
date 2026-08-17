@@ -34,6 +34,16 @@ export interface SAFTData {
     nome: string;
     montante: number;
   }[];
+  documentosDetalhe?: {
+    numeroCompleto: string;
+    data: string;
+    tipo: string;
+    serie: string;
+    nifCliente?: string;
+    subtotal: number;
+    totalIVA: number;
+    total: number;
+  }[];
   movimentos: LogAuditoria[];
 }
 
@@ -115,6 +125,20 @@ export function gerarResumoSAFT(
     return data.getMonth() + 1 === mes && data.getFullYear() === ano;
   });
 
+  const documentosDetalhe = docsPeriodo.map((d) => {
+    const cliente = d.clienteId ? clientes.find((c) => c.id === d.clienteId) : undefined;
+    return {
+      numeroCompleto: d.numeroCompleto || `${d.serie}/${String(d.numero).padStart(6, '0')}`,
+      data: new Date(d.dataEmissao).toISOString(),
+      tipo: d.tipo,
+      serie: d.serie || 'A',
+      nifCliente: cliente?.nif,
+      subtotal: d.subtotal,
+      totalIVA: d.totalIVA,
+      total: d.total,
+    };
+  });
+
   return {
     periodo: { mes, ano },
     empresa,
@@ -126,6 +150,7 @@ export function gerarResumoSAFT(
     })),
     totalIVA,
     clientes: Array.from(clientesPeriodo.values()),
+    documentosDetalhe,
     movimentos: logsRelevantes,
   };
 }
@@ -185,6 +210,27 @@ export function exportarSAFTXML(data: SAFTData): string {
       .join('')}
   </Customers>`;
 
+  const detalheXml = data.documentosDetalhe && data.documentosDetalhe.length > 0
+    ? `
+  <SalesInvoices>
+    ${data.documentosDetalhe
+      .map(
+        (d) => `
+    <Invoice>
+      <InvoiceNo>${escapeXml(d.numeroCompleto)}</InvoiceNo>
+      <InvoiceDate>${d.data}</InvoiceDate>
+      <InvoiceType>${escapeXml(d.tipo)}</InvoiceType>
+      <Series>${escapeXml(d.serie)}</Series>
+      <CustomerID>${escapeXml(d.nifCliente || 'Consumidor Final')}</CustomerID>
+      <Subtotal>${d.subtotal.toFixed(2)}</Subtotal>
+      <TaxPayable>${d.totalIVA.toFixed(2)}</TaxPayable>
+      <Total>${d.total.toFixed(2)}</Total>
+    </Invoice>`
+      )
+      .join('')}
+  </SalesInvoices>`
+    : '';
+
   const xmlFooter = `
 </SAF-T>`;
 
@@ -194,6 +240,7 @@ export function exportarSAFTXML(data: SAFTData): string {
     documentosXml +
     ivaXml +
     clientesXml +
+    detalheXml +
     xmlFooter
   );
 }
