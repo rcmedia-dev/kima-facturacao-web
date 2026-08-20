@@ -123,8 +123,8 @@ function totaisOk(docs: DocumentoAuditoria[]): boolean {
 }
 
 const TIPOS_DOCUMENTO = [
-  "Fatura", "FaturaRecibo", "Simplificada", "NotaCredito", "NotaDebito",
-  "Orcamento", "GuiaRemessa", "Recibo",
+  "Fatura", "FaturaRecibo", "NotaCredito", "NotaDebito",
+  "Orcamento", "Recibo",
 ];
 
 // ─── Executor da auditoria ───────────────────────────────────────────────────
@@ -268,7 +268,7 @@ export async function executarAuditoriaAGT(ctx: ContextoAuditoriaAGT): Promise<R
   // ── Requisitos Funcionais (F1–F7) ─────────────────────────────────────────
   const tiposUsados = new Set(ctx.documentos.map((d) => d.tipo));
   const tiposSuportados = TIPOS_DOCUMENTO.length;
-  r("F1", "Tipos de documento completos (facturas, NC, ND, GR, Orç.)", "Funcional", "Alto",
+  r("F1", "Tipos de documento completos (facturas, NC, ND, Orç., Recibo)", "Funcional", "Alto",
     "✅ Conforme",
     `${tiposSuportados} tipos de documento disponíveis na emissão (T4.1–T4.4)`,
     1);
@@ -281,33 +281,25 @@ export async function executarAuditoriaAGT(ctx: ContextoAuditoriaAGT): Promise<R
       : "Fluxo disponível no wizard (T4.4) mas sem documentos deste tipo no período analisado",
     1);
 
-  const temGuia = tiposUsados.has("GuiaRemessa") || ctx.series.some((s) => s.tipo === "GuiaRemessa");
-  r("F3", "Guias de Remessa / Transporte", "Funcional", "Alto",
-    temGuia ? "✅ Conforme" : "⚠️ Parcial",
-    temGuia
-      ? "Fluxo de emissão e impresso de Guias de Transporte (T4.3) com dados de viatura/matrícula/motorista"
-      : "Fluxo disponível no wizard (T4.3) mas sem documentos deste tipo no período analisado",
-    1);
-
-  r("F4", "Formas de pagamento completas", "Funcional", "Médio",
+  r("F3", "Formas de pagamento completas", "Funcional", "Médio",
     "✅ Conforme",
     "Numerário, Transferência, Multicaixa, POS, Cheque e Crédito",
     1);
 
-  r("F5", "Controlo de stock (entrada/saída)", "Funcional", "Médio",
+  r("F4", "Controlo de stock (entrada/saída)", "Funcional", "Médio",
     "⚠️ Parcial",
     "Tabela de movimentos e stock existem; automação completa em melhoria",
     1);
 
   const temDocsPeriodo = ctx.documentos.length > 0; // DP-IVA deriva dos documentos do período
-  r("F6", "Relatórios fiscais (Balancete de IVA, DP-IVA)", "Funcional", "Alto",
+  r("F5", "Relatórios fiscais (Balancete de IVA, DP-IVA)", "Funcional", "Alto",
     temDocsPeriodo ? "✅ Conforme" : "⚠️ Parcial",
     temDocsPeriodo
       ? "Módulo de Relatórios de IVA e Modelo DP-IVA implementado (T3.4) com UI em /relatorios"
       : "Módulo T3.4 implementado mas sem documentos no período analisado",
     1);
 
-  r("F7", "Exportação de dados contabilísticos", "Funcional", "Alto",
+  r("F6", "Exportação de dados contabilísticos", "Funcional", "Alto",
     "✅ Conforme",
     "Exportação SAF-T em XML/JSON/CSV e detalhe por documento",
     1);

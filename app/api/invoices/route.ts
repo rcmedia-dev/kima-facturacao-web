@@ -16,7 +16,7 @@ import { requireCompanyId } from "@/lib/company";
 import { SOFTWARE_NOME } from "@/lib/constants";
 
 const criarDocumentoSchema = z.object({
-  tipo: z.enum(["Fatura", "FaturaRecibo", "Simplificada", "NotaCredito", "NotaDebito", "Orcamento", "GuiaRemessa", "AvisoCobrancaRecibo", "FaturaGenerica", "FaturaGlobal", "FaturaAdiantamento", "Recibo"]).default("Fatura"),
+  tipo: z.enum(["Fatura", "FaturaRecibo", "NotaCredito", "NotaDebito", "Orcamento", "Recibo"]).default("Fatura"),
   serie: z.string().optional(),
   clienteId: z.string().min(1, "Cliente é obrigatório").optional(),
   fornecedorId: z.string().optional(),
@@ -210,7 +210,7 @@ export async function POST(request: Request) {
 
     const initialStatus =
       validatedData.status ||
-      (validatedData.tipo === "FaturaRecibo" || validatedData.tipo === "Simplificada" || validatedData.tipo === "AvisoCobrancaRecibo" || validatedData.tipo === "FaturaAdiantamento" || validatedData.tipo === "Recibo" ? "Pago" : "Pendente");
+      (validatedData.tipo === "FaturaRecibo" || validatedData.tipo === "Recibo" ? "Pago" : "Pendente");
 
     const numeroCompleto = `${serie}/${String(numero).padStart(6, "0")}`;
 

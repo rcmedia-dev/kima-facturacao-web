@@ -14,24 +14,12 @@ export function getTituloDocumento(tipo: TipoDocumento): string {
       return "FACTURA";
     case "FaturaRecibo":
       return "FACTURA-RECIBO";
-    case "Simplificada":
-      return "TALÃO DE VENDA OU PRESTAÇÃO DE SERVIÇO";
     case "NotaCredito":
       return "NOTA DE CRÉDITO";
     case "NotaDebito":
       return "NOTA DE DÉBITO";
     case "Orcamento":
       return "FACTURA PRO-FORMA";
-    case "GuiaRemessa":
-      return "GUIA DE REMESSA OU TRANSPORTE";
-    case "AvisoCobrancaRecibo":
-      return "AVISO DE COBRANÇA-RECIBO";
-    case "FaturaGenerica":
-      return "FACTURA GENÉRICA";
-    case "FaturaGlobal":
-      return "FACTURA GLOBAL";
-    case "FaturaAdiantamento":
-      return "FACTURA ADIANTAMENTO";
     case "Recibo":
       return "RECIBO";
     default:
@@ -48,14 +36,9 @@ export async function gerarPDFFatura(
   fatura: Documento,
   cliente: Cliente | null,
   empresa: ConfiguracaoEmpresa | null,
-  options?: { formato?: "a4" | "pos80"; via?: "original" | "2via" }
+  options?: { via?: "original" | "2via" }
 ) {
-  const isThermal = options?.formato === "pos80";
   const via = options?.via || "original";
-
-  if (isThermal) {
-    return gerarPDFTermico80mm(fatura, cliente, empresa, via);
-  }
 
   // Hash fiscal determinístico (Art. 10º j — DP 71/25)
   let hash = fatura.hash || "";
@@ -89,24 +72,12 @@ export async function gerarPDFFatura(
   let barColor = [37, 99, 235]; // azul padrão (Fatura)
   if (fatura.tipo === "FaturaRecibo" || fatura.status === "Pago") {
     barColor = [16, 185, 129]; // verde (Fatura Recibo)
-  } else if (fatura.tipo === "Simplificada") {
-    barColor = [217, 119, 6]; // âmbar (Simplificada)
   } else if (fatura.tipo === "NotaCredito") {
     barColor = [225, 29, 72]; // rosa/vermelho (Nota Crédito)
   } else if (fatura.tipo === "NotaDebito") {
     barColor = [234, 88, 12]; // laranja (Nota Débito)
   } else if (fatura.tipo === "Orcamento") {
     barColor = [124, 58, 237]; // violeta (Orçamento)
-  } else if (fatura.tipo === "GuiaRemessa") {
-    barColor = [71, 85, 105]; // slate (Guia de Remessa)
-  } else if (fatura.tipo === "AvisoCobrancaRecibo") {
-    barColor = [6, 182, 212]; // ciano (Aviso de Cobrança-Recibo)
-  } else if (fatura.tipo === "FaturaGenerica") {
-    barColor = [5, 150, 105]; // verde escuro (Fatura Genérica)
-  } else if (fatura.tipo === "FaturaGlobal") {
-    barColor = [75, 85, 99]; // cinzento (Fatura Global)
-  } else if (fatura.tipo === "FaturaAdiantamento") {
-    barColor = [79, 70, 229]; // índigo (Fatura de Adiantamento)
   } else if (fatura.tipo === "Recibo") {
     barColor = [16, 185, 129]; // verde (Recibo)
   }
@@ -266,29 +237,6 @@ export async function gerarPDFFatura(
     y += 15;
   }
 
-  // T4.3 — Dados de Transporte na Guia de Remessa
-  if (fatura.tipo === "GuiaRemessa" && (fatura.transporteViatura || fatura.transporteMatricula || fatura.transporteMotorista)) {
-    doc.setFillColor(241, 245, 249);
-    doc.setDrawColor(203, 213, 225);
-    doc.roundedRect(15, y, pageWidth - 30, 13, 2, 2, "FD");
-
-    doc.setFontSize(8);
-    doc.setFont("helvetica", "bold");
-    doc.setTextColor(51, 65, 85);
-    doc.text("DADOS DE TRANSPORTE", 20, y + 5);
-
-    doc.setFont("helvetica", "normal");
-    doc.setTextColor(71, 85, 105);
-    const transporteLinhas = [
-      fatura.transporteViatura ? `Viatura: ${fatura.transporteViatura}` : "",
-      fatura.transporteMatricula ? `Matrícula: ${fatura.transporteMatricula}` : "",
-      fatura.transporteMotorista ? `Motorista: ${fatura.transporteMotorista}` : "",
-    ].filter(Boolean);
-    doc.text(transporteLinhas.join("  ·  "), 20, y + 10);
-
-    y += 17;
-  }
-
   // 5. Caixa de metadados (Emissão / Vencimento / Pagamento / Status)
   doc.setFillColor(241, 245, 249);
   doc.roundedRect(15, y, pageWidth - 30, 11, 2, 2, "F");
@@ -301,7 +249,7 @@ export async function gerarPDFFatura(
   doc.setTextColor(71, 85, 105);
   doc.text(`Emissão: ${dataEmissao}`, 20, y + 7.5);
   
-  if (fatura.tipo === "FaturaRecibo" || fatura.tipo === "Simplificada" || fatura.tipo === "FaturaAdiantamento" || fatura.tipo === "Recibo") {
+  if (fatura.tipo === "FaturaRecibo" || fatura.tipo === "Recibo") {
     doc.text(`Liquidação: Pronto-Pagamento`, pageWidth / 2, y + 7.5, { align: "center" });
   } else if (fatura.tipo === "Orcamento") {
     doc.text(`Validade da Proposta: ${dataVenc}`, pageWidth / 2, y + 7.5, { align: "center" });
@@ -313,8 +261,8 @@ export async function gerarPDFFatura(
 
   y += 17;
 
-  // Se for Fatura-Recibo, Simplificada ou status PAGO, insere carimbo de liquidação
-  if (fatura.tipo === "FaturaRecibo" || fatura.tipo === "Simplificada" || fatura.status === "Pago") {
+  // Se for Fatura-Recibo ou status PAGO, insere carimbo de liquidação
+  if (fatura.tipo === "FaturaRecibo" || fatura.status === "Pago") {
     doc.setDrawColor(16, 185, 129);
     doc.setFillColor(236, 253, 245);
     doc.roundedRect(pageWidth - 60, y - 2, 45, 8, 2, 2, "FD");
@@ -394,7 +342,7 @@ export async function gerarPDFFatura(
   doc.setTextColor(barColor[0], barColor[1], barColor[2]);
 
   let labelTotal = "TOTAL A PAGAR (AOA):";
-  if (fatura.tipo === "FaturaRecibo" || fatura.tipo === "Simplificada" || fatura.status === "Pago") {
+  if (fatura.tipo === "FaturaRecibo" || fatura.status === "Pago") {
     labelTotal = "TOTAL PAGO (AOA):";
   } else if (fatura.tipo === "NotaCredito") {
     labelTotal = "TOTAL A CREDITAR (AOA):";
@@ -402,10 +350,6 @@ export async function gerarPDFFatura(
     labelTotal = "TOTAL A DEBITAR (AOA):";
   } else if (fatura.tipo === "Orcamento") {
     labelTotal = "TOTAL ESTIMADO (AOA):";
-  } else if (fatura.tipo === "GuiaRemessa") {
-    labelTotal = "TOTAL MERCADORIA (AOA):";
-  } else if (fatura.tipo === "FaturaAdiantamento") {
-    labelTotal = "TOTAL ADIANTADO (AOA):";
   } else if (fatura.tipo === "Recibo") {
     labelTotal = "TOTAL RECEBIDO (AOA):";
   }
@@ -475,109 +419,6 @@ export async function gerarPDFFatura(
   );
   doc.setFont("helvetica", "bold");
   doc.text(`Código Hash: ${hashCurto}`, pageWidth / 2, pageHeight - 2.5, { align: "center" });
-
-  return doc;
-}
-
-/**
- * Geração de PDF Térmico 80mm para Faturas Simplificadas / Talões de Caixa (Retalho & Balcão).
- */
-export function gerarPDFTermico80mm(
-  fatura: Documento,
-  cliente: Cliente | null,
-  empresa: ConfiguracaoEmpresa | null,
-  via: "original" | "2via" = "original"
-) {
-  const doc = new jsPDF({
-    orientation: "portrait",
-    unit: "mm",
-    format: [80, 200], // 80mm de largura por 200mm de altura
-  });
-
-  const pageWidth = 80;
-  let y = 10;
-
-  // Nome da Empresa
-  doc.setFontSize(12);
-  doc.setFont("helvetica", "bold");
-  doc.setTextColor(15, 23, 42);
-  doc.text(empresa?.nomeEmpresa || "KIMA FACTURAÇÃO", pageWidth / 2, y, { align: "center" });
-  y += 5;
-
-  doc.setFontSize(8);
-  doc.setFont("helvetica", "normal");
-  doc.setTextColor(71, 85, 105);
-  doc.text(`NIF: ${empresa?.nif || "N/A"}`, pageWidth / 2, y, { align: "center" });
-  y += 4;
-  doc.text(`${empresa?.morada || "Luanda, Angola"}`, pageWidth / 2, y, { align: "center" });
-  y += 6;
-
-  // Linha divisória
-  doc.setDrawColor(203, 213, 225);
-  doc.line(5, y, 75, y);
-  y += 5;
-
-  // Título e Número
-  doc.setFontSize(10);
-  doc.setFont("helvetica", "bold");
-  doc.text(getTituloDocumento(fatura.tipo), pageWidth / 2, y, { align: "center" });
-  y += 4;
-  doc.setFontSize(8);
-  doc.text(`Nº: ${fatura.numeroCompleto || fatura.numero}`, pageWidth / 2, y, { align: "center" });
-  y += 5;
-
-  // Cliente e Datas
-  doc.setFontSize(7.5);
-  doc.setFont("helvetica", "normal");
-  doc.text(`Cliente: ${cliente?.nome || "Consumidor Final"}`, 5, y);
-  y += 4;
-  doc.text(`NIF: ${cliente?.nif || "Consumidor Final"}`, 5, y);
-  y += 4;
-  doc.text(`Data: ${formatData(new Date(fatura.dataEmissao))}`, 5, y);
-  y += 6;
-
-  // Linha de itens
-  doc.line(5, y, 75, y);
-  y += 4;
-
-  doc.setFont("helvetica", "bold");
-  doc.text("Item", 5, y);
-  doc.text("Qtd x Preço", 45, y);
-  doc.text("Total", 75, y, { align: "right" });
-  y += 4;
-
-  fatura.linhas?.forEach((l) => {
-    const totalComIVA = l.total + (l.total * l.taxaIVA) / 100;
-    doc.setFont("helvetica", "normal");
-    doc.text(l.descricao.substring(0, 22), 5, y);
-    y += 3.5;
-    doc.text(`${l.quantidade}x ${formatMoedaAOA(l.preco)}`, 5, y);
-    doc.text(formatMoedaAOA(totalComIVA), 75, y, { align: "right" });
-    y += 4.5;
-  });
-
-  doc.line(5, y, 75, y);
-  y += 5;
-
-  // Totais
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(9);
-  doc.text("TOTAL PAGO:", 5, y);
-  doc.text(formatMoedaAOA(fatura.total), 75, y, { align: "right" });
-  y += 5;
-
-  doc.setFontSize(7.5);
-  doc.setFont("helvetica", "normal");
-  doc.text(`Forma Pagamento: ${fatura.formaPagamento}`, 5, y);
-  y += 4;
-  doc.setFont("helvetica", "bold");
-  doc.text(via === "2via" ? "2.ª VIA, EM CONFORMIDADE COM A ORIGINAL" : "ORIGINAL", pageWidth / 2, y, { align: "center" });
-  y += 5;
-
-  doc.setFont("helvetica", "normal");
-  doc.text(`Processado por ${empresa?.softwareNome || SOFTWARE_NOME} · Certificação AGT ${empresa?.softwareCertificacaoNumero || SOFTWARE_CERTIFICACAO_AGT}`, pageWidth / 2, y, { align: "center" });
-  y += 4;
-  doc.text("Obrigado pela preferência!", pageWidth / 2, y, { align: "center" });
 
   return doc;
 }

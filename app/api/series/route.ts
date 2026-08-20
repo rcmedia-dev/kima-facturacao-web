@@ -6,7 +6,7 @@ import { z } from "zod";
 
 const serieSchema = z.object({
   serie: z.string().min(1, "Letra da série é obrigatória").regex(/^[A-Za-z0-9]+$/, "Use apenas letras e números (ex: A, B, C)").transform((s) => s.toUpperCase()),
-  tipoDocumento: z.enum(["Fatura", "FaturaRecibo", "Simplificada", "NotaCredito", "NotaDebito", "Orcamento", "GuiaRemessa", "AvisoCobrancaRecibo", "FaturaGenerica", "FaturaGlobal", "FaturaAdiantamento", "Recibo"]),
+  tipoDocumento: z.enum(["Fatura", "FaturaRecibo", "NotaCredito", "NotaDebito", "Orcamento", "Recibo"]),
   proximoNumero: z.number().int().min(1).optional(),
   predefinida: z.boolean().optional(),
 });

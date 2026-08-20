@@ -2,7 +2,7 @@
 
 import { useAppStore } from "@/lib/store";
 import { formatMoedaAOA } from "@/lib/formatters";
-import { ArrowRight, TrendingUp, Clock, Users, Receipt, FileText, ShoppingBag, FileMinus, FileClock, HandCoins, FilePlus2, Truck, Plus, type LucideIcon } from "lucide-react";
+import { ArrowRight, TrendingUp, Clock, Users, Receipt, FileText, FileMinus, FileClock, HandCoins, FilePlus2, Plus, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { TipoDocumento } from "@/lib/types";
 import { DashboardFaturaTable } from "./components/dashboard-fatura-table";
@@ -29,13 +29,6 @@ const QUICK_TIPOS: {
     icon: "bg-emerald-600",
   },
   {
-    tipo: "Simplificada",
-    label: "Talão de Venda",
-    Icon: ShoppingBag,
-    btn: "bg-amber-50 dark:bg-amber-950/30 border-amber-100 dark:border-amber-900 text-amber-800 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/40",
-    icon: "bg-amber-500",
-  },
-  {
     tipo: "NotaCredito",
     label: "Nota de Crédito",
     Icon: FileMinus,
@@ -48,13 +41,6 @@ const QUICK_TIPOS: {
     Icon: FilePlus2,
     btn: "bg-orange-50 dark:bg-orange-950/30 border-orange-100 dark:border-orange-900 text-orange-800 dark:text-orange-300 hover:bg-orange-100 dark:hover:bg-orange-900/40",
     icon: "bg-orange-500",
-  },
-  {
-    tipo: "GuiaRemessa",
-    label: "Guia de Remessa",
-    Icon: Truck,
-    btn: "bg-cyan-50 dark:bg-cyan-950/30 border-cyan-100 dark:border-cyan-900 text-cyan-800 dark:text-cyan-300 hover:bg-cyan-100 dark:hover:bg-cyan-900/40",
-    icon: "bg-cyan-600",
   },
   {
     tipo: "Orcamento",
@@ -78,7 +64,7 @@ export default function DashboardPage() {
 
   // Filtrar apenas faturas ativas (não canceladas)
   const todasFaturas = documentos.filter(
-    (d) => d.tipo === "Fatura" || d.tipo === "FaturaRecibo" || d.tipo === "Simplificada"
+    (d) => d.tipo === "Fatura" || d.tipo === "FaturaRecibo"
   );
   const faturasValidas = todasFaturas.filter((f) => f.status !== "Cancelado");
 

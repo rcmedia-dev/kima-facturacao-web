@@ -9,7 +9,7 @@ import { useAppStore } from "@/lib/store";
 import { Documento, FaturaLinha, FormaPagamento, TipoCliente } from "@/lib/types";
 import { formatMoedaAOA, formatData, formatDataCompleta } from "@/lib/formatters";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ArrowLeft, Download, Printer, CreditCard, CheckCircle2, FileText, Share2 } from "lucide-react";
+import { ArrowLeft, Download, Printer, CreditCard, CheckCircle2, Share2 } from "lucide-react";
 import Link from "next/link";
 import { gerarPDFFatura } from "@/lib/pdf-generator";
 import { gerarHashFiscal, formatarHash } from "@/lib/fiscal-hash";
@@ -169,16 +169,6 @@ export default function FaturaDetailPage() {
     }
   };
 
-  const handleDownloadPOS80 = async () => {
-    try {
-      const pdf = await gerarPDFFatura(fatura, cliente, store.empresa, { formato: "pos80" });
-      const fileName = `Talao_${fatura.numeroCompleto || fatura.numero}.pdf`.replace(/[\/\\?%*:|"<>]/g, "_");
-      pdf.save(fileName);
-    } catch (error) {
-      console.error("Erro ao gerar Talão 80mm:", error);
-    }
-  };
-
   const handlePrint = () => {
     window.print();
   };
@@ -251,18 +241,6 @@ export default function FaturaDetailPage() {
             <Download className="w-4 h-4 mr-2" />
             Baixar {(LABELS_DOCUMENTO[fatura.tipo] || fatura.tipo || "Documento")} em PDF (A4)
           </Button>
-
-          {/* Opção para Fatura Simplificada: Talão Térmico 80mm */}
-          {fatura.tipo === "Simplificada" && (
-            <Button
-              onClick={handleDownloadPOS80}
-              variant="outline"
-              className="w-full border-blue-200 text-blue-700 dark:border-blue-800 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/40 font-semibold py-2.5 rounded-xl text-xs"
-            >
-              <FileText className="w-4 h-4 mr-2" />
-              Baixar Talão Térmico (80mm)
-            </Button>
-          )}
 
           {/* Ação Secundária: Imprimir */}
           <Button

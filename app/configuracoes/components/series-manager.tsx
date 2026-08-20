@@ -18,15 +18,9 @@ import { mensagemErro } from "@/lib/utils";
 const TIPOS_DISPONIVEIS: { value: TipoDocumento; label: string }[] = [
   { value: "Fatura", label: "Factura" },
   { value: "FaturaRecibo", label: "Factura-Recibo" },
-  { value: "Simplificada", label: "Talão de Venda ou Prestação de Serviço" },
   { value: "NotaCredito", label: "Nota de Crédito" },
   { value: "NotaDebito", label: "Nota de Débito" },
   { value: "Orcamento", label: "Factura pro-forma" },
-  { value: "GuiaRemessa", label: "Guia de Remessa ou Transporte" },
-  { value: "AvisoCobrancaRecibo", label: "Aviso de Cobrança-Recibo" },
-  { value: "FaturaGenerica", label: "Factura Genérica" },
-  { value: "FaturaGlobal", label: "Factura Global" },
-  { value: "FaturaAdiantamento", label: "Factura Adiantamento" },
   { value: "Recibo", label: "Recibo" },
 ];
 

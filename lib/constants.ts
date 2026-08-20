@@ -3,15 +3,9 @@ export const FORMAS_PAGAMENTO = ["Numerário", "Transferência", "Multicaixa", "
 export const TIPOS_DOCUMENTO = {
   FATURA: "Fatura",
   FATURA_RECIBO: "FaturaRecibo",
-  SIMPLIFICADA: "Simplificada",
   NOTA_CREDITO: "NotaCredito",
   NOTA_DEBITO: "NotaDebito",
   ORCAMENTO: "Orcamento",
-  GUIA_REMESSA: "GuiaRemessa",
-  AVISO_COBRANCA_RECIBO: "AvisoCobrancaRecibo",
-  FATURA_GENERICA: "FaturaGenerica",
-  FATURA_GLOBAL: "FaturaGlobal",
-  FATURA_ADIANTAMENTO: "FaturaAdiantamento",
   RECIBO: "Recibo",
 } as const;
 
@@ -19,15 +13,9 @@ export const TIPOS_DOCUMENTO = {
 export const LABELS_DOCUMENTO: Record<string, string> = {
   Fatura: "Factura",
   FaturaRecibo: "Factura-Recibo",
-  Simplificada: "Talão de Venda ou Prestação de Serviço",
   NotaCredito: "Nota de Crédito",
   NotaDebito: "Nota de Débito",
   Orcamento: "Factura pro-forma",
-  GuiaRemessa: "Guia de Remessa ou Transporte",
-  AvisoCobrancaRecibo: "Aviso de Cobrança-Recibo",
-  FaturaGenerica: "Factura Genérica",
-  FaturaGlobal: "Factura Global",
-  FaturaAdiantamento: "Factura Adiantamento",
   Recibo: "Recibo",
 };
 

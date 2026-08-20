@@ -152,11 +152,6 @@ async function gerarDatasetDemo(): Promise<{ docs: DocumentoIntegridade[]; ctx: 
     linhas: [{ descricao: "Instalação completa (proposta)", quantidade: 1, preco: 250000, taxaIVA: 14 }],
   }));
   docs.push(await criarDoc({
-    tipo: "GuiaRemessa", serie: "A", numero: 1, dataEmissao: hoje,
-    status: "Processado", formaPagamento: "Crédito", clienteNif: "5401123456",
-    linhas: [{ descricao: "Transporte de mercadoria — lote 2026/08", quantidade: 10, preco: 2000, taxaIVA: 0 }],
-  }));
-  docs.push(await criarDoc({
     tipo: "NotaCredito", serie: "A", numero: 1, dataEmissao: hoje,
     status: "Pendente", formaPagamento: "Multicaixa", clienteNif: "5401123456",
     linhas: [{ descricao: "Devolução parcial — licenciamento", quantidade: 1, preco: 10000, taxaIVA: 14 }],
@@ -173,7 +168,6 @@ async function gerarDatasetDemo(): Promise<{ docs: DocumentoIntegridade[]; ctx: 
     series: [
       { tipo: "Fatura", serie: "A", proximoNumero: 4 },
       { tipo: "Orcamento", serie: "A", proximoNumero: 2 },
-      { tipo: "GuiaRemessa", serie: "A", proximoNumero: 2 },
       { tipo: "NotaCredito", serie: "A", proximoNumero: 2 },
     ],
     logsAuditoria: [

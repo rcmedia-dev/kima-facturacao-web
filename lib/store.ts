@@ -456,7 +456,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
 
   get faturas() {
     return get().documentos.filter(
-      (d) => d.tipo === "Fatura" || d.tipo === "FaturaRecibo" || d.tipo === "Simplificada"
+      (d) => d.tipo === "Fatura" || d.tipo === "FaturaRecibo"
     );
   },
 
