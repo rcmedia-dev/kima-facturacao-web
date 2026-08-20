@@ -36,16 +36,12 @@ function corBanda(tipo: string): [number, number, number] {
   switch (tipo) {
     case 'FaturaRecibo':
       return [16, 185, 129];
-    case 'Simplificada':
-      return [217, 119, 6];
     case 'NotaCredito':
       return [225, 29, 72];
     case 'NotaDebito':
       return [234, 88, 12];
     case 'Orcamento':
       return [124, 58, 237];
-    case 'GuiaRemessa':
-      return [2, 132, 199];
     default:
       return [37, 99, 235];
   }
@@ -255,23 +251,6 @@ export async function gerarPDFFaturaAGT(
   if (fatura.documentoReferenciado) {
     doc.text(`Documento original: ${fatura.documentoReferenciado}`, MARGIN, y);
     y += 4;
-  }
-
-  // T4.3 — Dados de Transporte na Guia de Remessa
-  if (fatura.tipo === 'GuiaRemessa' && (fatura.transporteViatura || fatura.transporteMatricula || fatura.transporteMotorista)) {
-    const transporteLinhas = [
-      fatura.transporteViatura ? `Viatura: ${fatura.transporteViatura}` : '',
-      fatura.transporteMatricula ? `Matrícula: ${fatura.transporteMatricula}` : '',
-      fatura.transporteMotorista ? `Motorista: ${fatura.transporteMotorista}` : '',
-    ].filter(Boolean);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(2, 132, 199);
-    doc.text('Dados de transporte', MARGIN, y);
-    y += 4;
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(71, 85, 105);
-    doc.text(transporteLinhas.join('  ·  '), MARGIN, y);
-    y += 5;
   }
   y += 3;
 

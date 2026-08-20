@@ -2,15 +2,9 @@ export type TipoCliente = "PF" | "PJ";
 export type TipoDocumento =
   | "Fatura"
   | "FaturaRecibo"
-  | "Simplificada"
   | "NotaCredito"
   | "NotaDebito"
   | "Orcamento"
-  | "GuiaRemessa"
-  | "AvisoCobrancaRecibo"
-  | "FaturaGenerica"
-  | "FaturaGlobal"
-  | "FaturaAdiantamento"
   | "Recibo";
 export type UnidadeMedida = "UN" | "KG" | "M" | "M2" | "L" | "H" | "DIA" | "MES";
 export type TipoArtigo = "Produto" | "Serviço";

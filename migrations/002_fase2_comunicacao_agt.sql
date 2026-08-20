@@ -68,9 +68,8 @@ CREATE OR REPLACE FUNCTION kima_facturas.enfileirar_documento_agt()
 RETURNS TRIGGER AS $$
 BEGIN
   IF NEW.status <> 'Rascunho'
-     AND NEW.tipo IN ('Fatura','FaturaRecibo','Simplificada','NotaCredito',
-                      'NotaDebito','GuiaRemessa','Recibo','AvisoCobrancaRecibo',
-                      'FaturaGenerica','FaturaGlobal','FaturaAdiantamento') THEN
+     AND NEW.tipo IN ('Fatura','FaturaRecibo','NotaCredito',
+                      'NotaDebito','Orcamento','Recibo') THEN
     INSERT INTO kima_facturas.fila_envio_agt (company_id, documento_id)
     VALUES (NEW.company_id, NEW.id)
     ON CONFLICT (documento_id) DO NOTHING;

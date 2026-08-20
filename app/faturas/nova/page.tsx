@@ -17,15 +17,9 @@ import { addDays } from "date-fns";
 const TIPOS_VALIDOS: TipoDocumento[] = [
   "Fatura",
   "FaturaRecibo",
-  "Simplificada",
   "NotaCredito",
   "NotaDebito",
   "Orcamento",
-  "GuiaRemessa",
-  "AvisoCobrancaRecibo",
-  "FaturaGenerica",
-  "FaturaGlobal",
-  "FaturaAdiantamento",
   "Recibo",
 ];
 
@@ -50,9 +44,6 @@ function NovaFaturaContent() {
   const [linhas, setLinhas] = useState<FaturaLinha[]>([]);
   const [documentoReferenciado, setDocumentoReferenciado] = useState<string>("");
   const [motivo, setMotivo] = useState<string>("");
-  const [transporteViatura, setTransporteViatura] = useState<string>("");
-  const [transporteMatricula, setTransporteMatricula] = useState<string>("");
-  const [transporteMotorista, setTransporteMotorista] = useState<string>("");
   const [dataVencimento, setDataVencimento] = useState<Date>(() =>
     addDays(new Date(), DIAS_VENCIMENTO_DEFAULT)
   );
@@ -67,7 +58,7 @@ function NovaFaturaContent() {
     );
   }
 
-  const canGoPasso2 = tipoDocumento === "Simplificada" || clienteSelecionado !== null;
+  const canGoPasso2 = clienteSelecionado !== null;
   const canGoPasso3 = canGoPasso2 && linhas.length > 0;
 
   // Passo atual (para o indicador de progresso)
@@ -209,14 +200,6 @@ function NovaFaturaContent() {
                 onChangeDataVencimento={setDataVencimento}
                 documentoReferenciado={documentoReferenciado}
                 motivo={motivo}
-                transporteViatura={transporteViatura}
-                transporteMatricula={transporteMatricula}
-                transporteMotorista={transporteMotorista}
-                onChangeTransporte={{
-                  setViatura: setTransporteViatura,
-                  setMatricula: setTransporteMatricula,
-                  setMotorista: setTransporteMotorista,
-                }}
                 onBack={() => setActiveTab("passo2")}
               />
             </TabsContent>
@@ -229,13 +212,11 @@ function NovaFaturaContent() {
             Resumo
           </p>
           <p className="text-sm font-bold mt-1.5 text-slate-900 dark:text-white truncate">
-            {clienteSelecionado?.nome || (tipoDocumento === "Simplificada" ? "Consumidor Final" : "Nenhum cliente selecionado")}
+            {clienteSelecionado?.nome || "Nenhum cliente selecionado"}
           </p>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
             {clienteSelecionado
               ? `${tipoDocumento} · NIF ${clienteSelecionado.nif}`
-              : tipoDocumento === "Simplificada"
-              ? "Talão de Venda ou Prestação de Serviço (sem NIF)"
               : "Selecione um cliente no passo 1."}
           </p>
 

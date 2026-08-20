@@ -79,8 +79,7 @@ export function calcularKPIs(
   const faturas = documentos.filter(
     (d) =>
       d.tipo === 'Fatura' ||
-      d.tipo === 'FaturaRecibo' ||
-      d.tipo === 'Simplificada'
+      d.tipo === 'FaturaRecibo'
   );
 
   const faturasMes = faturas.filter(
@@ -148,8 +147,7 @@ export function gerarRelatorioVendas(
   const faturas = documentos.filter(
     (d) =>
       (d.tipo === 'Fatura' ||
-        d.tipo === 'FaturaRecibo' ||
-        d.tipo === 'Simplificada') &&
+        d.tipo === 'FaturaRecibo') &&
       d.dataEmissao >= dataInicio &&
       d.dataEmissao <= dataFim
   );
@@ -250,8 +248,7 @@ export function gerarRelatorioIVA(
       data.getMonth() + 1 === mes &&
       data.getFullYear() === ano &&
       (d.tipo === 'Fatura' ||
-        d.tipo === 'FaturaRecibo' ||
-        d.tipo === 'Simplificada')
+        d.tipo === 'FaturaRecibo')
     );
   });
 

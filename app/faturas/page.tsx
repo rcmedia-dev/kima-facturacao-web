@@ -20,7 +20,7 @@ export default function FaturasPage() {
 
   // Calcular faturas diretamente de documentos (evita o bug do getter Zustand)
   const todasFaturas = documentos.filter(
-    (d) => d.tipo === "Fatura" || d.tipo === "FaturaRecibo" || d.tipo === "Simplificada"
+    (d) => d.tipo === "Fatura" || d.tipo === "FaturaRecibo"
   );
 
   // Listagem completa de todos os tipos de documento (faturas, notas, avisos, etc.)
