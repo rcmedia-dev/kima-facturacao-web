@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Dialog as DialogPrimitive } from "@base-ui/react/dialog";
 import { X, Package } from "lucide-react";
 import { Artigo } from "@/lib/types";
@@ -8,6 +8,7 @@ import { formatMoedaAOA, formatDataCompleta } from "@/lib/formatters";
 import { useAppStore } from "@/lib/store";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { InfoCell } from "@/components/info-cell";
 
 interface ArtigoDrawerProps {
   artigo: Artigo | null;
@@ -57,27 +58,22 @@ export function ArtigoDrawer({ artigo, onClose, onEdit }: ArtigoDrawerProps) {
   // Retém o último artigo durante a animação de fecho
   const [open, setOpen] = useState(false);
   const [displayArtigo, setDisplayArtigo] = useState<Artigo | null>(null);
+  const [prevArtigo, setPrevArtigo] = useState<Artigo | null>(artigo);
   const getFornecedorPorId = useAppStore((s) => s.getFornecedorPorId);
 
-  useEffect(() => {
+  if (artigo !== prevArtigo) {
+    setPrevArtigo(artigo);
     if (artigo) {
       setDisplayArtigo(artigo);
       setOpen(true);
     } else {
       setOpen(false);
     }
-  }, [artigo]);
+  }
 
   const a = displayArtigo;
   const fornecedor = a?.fornecedorId ? getFornecedorPorId(a.fornecedorId) : undefined;
   const stockBaixo = a ? a.stockMinimo > 0 && a.stock <= a.stockMinimo : false;
-
-  const InfoCell = ({ label, value, mono }: { label: string; value: string; mono?: boolean }) => (
-    <div className="rounded-xl border border-slate-100 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-800/40">
-      <p className="text-[10.5px] font-bold uppercase tracking-wider text-slate-400">{label}</p>
-      <p className={`mt-1 text-[13px] font-bold break-words text-slate-800 dark:text-slate-200 ${mono ? "font-mono" : ""}`}>{value}</p>
-    </div>
-  );
 
   return (
     <DialogPrimitive.Root open={open} onOpenChange={(o) => { if (!o) onClose(); }}>

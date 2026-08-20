@@ -2,6 +2,7 @@ import { jsPDF } from "jspdf";
 import type { Documento, Cliente, ConfiguracaoEmpresa, TipoDocumento } from "./types";
 import { formatMoedaAOA, formatData, valorPorExtenso } from "./formatters";
 import { gerarHashFiscal, formatarHash } from "./fiscal-hash";
+import { SOFTWARE_NOME, SOFTWARE_CERTIFICACAO_AGT } from "./constants";
 
 /**
  * Retorna o título oficial do documento de acordo com o Decreto Presidencial nº 71/25
@@ -265,6 +266,29 @@ export async function gerarPDFFatura(
     y += 15;
   }
 
+  // T4.3 — Dados de Transporte na Guia de Remessa
+  if (fatura.tipo === "GuiaRemessa" && (fatura.transporteViatura || fatura.transporteMatricula || fatura.transporteMotorista)) {
+    doc.setFillColor(241, 245, 249);
+    doc.setDrawColor(203, 213, 225);
+    doc.roundedRect(15, y, pageWidth - 30, 13, 2, 2, "FD");
+
+    doc.setFontSize(8);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(51, 65, 85);
+    doc.text("DADOS DE TRANSPORTE", 20, y + 5);
+
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(71, 85, 105);
+    const transporteLinhas = [
+      fatura.transporteViatura ? `Viatura: ${fatura.transporteViatura}` : "",
+      fatura.transporteMatricula ? `Matrícula: ${fatura.transporteMatricula}` : "",
+      fatura.transporteMotorista ? `Motorista: ${fatura.transporteMotorista}` : "",
+    ].filter(Boolean);
+    doc.text(transporteLinhas.join("  ·  "), 20, y + 10);
+
+    y += 17;
+  }
+
   // 5. Caixa de metadados (Emissão / Vencimento / Pagamento / Status)
   doc.setFillColor(241, 245, 249);
   doc.roundedRect(15, y, pageWidth - 30, 11, 2, 2, "F");
@@ -436,8 +460,8 @@ export async function gerarPDFFatura(
   doc.setFillColor(barColor[0], barColor[1], barColor[2]);
   doc.rect(0, pageHeight - 8, pageWidth, 8, "F");
 
-  const softwareNome = empresa?.softwareNome || "Kima Facturação";
-  const certNum = empresa?.softwareCertificacaoNumero || "nº de certificação não definido";
+  const softwareNome = empresa?.softwareNome || SOFTWARE_NOME;
+  const certNum = empresa?.softwareCertificacaoNumero || SOFTWARE_CERTIFICACAO_AGT;
   const hashCurto = formatarHash(hash, 4, 8);
 
   doc.setFontSize(7);
@@ -551,7 +575,7 @@ export function gerarPDFTermico80mm(
   y += 5;
 
   doc.setFont("helvetica", "normal");
-  doc.text(`Processado por ${empresa?.softwareNome || "Kima Facturação"} · Certificação AGT ${empresa?.softwareCertificacaoNumero || "não definido"}`, pageWidth / 2, y, { align: "center" });
+  doc.text(`Processado por ${empresa?.softwareNome || SOFTWARE_NOME} · Certificação AGT ${empresa?.softwareCertificacaoNumero || SOFTWARE_CERTIFICACAO_AGT}`, pageWidth / 2, y, { align: "center" });
   y += 4;
   doc.text("Obrigado pela preferência!", pageWidth / 2, y, { align: "center" });
 

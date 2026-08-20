@@ -1,3 +1,4 @@
+import { normalizarErro } from "@/lib/utils";
 import { NextResponse } from "next/server";
 import { atualizarCliente, deletarCliente } from "@/db/queries";
 import { obterClientePorId } from "@/db/queries";
@@ -21,10 +22,10 @@ export async function GET(
     }
 
     return NextResponse.json({ success: true, data: cliente });
-  } catch (error: any) {
+  } catch (error: unknown) {
     return NextResponse.json(
-      { success: false, error: error.message || "Erro ao buscar cliente" },
-      { status: error.status || 500 }
+      { success: false, error: normalizarErro(error).mensagem || "Erro ao buscar cliente" },
+      { status: normalizarErro(error).status || 500 }
     );
   }
 }
@@ -42,15 +43,15 @@ export async function PUT(
     const clienteAtualizado = await atualizarCliente(companyId, id, validatedData);
 
     return NextResponse.json({ success: true, data: clienteAtualizado });
-  } catch (error: any) {
-    if (error.name === "ZodError") {
+  } catch (error: unknown) {
+    if (normalizarErro(error).nome === "ZodError") {
       return NextResponse.json(
-        { success: false, error: "Dados inválidos", details: error.errors },
+        { success: false, error: "Dados inválidos", details: normalizarErro(error).detalhes },
         { status: 400 }
       );
     }
     return NextResponse.json(
-      { success: false, error: error.message || "Erro ao atualizar cliente" },
+      { success: false, error: normalizarErro(error).mensagem || "Erro ao atualizar cliente" },
       { status: 500 }
     );
   }
@@ -69,9 +70,9 @@ export async function DELETE(
       success: true,
       message: "Cliente removido com sucesso",
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     return NextResponse.json(
-      { success: false, error: error.message || "Erro ao deletar cliente" },
+      { success: false, error: normalizarErro(error).mensagem || "Erro ao deletar cliente" },
       { status: 500 }
     );
   }

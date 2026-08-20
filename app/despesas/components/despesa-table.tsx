@@ -71,7 +71,7 @@ export function DespesaTable({
         ) : (
           <>
             <p className="text-sm font-medium text-gray-600">Nenhuma despesa registada</p>
-            <p className="text-xs text-gray-400">Clique em "Nova Despesa" para começar.</p>
+            <p className="text-xs text-gray-400">Clique em &quot;Nova Despesa&quot; para começar.</p>
           </>
         )}
       </div>

@@ -1,3 +1,4 @@
+import { normalizarErro } from "@/lib/utils";
 import { NextResponse } from "next/server";
 import { fornecedorSchema } from "@/lib/schemas";
 import { obterFornecedores, criarFornecedor } from "@/db/queries";
@@ -8,10 +9,10 @@ export async function GET(request: Request) {
     const companyId = requireCompanyId(request);
     const fornecedores = await obterFornecedores(companyId);
     return NextResponse.json({ success: true, data: fornecedores });
-  } catch (error: any) {
+  } catch (error: unknown) {
     return NextResponse.json(
-      { success: false, error: error.message || "Erro ao obter fornecedores" },
-      { status: error.status || 500 }
+      { success: false, error: normalizarErro(error).mensagem || "Erro ao obter fornecedores" },
+      { status: normalizarErro(error).status || 500 }
     );
   }
 }
@@ -33,15 +34,15 @@ export async function POST(request: Request) {
     });
 
     return NextResponse.json({ success: true, data: novoFornecedor }, { status: 201 });
-  } catch (error: any) {
-    if (error.name === "ZodError") {
+  } catch (error: unknown) {
+    if (normalizarErro(error).nome === "ZodError") {
       return NextResponse.json(
-        { success: false, error: "Dados inválidos", details: error.errors },
+        { success: false, error: "Dados inválidos", details: normalizarErro(error).detalhes },
         { status: 400 }
       );
     }
     return NextResponse.json(
-      { success: false, error: error.message || "Erro ao criar fornecedor" },
+      { success: false, error: normalizarErro(error).mensagem || "Erro ao criar fornecedor" },
       { status: 500 }
     );
   }

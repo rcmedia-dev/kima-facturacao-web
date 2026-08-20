@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Dialog as DialogPrimitive } from "@base-ui/react/dialog";
 import { X } from "lucide-react";
 import { Fornecedor } from "@/lib/types";
 import { formatDataCompleta } from "@/lib/formatters";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { InfoCell } from "@/components/info-cell";
 
 interface FornecedorDrawerProps {
   fornecedor: Fornecedor | null;
@@ -32,24 +33,19 @@ export function FornecedorDrawer({ fornecedor, onClose, onEdit }: FornecedorDraw
   // Retém o último fornecedor durante a animação de fecho
   const [open, setOpen] = useState(false);
   const [displayFornecedor, setDisplayFornecedor] = useState<Fornecedor | null>(null);
+  const [prevFornecedor, setPrevFornecedor] = useState<Fornecedor | null>(fornecedor);
 
-  useEffect(() => {
+  if (fornecedor !== prevFornecedor) {
+    setPrevFornecedor(fornecedor);
     if (fornecedor) {
       setDisplayFornecedor(fornecedor);
       setOpen(true);
     } else {
       setOpen(false);
     }
-  }, [fornecedor]);
+  }
 
   const f = displayFornecedor;
-
-  const InfoCell = ({ label, value, mono }: { label: string; value: string; mono?: boolean }) => (
-    <div className="rounded-xl border border-slate-100 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-800/40">
-      <p className="text-[10.5px] font-bold uppercase tracking-wider text-slate-400">{label}</p>
-      <p className={`mt-1 text-[13px] font-bold break-words text-slate-800 dark:text-slate-200 ${mono ? "font-mono" : ""}`}>{value}</p>
-    </div>
-  );
 
   return (
     <DialogPrimitive.Root open={open} onOpenChange={(o) => { if (!o) onClose(); }}>

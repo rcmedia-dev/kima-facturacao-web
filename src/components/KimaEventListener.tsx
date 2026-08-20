@@ -30,7 +30,7 @@ export function KimaEventListener() {
       .on('broadcast', { event: 'COMPANY_SWITCHED' }, () => {
         router.refresh();
       })
-      .on('broadcast', { event: 'MODULE_STATUS_CHANGED' }, (payload: any) => {
+      .on('broadcast', { event: 'MODULE_STATUS_CHANGED' }, (payload: { moduleKey?: string; status?: string }) => {
         if (payload?.moduleKey === MODULE_KEY && payload?.status !== 'Ativo') {
           alert('A licença deste módulo foi alterada ou cancelada.');
           window.location.href = `${process.env.NEXT_PUBLIC_KIMA_HUB_URL}/marketplace`;

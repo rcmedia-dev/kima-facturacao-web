@@ -62,7 +62,7 @@ export function FornecedorTable({
         ) : (
           <>
             <p className="text-sm font-medium text-gray-600">Nenhum fornecedor cadastrado</p>
-            <p className="text-xs text-gray-400">Clique em "Novo Fornecedor" para começar.</p>
+            <p className="text-xs text-gray-400">Clique em &quot;Novo Fornecedor&quot; para começar.</p>
           </>
         )}
       </div>

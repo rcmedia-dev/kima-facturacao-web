@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useSyncExternalStore, useState } from "react";
 import { useAppStore } from "@/lib/store";
 import { useToastContext } from "@/components/ui/toast";
 import { Plus, Truck, UserCheck, UserX, Banknote } from "lucide-react";
@@ -12,16 +12,12 @@ import { ConfirmModal } from "@/components/confirm-modal";
 export default function FornecedoresPage() {
   const store = useAppStore();
   const { success, error } = useToastContext();
-  const [mounted, setMounted] = useState(false);
+  const mounted = useSyncExternalStore(() => () => {}, () => true, () => false);
   const [searchTerm, setSearchTerm] = useState("");
   const [estadoFiltro, setEstadoFiltro] = useState<string>("Todos");
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   const handleDelete = async () => {
     if (deleteId) {

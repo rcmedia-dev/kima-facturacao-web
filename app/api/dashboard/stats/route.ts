@@ -1,3 +1,4 @@
+import { normalizarErro } from "@/lib/utils";
 import { NextResponse } from "next/server";
 import { obterDocumentos, obterClientes } from "@/db/queries";
 import { requireCompanyId } from "@/lib/company";
@@ -37,14 +38,14 @@ export async function GET(request: Request) {
         ultimasFaturas,
       },
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Erro ao obter estatísticas do dashboard:", error);
     return NextResponse.json(
       {
         success: false,
-        error: error.message || "Erro ao carregar estatísticas do dashboard",
+        error: normalizarErro(error).mensagem || "Erro ao carregar estatísticas do dashboard",
       },
-      { status: error.status || 500 }
+      { status: normalizarErro(error).status || 500 }
     );
   }
 }

@@ -1,3 +1,4 @@
+import { normalizarErro } from "@/lib/utils";
 import { NextResponse } from "next/server";
 import { obterDocumentoPorId, atualizarDocumento, deletarDocumento } from "@/db/queries";
 import { requireCompanyId } from "@/lib/company";
@@ -19,10 +20,10 @@ export async function GET(
     }
 
     return NextResponse.json({ success: true, data: documento });
-  } catch (error: any) {
+  } catch (error: unknown) {
     return NextResponse.json(
-      { success: false, error: error.message || "Erro ao obter detalhes do documento" },
-      { status: error.status || 500 }
+      { success: false, error: normalizarErro(error).mensagem || "Erro ao obter detalhes do documento" },
+      { status: normalizarErro(error).status || 500 }
     );
   }
 }
@@ -46,10 +47,10 @@ export async function PUT(
     });
 
     return NextResponse.json({ success: true, data: documentoAtualizado });
-  } catch (error: any) {
+  } catch (error: unknown) {
     return NextResponse.json(
-      { success: false, error: error.message || "Erro ao atualizar documento" },
-      { status: error.status || 500 }
+      { success: false, error: normalizarErro(error).mensagem || "Erro ao atualizar documento" },
+      { status: normalizarErro(error).status || 500 }
     );
   }
 }
@@ -67,9 +68,9 @@ export async function DELETE(
       success: true,
       message: "Documento removido com sucesso",
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     return NextResponse.json(
-      { success: false, error: error.message || "Erro ao deletar documento" },
+      { success: false, error: normalizarErro(error).mensagem || "Erro ao deletar documento" },
       { status: 500 }
     );
   }

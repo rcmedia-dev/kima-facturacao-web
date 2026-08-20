@@ -64,7 +64,7 @@ export function ClienteTable({
         ) : (
           <>
             <p className="text-sm font-medium text-gray-600">Nenhum cliente cadastrado</p>
-            <p className="text-xs text-gray-400">Clique em "Novo Cliente" para começar.</p>
+            <p className="text-xs text-gray-400">Clique em &quot;Novo Cliente&quot; para começar.</p>
           </>
         )}
       </div>

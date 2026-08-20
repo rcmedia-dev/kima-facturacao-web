@@ -1,6 +1,6 @@
 "use client";
 
-import { useForm } from "react-hook-form";
+import { useForm, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Dialog as DialogPrimitive } from "@base-ui/react/dialog";
 import { Button } from "@/components/ui/button";
@@ -73,7 +73,7 @@ export function DespesaFormModal({
     watch,
     setValue,
   } = useForm<DespesaFormInput>({
-    resolver: zodResolver(despesaSchemaInput) as any,
+    resolver: zodResolver(despesaSchemaInput) as Resolver<DespesaFormInput>,
     defaultValues: despesa
       ? {
           descricao: despesa.descricao,

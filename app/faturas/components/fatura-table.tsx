@@ -11,6 +11,7 @@ import { useState } from "react";
 import { useToastContext } from "@/components/ui/toast";
 import { FaturaDrawer } from "./fatura-drawer";
 import { emissaoForaDoPrazo } from "@/lib/utils";
+import { AGTStatusBadge } from "@/components/agt-status-badge";
 
 interface FaturaTableProps {
   faturas: Fatura[];
@@ -94,6 +95,7 @@ export function FaturaTable({ faturas, itemsPerPage = 20 }: FaturaTableProps) {
               <TableHead className="font-semibold text-xs text-white uppercase tracking-wider">Vencimento</TableHead>
               <TableHead className="font-semibold text-xs text-white uppercase tracking-wider text-right">Total (AOA)</TableHead>
               <TableHead className="font-semibold text-xs text-white uppercase tracking-wider text-center">Status</TableHead>
+              <TableHead className="font-semibold text-xs text-white uppercase tracking-wider text-center">AGT</TableHead>
               <TableHead className="font-semibold text-xs text-white uppercase tracking-wider text-center w-20">Ações</TableHead>
             </TableRow>
           </TableHeader>
@@ -139,6 +141,9 @@ export function FaturaTable({ faturas, itemsPerPage = 20 }: FaturaTableProps) {
                   </TableCell>
                   <TableCell className="text-center">
                     {getStatusBadge(fatura.status)}
+                  </TableCell>
+                  <TableCell className="text-center whitespace-nowrap">
+                    <AGTStatusBadge estado={fatura.statusAGT as any} />
                   </TableCell>
                   <TableCell className="text-center">
                     <MenuPrimitive.Root>

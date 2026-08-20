@@ -1,3 +1,4 @@
+import { normalizarErro } from "@/lib/utils";
 import { NextResponse } from "next/server";
 import { obterDespesaPorId } from "@/db/queries";
 import { atualizarDespesa, deletarDespesa } from "@/db/queries";
@@ -21,10 +22,10 @@ export async function GET(
     }
 
     return NextResponse.json({ success: true, data: despesa });
-  } catch (error: any) {
+  } catch (error: unknown) {
     return NextResponse.json(
-      { success: false, error: error.message || "Erro ao buscar despesa" },
-      { status: error.status || 500 }
+      { success: false, error: normalizarErro(error).mensagem || "Erro ao buscar despesa" },
+      { status: normalizarErro(error).status || 500 }
     );
   }
 }
@@ -55,15 +56,15 @@ export async function PUT(
     });
 
     return NextResponse.json({ success: true, data: despesaAtualizada });
-  } catch (error: any) {
-    if (error.name === "ZodError") {
+  } catch (error: unknown) {
+    if (normalizarErro(error).nome === "ZodError") {
       return NextResponse.json(
-        { success: false, error: "Dados inválidos", details: error.errors },
+        { success: false, error: "Dados inválidos", details: normalizarErro(error).detalhes },
         { status: 400 }
       );
     }
     return NextResponse.json(
-      { success: false, error: error.message || "Erro ao atualizar despesa" },
+      { success: false, error: normalizarErro(error).mensagem || "Erro ao atualizar despesa" },
       { status: 500 }
     );
   }
@@ -82,9 +83,9 @@ export async function DELETE(
       success: true,
       message: "Despesa removida com sucesso",
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     return NextResponse.json(
-      { success: false, error: error.message || "Erro ao deletar despesa" },
+      { success: false, error: normalizarErro(error).mensagem || "Erro ao deletar despesa" },
       { status: 500 }
     );
   }

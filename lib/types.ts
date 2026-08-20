@@ -118,6 +118,11 @@ export interface Documento {
   total: number;
   dataPagamento?: Date;
   hash?: string; // Código hash fiscal (Art. 10º j — DP 71/25)
+  hashAnterior?: string; // Hash do documento anterior da mesma série (cadeia de imutabilidade — R12/R13)
+  assinaturaJWS?: string; // Assinatura digital JWS (RS256) do documento — R9
+  qrPayload?: string; // Payload do QR Code regulamentar AGT — R8
+  assinadoPor?: string; // Utilizador que emitiu/assinou o documento — R14
+  certAgtNumero?: string; // N.º do certificado AGT do software na emissão — R15
   motivoIsencaoIVA?: string; // Motivo da não liquidação do imposto (Art. 10º f)
   dataOperacao?: Date; // Data da operação que deu causa à emissão (Art. 8º)
   
@@ -129,6 +134,16 @@ export interface Documento {
   // Referências
   documentoReferenciado?: string; // Para notas de crédito/débito e recibos (fatura a que se refere)
   motivo?: string; // Motivo de cancelamento ou nota
+
+  // T4.3 · Guias de Remessa / Transporte — dados do transporte de mercadorias
+  transporteViatura?: string; // Descrição da viatura
+  transporteMatricula?: string; // Matrícula da viatura
+  transporteMotorista?: string; // Nome do motorista/transportador
+// T2.4 · Comunicação AGT — estado de transmissão do documento (Fase 2)
+  statusAGT?: "Pendente" | "Processando" | "Transmitido" | "Rejeitado" | "Erro";
+  erroAGT?: string;
+  tentativasAGT?: number;
+  dataTransmissaoAGT?: Date;
 }
 
 // Alias para manter compatibilidade
@@ -179,8 +194,8 @@ export interface LogAuditoria {
   acao: string;
   entidade: string;
   entidadeId: string;
-  alteracoesAnteriores?: Record<string, any>;
-  alteracoesNovas?: Record<string, any>;
+  alteracoesAnteriores?: Record<string, unknown>;
+  alteracoesNovas?: Record<string, unknown>;
   timestamp: Date;
   endereco?: string;
 }

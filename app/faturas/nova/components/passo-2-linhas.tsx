@@ -203,7 +203,7 @@ export function Passo2Linhas({
             Nenhuma linha adicionada ainda
           </p>
           <p className="text-slate-400 text-xs mt-1">
-            Escolha um artigo acima e clique em "Adicionar Linha".
+            Escolha um artigo acima e clique em &quot;Adicionar Linha&quot;.
           </p>
         </div>
       ) : (

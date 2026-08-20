@@ -31,9 +31,6 @@ export function useDebounceSearch<T>(
   useEffect(() => {
     if (searchTerm === debouncedTerm) return;
 
-    // Marca como "a pesquisar" quando o utilizador começa a digitar
-    setIsSearching(true);
-
     if (timerRef.current) clearTimeout(timerRef.current);
 
     timerRef.current = setTimeout(() => {
@@ -46,6 +43,11 @@ export function useDebounceSearch<T>(
     };
   }, [searchTerm, debouncedTerm, delay]);
 
+  const updateSearchTerm = (value: string) => {
+    setSearchTerm(value);
+    if (value !== debouncedTerm) setIsSearching(true);
+  };
+
   const filteredItems =
     debouncedTerm.trim() === ""
       ? items
@@ -53,7 +55,7 @@ export function useDebounceSearch<T>(
 
   return {
     searchTerm,
-    setSearchTerm,
+    setSearchTerm: updateSearchTerm,
     filteredItems,
     isSearching,
     hasQuery: debouncedTerm.trim().length > 0,

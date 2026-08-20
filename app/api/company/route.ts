@@ -1,3 +1,4 @@
+import { normalizarErro } from "@/lib/utils";
 import { NextResponse } from "next/server";
 import { empresaSchema } from "@/lib/schemas";
 import { obterEmpresa, atualizarEmpresa } from "@/db/queries";
@@ -11,10 +12,10 @@ export async function GET(request: Request) {
       success: true,
       data: empresa || null,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     return NextResponse.json(
-      { success: false, error: error.message || "Erro ao obter dados da empresa" },
-      { status: error.status || 500 }
+      { success: false, error: normalizarErro(error).mensagem || "Erro ao obter dados da empresa" },
+      { status: normalizarErro(error).status || 500 }
     );
   }
 }
@@ -37,15 +38,15 @@ export async function PUT(request: Request) {
     });
 
     return NextResponse.json({ success: true, data: empresaAtualizada });
-  } catch (error: any) {
-    if (error.name === "ZodError") {
+  } catch (error: unknown) {
+    if (normalizarErro(error).nome === "ZodError") {
       return NextResponse.json(
-        { success: false, error: "Dados inválidos", details: error.errors },
+        { success: false, error: "Dados inválidos", details: normalizarErro(error).detalhes },
         { status: 400 }
       );
     }
     return NextResponse.json(
-      { success: false, error: error.message || "Erro ao atualizar empresa" },
+      { success: false, error: normalizarErro(error).mensagem || "Erro ao atualizar empresa" },
       { status: 500 }
     );
   }

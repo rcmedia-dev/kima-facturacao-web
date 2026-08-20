@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useAppStore } from "@/lib/store";
-import { Cliente, FaturaLinha, TipoDocumento } from "@/lib/types";
+import { Cliente, FaturaLinha, TipoDocumento, Documento, FormaPagamento } from "@/lib/types";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -40,6 +40,14 @@ interface Passo3EmitirProps {
   onChangeDataVencimento: (data: Date) => void;
   documentoReferenciado?: string;
   motivo?: string;
+  transporteViatura?: string;
+  transporteMatricula?: string;
+  transporteMotorista?: string;
+  onChangeTransporte?: {
+    setViatura: (v: string) => void;
+    setMatricula: (v: string) => void;
+    setMotorista: (v: string) => void;
+  };
   onBack: () => void;
 }
 
@@ -56,6 +64,10 @@ export function Passo3Emitir({
   onChangeDataVencimento,
   documentoReferenciado = "",
   motivo = "",
+  transporteViatura = "",
+  transporteMatricula = "",
+  transporteMotorista = "",
+  onChangeTransporte,
   onBack,
 }: Passo3EmitirProps) {
   const store = useAppStore();
@@ -75,7 +87,7 @@ export function Passo3Emitir({
     setLoading(true);
     try {
       // 1. Tentar salvar no Backend via POST /api/invoices
-      let apiData: any = null;
+      let apiData: Documento | null = null;
       try {
         const response = await fetch("/api/invoices", {
           method: "POST",
@@ -96,6 +108,9 @@ export function Passo3Emitir({
             dataOperacao,
             documentoReferenciado: documentoReferenciado || undefined,
             motivo: motivo || undefined,
+            transporteViatura: tipoDocumento === "GuiaRemessa" ? transporteViatura || undefined : undefined,
+            transporteMatricula: tipoDocumento === "GuiaRemessa" ? transporteMatricula || undefined : undefined,
+            transporteMotorista: tipoDocumento === "GuiaRemessa" ? transporteMotorista || undefined : undefined,
           }),
         });
 
@@ -122,8 +137,8 @@ export function Passo3Emitir({
         clienteId: clienteSelecionado?.id,
         dataEmissao: apiData?.dataEmissao ? new Date(apiData.dataEmissao) : new Date(),
         dataVencimento: apiData?.dataVencimento ? new Date(apiData.dataVencimento) : dataVencimento,
-        formaPagamento: formaPagamento as any,
-        status: initialStatus as any,
+        formaPagamento: formaPagamento as FormaPagamento,
+        status: initialStatus as Documento["status"],
         dataPagamento: initialStatus === "Pago" ? new Date() : undefined,
         linhas,
         observacoes,
@@ -133,6 +148,9 @@ export function Passo3Emitir({
         dataOperacao: dataOperacao ? new Date(dataOperacao) : undefined,
         documentoReferenciado: documentoReferenciado || undefined,
         motivo: motivo || undefined,
+        transporteViatura: tipoDocumento === "GuiaRemessa" ? transporteViatura || undefined : undefined,
+        transporteMatricula: tipoDocumento === "GuiaRemessa" ? transporteMatricula || undefined : undefined,
+        transporteMotorista: tipoDocumento === "GuiaRemessa" ? transporteMotorista || undefined : undefined,
       });
 
       const finalId = faturaLocal.id;
@@ -392,6 +410,50 @@ export function Passo3Emitir({
             className="bg-white dark:bg-slate-950 border-slate-300 dark:border-slate-700 h-10 text-xs font-medium text-slate-900 dark:text-white"
           />
         </div>
+
+        {/* T4.3 — Dados de Transporte (Guia de Remessa) */}
+        {tipoDocumento === "GuiaRemessa" && (
+          <div className="p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/20">
+            <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">
+              Dados de Transporte <span className="text-slate-400 font-normal">(T4.3 — Guia de Remessa)</span>
+            </label>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-2">
+              <div>
+                <label className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 block mb-1">
+                  Viatura
+                </label>
+                <Input
+                  placeholder="ex: Camião 3.5t / Carrinha"
+                  value={transporteViatura}
+                  onChange={(e) => onChangeTransporte?.setViatura(e.target.value)}
+                  className="bg-white dark:bg-slate-950 border-slate-300 dark:border-slate-700 h-10 text-xs"
+                />
+              </div>
+              <div>
+                <label className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 block mb-1">
+                  Matrícula
+                </label>
+                <Input
+                  placeholder="ex: LD-12-34-AB"
+                  value={transporteMatricula}
+                  onChange={(e) => onChangeTransporte?.setMatricula(e.target.value)}
+                  className="bg-white dark:bg-slate-950 border-slate-300 dark:border-slate-700 h-10 text-xs font-mono"
+                />
+              </div>
+              <div>
+                <label className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 block mb-1">
+                  Motorista / Transportador
+                </label>
+                <Input
+                  placeholder="ex: João dos Santos"
+                  value={transporteMotorista}
+                  onChange={(e) => onChangeTransporte?.setMotorista(e.target.value)}
+                  className="bg-white dark:bg-slate-950 border-slate-300 dark:border-slate-700 h-10 text-xs"
+                />
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Motivo da não liquidação do IVA (Art. 10º, alínea f — DP 71/25) */}
         {semIVA && (

@@ -1,3 +1,4 @@
+import { normalizarErro } from "@/lib/utils";
 import { NextResponse } from "next/server";
 import { clienteSchema } from "@/lib/schemas";
 import { obterClientes, criarCliente } from "@/db/queries";
@@ -8,10 +9,10 @@ export async function GET(request: Request) {
     const companyId = requireCompanyId(request);
     const clientes = await obterClientes(companyId);
     return NextResponse.json({ success: true, data: clientes });
-  } catch (error: any) {
+  } catch (error: unknown) {
     return NextResponse.json(
-      { success: false, error: error.message || "Erro ao obter clientes" },
-      { status: error.status || 500 }
+      { success: false, error: normalizarErro(error).mensagem || "Erro ao obter clientes" },
+      { status: normalizarErro(error).status || 500 }
     );
   }
 }
@@ -35,15 +36,15 @@ export async function POST(request: Request) {
     });
 
     return NextResponse.json({ success: true, data: novoCliente }, { status: 201 });
-  } catch (error: any) {
-    if (error.name === "ZodError") {
+  } catch (error: unknown) {
+    if (normalizarErro(error).nome === "ZodError") {
       return NextResponse.json(
-        { success: false, error: "Dados inválidos", details: error.errors },
+        { success: false, error: "Dados inválidos", details: normalizarErro(error).detalhes },
         { status: 400 }
       );
     }
     return NextResponse.json(
-      { success: false, error: error.message || "Erro ao criar cliente" },
+      { success: false, error: normalizarErro(error).mensagem || "Erro ao criar cliente" },
       { status: 500 }
     );
   }
