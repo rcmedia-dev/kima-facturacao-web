@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useAppStore } from "@/lib/store";
+import { Documento, FaturaLinha, FormaPagamento, TipoCliente } from "@/lib/types";
 import { formatMoedaAOA, formatData, formatDataCompleta } from "@/lib/formatters";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ArrowLeft, Download, Printer, CreditCard, CheckCircle2, FileText, Share2 } from "lucide-react";
@@ -15,12 +16,29 @@ import { gerarHashFiscal, formatarHash } from "@/lib/fiscal-hash";
 import { LABELS_DOCUMENTO } from "@/lib/constants";
 import { PagamentoModal } from "./components/pagamento-modal";
 
+type FaturaApi = Documento & {
+  cliente?: {
+    id: string;
+    nome: string;
+    nif: string;
+    tipo?: string;
+    morada?: string;
+    telefone?: string;
+    email?: string;
+    ativo?: boolean;
+    dataCriacao?: string;
+    ultimaAtualizacao?: string;
+  };
+};
+
 export default function FaturaDetailPage() {
   const params = useParams();
   const store = useAppStore();
-  const [mounted, setMounted] = useState(false);
-  const [apiFatura, setApiFatura] = useState<any>(null);
-  const [loadingApi, setLoadingApi] = useState(false);
+  const mounted = useSyncExternalStore(() => () => {}, () => true, () => false);
+  const [apiFatura, setApiFatura] = useState<FaturaApi | null>(null);
+  const [loadingApi, setLoadingApi] = useState(() =>
+    Boolean(params.id && !store.getFaturaPorId(params.id as string))
+  );
   const [showPagamentoModal, setShowPagamentoModal] = useState(false);
   const [hashFiscal, setHashFiscal] = useState<string | null>(null);
 
@@ -32,7 +50,7 @@ export default function FaturaDetailPage() {
     id: fatura.cliente.id,
     nome: fatura.cliente.nome,
     nif: fatura.cliente.nif,
-    tipo: fatura.cliente.tipo || "Empresa",
+    tipo: (fatura.cliente.tipo || "Empresa") as TipoCliente,
     morada: fatura.cliente.morada || "",
     telefone: fatura.cliente.telefone || "",
     email: fatura.cliente.email || "",
@@ -42,10 +60,7 @@ export default function FaturaDetailPage() {
   } : null);
 
   useEffect(() => {
-    setMounted(true);
-
     if (params.id && !store.getFaturaPorId(params.id as string)) {
-      setLoadingApi(true);
       fetch(`/api/invoices/${params.id}`)
         .then((res) => {
           if (!res.ok) return null;
@@ -61,7 +76,7 @@ export default function FaturaDetailPage() {
               ...data.data,
               dataEmissao: new Date(data.data.dataEmissao),
               dataVencimento: new Date(data.data.dataVencimento),
-              linhas: data.data.linhas?.map((l: any) => ({
+              linhas: data.data.linhas?.map((l: FaturaLinha) => ({
                 ...l,
                 quantidade: Number(l.quantidade),
                 preco: Number(l.preco),
@@ -76,14 +91,11 @@ export default function FaturaDetailPage() {
     }
   }, [params.id]);
 
+  const hashExistente = fatura?.hash;
+
   // Hash fiscal determinístico para exibição (Art. 10º j — DP 71/25)
   useEffect(() => {
-    if (!fatura) return;
-    const hashExistente = (fatura as any).hash;
-    if (hashExistente) {
-      setHashFiscal(hashExistente);
-      return;
-    }
+    if (!fatura || hashExistente) return;
     gerarHashFiscal({
       tipo: fatura.tipo,
       serie: fatura.serie,
@@ -99,7 +111,7 @@ export default function FaturaDetailPage() {
     })
       .then(setHashFiscal)
       .catch(() => setHashFiscal(null));
-  }, [fatura, cliente?.nif]);
+  }, [fatura, hashExistente, cliente?.nif]);
 
   if (!mounted || loadingApi) {
     return <div className="max-w-6xl mx-auto px-4 py-8 animate-pulse text-slate-500">Carregando fatura...</div>;
@@ -177,7 +189,7 @@ export default function FaturaDetailPage() {
         await store.updateFatura(faturaLocal.id, {
           status: "Pago",
           dataPagamento: data,
-          formaPagamento: formaPagamento as any,
+          formaPagamento: formaPagamento as FormaPagamento,
         });
       } catch (e) {
         console.error("Erro ao atualizar fatura:", e);
@@ -387,7 +399,7 @@ export default function FaturaDetailPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {fatura.linhas?.map((linha: any) => {
+                {fatura.linhas?.map((linha: FaturaLinha) => {
                   const totalLinhaComIVA = linha.total + (linha.total * linha.taxaIVA) / 100;
                   return (
                     <TableRow key={linha.id}>
@@ -438,11 +450,11 @@ export default function FaturaDetailPage() {
           {/* Rodapé técnico certificação AGT */}
           <div className="border-t border-dashed border-slate-200 dark:border-slate-800 pt-4 flex flex-col sm:flex-row justify-between items-center text-[11px] text-slate-400 gap-1">
             <p>
-              Processado por {store.empresa?.softwareNome || "Kima Facturação"} · Certificação AGT{" "}
+              Processado por {store.empresa?.softwareNome || "Kima Fatura"} · Certificação AGT{" "}
               {store.empresa?.softwareCertificacaoNumero || "não definido"}
             </p>
-            {hashFiscal && (
-              <p className="font-mono text-[10px]">Hash: {formatarHash(hashFiscal, 4, 8)}</p>
+            {(hashFiscal || hashExistente) && (
+              <p className="font-mono text-[10px]">Hash: {formatarHash(hashFiscal || hashExistente, 4, 8)}</p>
             )}
           </div>
         </main>

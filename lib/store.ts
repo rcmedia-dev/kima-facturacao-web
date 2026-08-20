@@ -11,9 +11,52 @@ import {
   Documento,
   MovimentoStock,
   LogAuditoria,
-  TipoDocumento,
   Despesa,
 } from "./types";
+
+type ClienteRaw = Omit<Cliente, "dataCriacao" | "ultimaAtualizacao"> & {
+  dataCriacao?: string;
+  ultimaAtualizacao?: string;
+};
+
+type ArtigoRaw = Omit<Artigo, "preco" | "taxaIVA" | "stock" | "stockMinimo" | "dataCriacao" | "ultimaAtualizacao"> & {
+  preco?: number | string;
+  taxaIVA?: number | string;
+  stock?: number | string;
+  stockMinimo?: number | string;
+  dataCriacao?: string;
+  ultimaAtualizacao?: string;
+};
+
+type FornecedorRaw = Omit<Fornecedor, "dataCriacao" | "ultimaAtualizacao"> & {
+  dataCriacao?: string;
+  ultimaAtualizacao?: string;
+};
+
+type DespesaRaw = Omit<Despesa, "valor" | "taxaIVA" | "total" | "data" | "dataCriacao" | "ultimaAtualizacao"> & {
+  valor?: number | string;
+  taxaIVA?: number | string;
+  total?: number | string;
+  data?: string;
+  dataCriacao?: string;
+  ultimaAtualizacao?: string;
+};
+
+type LinhaRaw = Omit<FaturaLinha, "quantidade" | "preco" | "taxaIVA" | "total"> & {
+  quantidade?: number | string;
+  preco?: number | string;
+  taxaIVA?: number | string;
+  total?: number | string;
+};
+
+type DocumentoRaw = Omit<Documento, "numero" | "dataEmissao" | "dataVencimento" | "dataPagamento" | "dataAtualizacao" | "linhas"> & {
+  numero?: number | string;
+  dataEmissao?: string;
+  dataVencimento?: string;
+  dataPagamento?: string;
+  dataAtualizacao?: string;
+  linhas?: LinhaRaw[];
+};
 
 async function apiFetch<T>(
   url: string,
@@ -31,59 +74,59 @@ async function apiFetch<T>(
 }
 
 // Normaliza datas vindas da API (strings ISO → Date)
-function normalizarCliente(c: any): Cliente {
+function normalizarCliente(c: ClienteRaw): Cliente {
   return {
     ...c,
-    dataCriacao: new Date(c.dataCriacao),
-    ultimaAtualizacao: new Date(c.ultimaAtualizacao),
+    dataCriacao: new Date(c.dataCriacao!),
+    ultimaAtualizacao: new Date(c.ultimaAtualizacao!),
   };
 }
 
-function normalizarArtigo(a: any): Artigo {
+function normalizarArtigo(a: ArtigoRaw): Artigo {
   return {
     ...a,
     preco: Number(a.preco),
-    taxaIVA: Number(a.taxaIVA),
+    taxaIVA: Number(a.taxaIVA) as 0 | 7 | 14,
     stock: Number(a.stock),
     stockMinimo: Number(a.stockMinimo),
-    dataCriacao: new Date(a.dataCriacao),
-    ultimaAtualizacao: new Date(a.ultimaAtualizacao),
+    dataCriacao: new Date(a.dataCriacao!),
+    ultimaAtualizacao: new Date(a.ultimaAtualizacao!),
   };
 }
 
-function normalizarFornecedor(f: any): Fornecedor {
+function normalizarFornecedor(f: FornecedorRaw): Fornecedor {
   return {
     ...f,
-    dataCriacao: new Date(f.dataCriacao),
-    ultimaAtualizacao: new Date(f.ultimaAtualizacao),
+    dataCriacao: new Date(f.dataCriacao!),
+    ultimaAtualizacao: new Date(f.ultimaAtualizacao!),
   };
 }
 
-function normalizarDespesa(d: any): Despesa {
+function normalizarDespesa(d: DespesaRaw): Despesa {
   return {
     ...d,
     valor: Number(d.valor),
-    taxaIVA: Number(d.taxaIVA),
+    taxaIVA: Number(d.taxaIVA) as 0 | 7 | 14,
     total: Number(d.total),
-    data: new Date(d.data),
-    dataCriacao: new Date(d.dataCriacao),
-    ultimaAtualizacao: new Date(d.ultimaAtualizacao),
+    data: new Date(d.data!),
+    dataCriacao: new Date(d.dataCriacao!),
+    ultimaAtualizacao: new Date(d.ultimaAtualizacao!),
   };
 }
 
-function normalizarDocumento(d: any): Documento {
+function normalizarDocumento(d: DocumentoRaw): Documento {
   return {
     ...d,
     numero: String(d.numero),
-    dataEmissao: new Date(d.dataEmissao),
-    dataVencimento: new Date(d.dataVencimento),
+    dataEmissao: new Date(d.dataEmissao!),
+    dataVencimento: new Date(d.dataVencimento!),
     dataPagamento: d.dataPagamento ? new Date(d.dataPagamento) : undefined,
-    dataAtualizacao: new Date(d.dataAtualizacao),
-    linhas: (d.linhas || []).map((l: any) => ({
+    dataAtualizacao: new Date(d.dataAtualizacao!),
+    linhas: (d.linhas || []).map((l: LinhaRaw) => ({
       ...l,
       quantidade: Number(l.quantidade),
       preco: Number(l.preco),
-      taxaIVA: Number(l.taxaIVA),
+      taxaIVA: Number(l.taxaIVA) as 0 | 7 | 14,
       total: Number(l.total),
     })),
   };
@@ -171,7 +214,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
 
   // Clientes
   addCliente: async (cliente) => {
-    const c = await apiFetch<any>("/api/clients", {
+    const c = await apiFetch<ClienteRaw>("/api/clients", {
       method: "POST",
       body: JSON.stringify(cliente),
     });
@@ -181,7 +224,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
   },
 
   updateCliente: async (id, cliente) => {
-    const c = await apiFetch<any>(`/api/clients/${id}`, {
+    const c = await apiFetch<ClienteRaw>(`/api/clients/${id}`, {
       method: "PUT",
       body: JSON.stringify(cliente),
     });
@@ -193,7 +236,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
   },
 
   deleteCliente: async (id) => {
-    await apiFetch<any>(`/api/clients/${id}`, { method: "DELETE" });
+    await apiFetch<null>(`/api/clients/${id}`, { method: "DELETE" });
     set((state) => ({ clientes: state.clientes.filter((c) => c.id !== id) }));
   },
 
@@ -201,7 +244,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
 
   // Artigos
   addArtigo: async (artigo) => {
-    const a = await apiFetch<any>("/api/products", {
+    const a = await apiFetch<ArtigoRaw>("/api/products", {
       method: "POST",
       body: JSON.stringify({
         ...artigo,
@@ -214,7 +257,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
   },
 
   updateArtigo: async (id, artigo) => {
-    const a = await apiFetch<any>(`/api/products/${id}`, {
+    const a = await apiFetch<ArtigoRaw>(`/api/products/${id}`, {
       method: "PUT",
       body: JSON.stringify({
         ...artigo,
@@ -229,7 +272,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
   },
 
   deleteArtigo: async (id) => {
-    await apiFetch<any>(`/api/products/${id}`, { method: "DELETE" });
+    await apiFetch<null>(`/api/products/${id}`, { method: "DELETE" });
     set((state) => ({ artigos: state.artigos.filter((a) => a.id !== id) }));
   },
 
@@ -237,7 +280,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
 
   // Fornecedores
   addFornecedor: async (fornecedor) => {
-    const f = await apiFetch<any>("/api/suppliers", {
+    const f = await apiFetch<FornecedorRaw>("/api/suppliers", {
       method: "POST",
       body: JSON.stringify(fornecedor),
     });
@@ -247,7 +290,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
   },
 
   updateFornecedor: async (id, fornecedor) => {
-    const f = await apiFetch<any>(`/api/suppliers/${id}`, {
+    const f = await apiFetch<FornecedorRaw>(`/api/suppliers/${id}`, {
       method: "PUT",
       body: JSON.stringify(fornecedor),
     });
@@ -259,7 +302,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
   },
 
   deleteFornecedor: async (id) => {
-    await apiFetch<any>(`/api/suppliers/${id}`, { method: "DELETE" });
+    await apiFetch<null>(`/api/suppliers/${id}`, { method: "DELETE" });
     set((state) => ({ fornecedores: state.fornecedores.filter((f) => f.id !== id) }));
   },
 
@@ -267,7 +310,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
 
   // Despesas
   addDespesa: async (despesa) => {
-    const d = await apiFetch<any>("/api/expenses", {
+    const d = await apiFetch<DespesaRaw>("/api/expenses", {
       method: "POST",
       body: JSON.stringify({
         ...despesa,
@@ -281,7 +324,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
   },
 
   updateDespesa: async (id, despesa) => {
-    const d = await apiFetch<any>(`/api/expenses/${id}`, {
+    const d = await apiFetch<DespesaRaw>(`/api/expenses/${id}`, {
       method: "PUT",
       body: JSON.stringify({
         ...despesa,
@@ -297,7 +340,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
   },
 
   deleteDespesa: async (id) => {
-    await apiFetch<any>(`/api/expenses/${id}`, { method: "DELETE" });
+    await apiFetch<null>(`/api/expenses/${id}`, { method: "DELETE" });
     set((state) => ({ despesas: state.despesas.filter((d) => d.id !== id) }));
   },
 
@@ -323,7 +366,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
   },
 
   updateDocumento: async (id, documento) => {
-    const payload: any = {};
+    const payload: Record<string, unknown> = {};
     if (documento.status) payload.status = documento.status;
     if (documento.formaPagamento) payload.formaPagamento = documento.formaPagamento;
     if (documento.observacoes !== undefined) payload.observacoes = documento.observacoes;
@@ -331,7 +374,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
     if (documento.dataVencimento) payload.dataVencimento = documento.dataVencimento.toISOString();
     if (documento.motivo !== undefined) payload.motivo = documento.motivo;
 
-    const docAtualizado = await apiFetch<any>(`/api/invoices/${id}`, {
+    const docAtualizado = await apiFetch<DocumentoRaw>(`/api/invoices/${id}`, {
       method: "PUT",
       body: JSON.stringify(payload),
     });
@@ -345,7 +388,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
   },
 
   deleteDocumento: async (id) => {
-    await apiFetch<any>(`/api/invoices/${id}`, { method: "DELETE" });
+    await apiFetch<null>(`/api/invoices/${id}`, { method: "DELETE" });
     set((state) => ({ documentos: state.documentos.filter((d) => d.id !== id) }));
   },
 
@@ -355,7 +398,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
     const doc = get().getDocumentoPorId(id);
     if (!doc) return;
 
-    await apiFetch<any>(
+    await apiFetch<null>(
       "/api/payments",
       {
         method: "POST",
@@ -445,12 +488,12 @@ export const useAppStore = create<AppStore>((set, get) => ({
     try {
       const [clientes, artigos, fornecedores, despesas, documentos, empresa] =
         await Promise.all([
-          apiFetch<any[]>("/api/clients"),
-          apiFetch<any[]>("/api/products"),
-          apiFetch<any[]>("/api/suppliers"),
-          apiFetch<any[]>("/api/expenses"),
-          apiFetch<any[]>("/api/invoices"),
-          apiFetch<any>("/api/company"),
+          apiFetch<ClienteRaw[]>("/api/clients"),
+          apiFetch<ArtigoRaw[]>("/api/products"),
+          apiFetch<FornecedorRaw[]>("/api/suppliers"),
+          apiFetch<DespesaRaw[]>("/api/expenses"),
+          apiFetch<DocumentoRaw[]>("/api/invoices"),
+          apiFetch<ConfiguracaoEmpresa | null>("/api/company"),
         ]);
 
       set({

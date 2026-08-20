@@ -1,3 +1,4 @@
+import { normalizarErro } from "@/lib/utils";
 import { NextResponse } from "next/server";
 import { obterFornecedorPorId } from "@/db/queries";
 import { atualizarFornecedor, deletarFornecedor } from "@/db/queries";
@@ -21,10 +22,10 @@ export async function GET(
     }
 
     return NextResponse.json({ success: true, data: fornecedor });
-  } catch (error: any) {
+  } catch (error: unknown) {
     return NextResponse.json(
-      { success: false, error: error.message || "Erro ao buscar fornecedor" },
-      { status: error.status || 500 }
+      { success: false, error: normalizarErro(error).mensagem || "Erro ao buscar fornecedor" },
+      { status: normalizarErro(error).status || 500 }
     );
   }
 }
@@ -50,15 +51,15 @@ export async function PUT(
     });
 
     return NextResponse.json({ success: true, data: fornecedorAtualizado });
-  } catch (error: any) {
-    if (error.name === "ZodError") {
+  } catch (error: unknown) {
+    if (normalizarErro(error).nome === "ZodError") {
       return NextResponse.json(
-        { success: false, error: "Dados inválidos", details: error.errors },
+        { success: false, error: "Dados inválidos", details: normalizarErro(error).detalhes },
         { status: 400 }
       );
     }
     return NextResponse.json(
-      { success: false, error: error.message || "Erro ao atualizar fornecedor" },
+      { success: false, error: normalizarErro(error).mensagem || "Erro ao atualizar fornecedor" },
       { status: 500 }
     );
   }
@@ -77,9 +78,9 @@ export async function DELETE(
       success: true,
       message: "Fornecedor removido com sucesso",
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     return NextResponse.json(
-      { success: false, error: error.message || "Erro ao deletar fornecedor" },
+      { success: false, error: normalizarErro(error).mensagem || "Erro ao deletar fornecedor" },
       { status: 500 }
     );
   }

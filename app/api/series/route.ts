@@ -1,3 +1,4 @@
+import { normalizarErro } from "@/lib/utils";
 import { NextResponse } from "next/server";
 import { obterSeries, criarSerie, atualizarSerie, deletarSerie } from "@/db/queries";
 import { requireCompanyId } from "@/lib/company";
@@ -15,10 +16,10 @@ export async function GET(request: Request) {
     const companyId = requireCompanyId(request);
     const series = await obterSeries(companyId);
     return NextResponse.json({ success: true, data: series });
-  } catch (error: any) {
+  } catch (error: unknown) {
     return NextResponse.json(
-      { success: false, error: error.message || "Erro ao obter séries" },
-      { status: error.status || 500 }
+      { success: false, error: normalizarErro(error).mensagem || "Erro ao obter séries" },
+      { status: normalizarErro(error).status || 500 }
     );
   }
 }
@@ -30,16 +31,16 @@ export async function POST(request: Request) {
     const dados = serieSchema.parse(body);
     const criada = await criarSerie(companyId, dados);
     return NextResponse.json({ success: true, data: criada }, { status: 201 });
-  } catch (error: any) {
-    if (error.name === "ZodError") {
+  } catch (error: unknown) {
+    if (normalizarErro(error).nome === "ZodError") {
       return NextResponse.json(
-        { success: false, error: "Dados inválidos", details: error.errors },
+        { success: false, error: "Dados inválidos", details: normalizarErro(error).detalhes },
         { status: 400 }
       );
     }
     return NextResponse.json(
-      { success: false, error: error.message || "Erro ao criar série" },
-      { status: error.status || 500 }
+      { success: false, error: normalizarErro(error).mensagem || "Erro ao criar série" },
+      { status: normalizarErro(error).status || 500 }
     );
   }
 }
@@ -52,16 +53,16 @@ export async function PUT(request: Request) {
     if (!id) throw Object.assign(new Error("ID da série é obrigatório"), { status: 400 });
     const atualizada = await atualizarSerie(companyId, id, serieSchema.parse(dados));
     return NextResponse.json({ success: true, data: atualizada });
-  } catch (error: any) {
-    if (error.name === "ZodError") {
+  } catch (error: unknown) {
+    if (normalizarErro(error).nome === "ZodError") {
       return NextResponse.json(
-        { success: false, error: "Dados inválidos", details: error.errors },
+        { success: false, error: "Dados inválidos", details: normalizarErro(error).detalhes },
         { status: 400 }
       );
     }
     return NextResponse.json(
-      { success: false, error: error.message || "Erro ao atualizar série" },
-      { status: error.status || 500 }
+      { success: false, error: normalizarErro(error).mensagem || "Erro ao atualizar série" },
+      { status: normalizarErro(error).status || 500 }
     );
   }
 }
@@ -74,10 +75,10 @@ export async function DELETE(request: Request) {
     if (!id) throw Object.assign(new Error("ID da série é obrigatório"), { status: 400 });
     await deletarSerie(companyId, id);
     return NextResponse.json({ success: true, data: { id } });
-  } catch (error: any) {
+  } catch (error: unknown) {
     return NextResponse.json(
-      { success: false, error: error.message || "Erro ao eliminar série" },
-      { status: error.status || 500 }
+      { success: false, error: normalizarErro(error).mensagem || "Erro ao eliminar série" },
+      { status: normalizarErro(error).status || 500 }
     );
   }
 }

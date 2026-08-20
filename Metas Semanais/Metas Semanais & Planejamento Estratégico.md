@@ -46,6 +46,8 @@ Relatórios Fiscais & Financeiros: Interfaces e exportação (PDF/Excel) para ve
 apuramento de IVA e mapa de dívidas (aging de clientes).
 Configurações da Empresa: Telas para dados do emitente (NIF, morada, logotipo), séries de documentos e
 gerenciamento do certificado digital para comunicação fiscal.
+
+
 SEMANA 3: Arquitetura, Banco de Dados, Auth & API
 Período: 17/08/2026 a 21/08/2026
 Status: Pendente

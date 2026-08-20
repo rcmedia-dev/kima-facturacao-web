@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useState, useSyncExternalStore } from "react";
 import { useSearchParams } from "next/navigation";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAppStore } from "@/lib/store";
@@ -38,7 +38,7 @@ const passos = [
 function NovaFaturaContent() {
   const searchParams = useSearchParams();
   const store = useAppStore();
-  const [mounted, setMounted] = useState(false);
+  const mounted = useSyncExternalStore(() => () => {}, () => true, () => false);
   const [activeTab, setActiveTab] = useState("passo1");
 
   // Estado da fatura
@@ -50,12 +50,14 @@ function NovaFaturaContent() {
   const [linhas, setLinhas] = useState<FaturaLinha[]>([]);
   const [documentoReferenciado, setDocumentoReferenciado] = useState<string>("");
   const [motivo, setMotivo] = useState<string>("");
+  const [transporteViatura, setTransporteViatura] = useState<string>("");
+  const [transporteMatricula, setTransporteMatricula] = useState<string>("");
+  const [transporteMotorista, setTransporteMotorista] = useState<string>("");
   const [dataVencimento, setDataVencimento] = useState<Date>(() =>
     addDays(new Date(), DIAS_VENCIMENTO_DEFAULT)
   );
 
   useEffect(() => {
-    setMounted(true);
     store.loadAll();
   }, []);
 
@@ -207,6 +209,14 @@ function NovaFaturaContent() {
                 onChangeDataVencimento={setDataVencimento}
                 documentoReferenciado={documentoReferenciado}
                 motivo={motivo}
+                transporteViatura={transporteViatura}
+                transporteMatricula={transporteMatricula}
+                transporteMotorista={transporteMotorista}
+                onChangeTransporte={{
+                  setViatura: setTransporteViatura,
+                  setMatricula: setTransporteMatricula,
+                  setMotorista: setTransporteMotorista,
+                }}
                 onBack={() => setActiveTab("passo2")}
               />
             </TabsContent>

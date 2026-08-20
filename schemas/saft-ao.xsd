@@ -1,0 +1,164 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  SAF-T (AO) — Esquema de referência (T3.3 · CRONOGRAMA_NUCLEO_TECNICO_AGT.md)
+  Estrutura do ficheiro XML exportado por `exportarSAFTXML` (lib/saft-generator.ts).
+
+  Nota: este é o esquema de referência do projeto, alinhado com a estrutura
+  fiscal angolana (Art. 25º — DP 71/25). A especificação oficial final da AGT
+  deve ser confirmada no Portal do Software Certificado durante a credenciação.
+-->
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           targetNamespace="urn:DGCI:SAF-T:1.0"
+           xmlns:saft="urn:DGCI:SAF-T:1.0"
+           elementFormDefault="qualified">
+
+  <xs:element name="SAF-T">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element ref="saft:Header"/>
+        <xs:element ref="saft:MasterFiles"/>
+        <xs:element ref="saft:Documents"/>
+        <xs:element ref="saft:TaxSummary"/>
+        <xs:element ref="saft:Customers" minOccurs="0"/>
+        <xs:element ref="saft:SalesInvoices" minOccurs="0"/>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+
+  <!-- ── Header ─────────────────────────────────────────────────────────── -->
+  <xs:element name="Header">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element name="AuditFileVersion" type="xs:string"/>
+        <xs:element name="CompanyID" type="xs:string"/>
+        <xs:element name="CompanyName" type="xs:string"/>
+        <xs:element name="FiscalYear" type="xs:integer"/>
+        <xs:element name="StartDate" type="xs:date"/>
+        <xs:element name="EndDate" type="xs:date"/>
+        <xs:element name="DateCreated" type="xs:dateTime"/>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+
+  <!-- ── MasterFiles ────────────────────────────────────────────────────── -->
+  <xs:element name="MasterFiles">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element ref="saft:TaxTable" minOccurs="0"/>
+        <xs:element ref="saft:Products" minOccurs="0"/>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+
+  <xs:element name="TaxTable">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element ref="saft:Tax" minOccurs="1" maxOccurs="unbounded"/>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+
+  <xs:element name="Tax">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element name="TaxType" type="xs:string"/>
+        <xs:element name="TaxCode" type="xs:string"/>
+        <xs:element name="TaxRate" type="xs:decimal"/>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+
+  <xs:element name="Products">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element ref="saft:Product" minOccurs="1" maxOccurs="unbounded"/>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+
+  <xs:element name="Product">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element name="ProductCode" type="xs:string"/>
+        <xs:element name="ProductDescription" type="xs:string"/>
+        <xs:element name="UnitOfMeasure" type="xs:string"/>
+        <xs:element name="UnitPrice" type="xs:decimal"/>
+        <xs:element name="TaxCode" type="xs:string"/>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+
+  <xs:element name="Customers">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element ref="saft:Customer" minOccurs="1" maxOccurs="unbounded"/>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+
+  <xs:element name="Customer">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element name="NIF" type="xs:string"/>
+        <xs:element name="Name" type="xs:string"/>
+        <xs:element name="Amount" type="xs:decimal"/>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+
+  <!-- ── Documents / TaxSummary ─────────────────────────────────────────── -->
+  <xs:element name="Documents">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element ref="saft:Document" minOccurs="0" maxOccurs="unbounded"/>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+
+  <xs:element name="Document">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element name="Type" type="xs:string"/>
+        <xs:element name="Series" type="xs:string"/>
+        <xs:element name="Quantity" type="xs:integer"/>
+        <xs:element name="Total" type="xs:decimal"/>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+
+  <xs:element name="TaxSummary">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element name="Rate0" type="xs:decimal"/>
+        <xs:element name="Rate7" type="xs:decimal"/>
+        <xs:element name="Rate14" type="xs:decimal"/>
+        <xs:element name="Total" type="xs:decimal"/>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+
+  <!-- ── SourceDocuments: SalesInvoices ─────────────────────────────────── -->
+  <xs:element name="SalesInvoices">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element ref="saft:Invoice" minOccurs="1" maxOccurs="unbounded"/>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+
+  <xs:element name="Invoice">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element name="InvoiceNo" type="xs:string"/>
+        <xs:element name="InvoiceDate" type="xs:dateTime"/>
+        <xs:element name="InvoiceType" type="xs:string"/>
+        <xs:element name="Series" type="xs:string"/>
+        <xs:element name="CustomerID" type="xs:string"/>
+        <xs:element name="Subtotal" type="xs:decimal"/>
+        <xs:element name="TaxPayable" type="xs:decimal"/>
+        <xs:element name="Total" type="xs:decimal"/>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+
+</xs:schema>

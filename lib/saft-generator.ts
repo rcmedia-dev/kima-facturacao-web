@@ -45,6 +45,17 @@ export interface SAFTData {
     total: number;
   }[];
   movimentos: LogAuditoria[];
+  artigos?: {
+    codigo: string;
+    descricao: string;
+    unidadeMedida: string;
+    preco: number;
+    taxaIVA: number;
+  }[];
+  tabelaImpostos?: {
+    codigo: string;
+    taxa: number;
+  }[];
 }
 
 /**
@@ -56,7 +67,8 @@ export function gerarResumoSAFT(
   logs: LogAuditoria[],
   empresa: { nif: string; nome: string },
   mes: number,
-  ano: number
+  ano: number,
+  artigos: Artigo[] = []
 ): SAFTData {
   // Filtrar documentos do período
   const docsPeriodo = documentos.filter((d) => {
@@ -125,6 +137,28 @@ export function gerarResumoSAFT(
     return data.getMonth() + 1 === mes && data.getFullYear() === ano;
   });
 
+  // Artigos usados no período (MasterFiles/Products — T3.1)
+  const artigosPeriodo = new Map<string, Artigo>();
+  docsPeriodo.forEach((d) => {
+    d.linhas.forEach((l) => {
+      if (!l.artigoId) return;
+      const artigo = artigos.find((a) => a.id === l.artigoId);
+      if (artigo) artigosPeriodo.set(artigo.id, artigo);
+    });
+  });
+
+  // Tabela de impostos com as taxas efetivamente usadas no período (MasterFiles/TaxTable)
+  const taxasUsadas = new Set<number>();
+  docsPeriodo.forEach((d) => {
+    d.linhas.forEach((l) => taxasUsadas.add(Number(l.taxaIVA)));
+  });
+  [0, 7, 14].forEach((taxa) => {
+    if (taxasUsadas.has(taxa)) taxasUsadas.add(taxa);
+  });
+  const tabelaImpostos = [0, 7, 14]
+    .filter((taxa) => taxasUsadas.has(taxa))
+    .map((taxa) => ({ codigo: `IVA-${taxa}`, taxa }));
+
   const documentosDetalhe = docsPeriodo.map((d) => {
     const cliente = d.clienteId ? clientes.find((c) => c.id === d.clienteId) : undefined;
     return {
@@ -152,6 +186,14 @@ export function gerarResumoSAFT(
     clientes: Array.from(clientesPeriodo.values()),
     documentosDetalhe,
     movimentos: logsRelevantes,
+    artigos: Array.from(artigosPeriodo.values()).map((a) => ({
+      codigo: a.codigo,
+      descricao: a.descricao,
+      unidadeMedida: a.unidadeMedida,
+      preco: a.preco,
+      taxaIVA: a.taxaIVA,
+    })),
+    tabelaImpostos,
   };
 }
 
@@ -172,6 +214,45 @@ export function exportarSAFTXML(data: SAFTData): string {
     <EndDate>${new Date(data.periodo.ano, data.periodo.mes, 0).toISOString().split('T')[0]}</EndDate>
     <DateCreated>${new Date().toISOString()}</DateCreated>
   </Header>`;
+
+  // MasterFiles — Tabela de Impostos + Artigos (T3.1)
+  const tabelaImpostosXml = data.tabelaImpostos && data.tabelaImpostos.length > 0
+    ? `
+    <TaxTable>
+      ${data.tabelaImpostos
+        .map(
+          (t) => `
+      <Tax>
+        <TaxType>IVA</TaxType>
+        <TaxCode>${escapeXml(t.codigo)}</TaxCode>
+        <TaxRate>${t.taxa}</TaxRate>
+      </Tax>`
+        )
+        .join('')}
+    </TaxTable>`
+    : '';
+
+  const artigosXml = data.artigos && data.artigos.length > 0
+    ? `
+    <Products>
+      ${data.artigos
+        .map(
+          (a) => `
+      <Product>
+        <ProductCode>${escapeXml(a.codigo)}</ProductCode>
+        <ProductDescription>${escapeXml(a.descricao)}</ProductDescription>
+        <UnitOfMeasure>${escapeXml(a.unidadeMedida || 'UN')}</UnitOfMeasure>
+        <UnitPrice>${a.preco.toFixed(2)}</UnitPrice>
+        <TaxCode>IVA-${a.taxaIVA}</TaxCode>
+      </Product>`
+        )
+        .join('')}
+    </Products>`
+    : '';
+
+  const masterFilesXml = `
+  <MasterFiles>
+${tabelaImpostosXml}${artigosXml}  </MasterFiles>`;
 
   const documentosXml = `
   <Documents>
@@ -237,6 +318,7 @@ export function exportarSAFTXML(data: SAFTData): string {
   return (
     xmlHeader +
     headerXml +
+    masterFilesXml +
     documentosXml +
     ivaXml +
     clientesXml +
@@ -267,13 +349,146 @@ export function validarDocumentoSAFT(documento: Documento): { valido: boolean; e
     if (linha.quantidade <= 0) erros.push(`Linha ${idx + 1}: Quantidade deve ser maior que 0`);
     if (linha.preco < 0) erros.push(`Linha ${idx + 1}: Preço não pode ser negativo`);
     if (![0, 7, 14].includes(linha.taxaIVA)) {
-      erros.push(`Linha ${idx + 1}: Taxa de IVA inválida (deve ser 0, 7 ou 14)`);
+      erros.push(`Linha ${idx + 1}: Taxa de IVA inválida para Angola (use 0, 7 ou 14)`);
     }
   });
 
   return {
     valido: erros.length === 0,
     erros,
+  };
+}
+
+/**
+ * T3.3 · Validador de Esquema e Integridade SAF-T contra requisitos AGT
+ */
+export function validarEsquemaSAFT(data: SAFTData): { valido: boolean; erros: string[] } {
+  const erros: string[] = [];
+
+  if (!data.empresa || !data.empresa.nif) {
+    erros.push('NIF da empresa emitente é obrigatório no cabeçalho SAF-T (Header/CompanyID)');
+  } else if (!/^\d{9}[A-Z]{2}\d{3}$/.test(data.empresa.nif) && data.empresa.nif.length < 9) {
+    erros.push('Formato do NIF da empresa inválido para os padrões da AGT');
+  }
+
+  if (!data.periodo || !data.periodo.mes || !data.periodo.ano) {
+    erros.push('Período fiscal (Mês e Ano) é obrigatório para a exportação SAF-T');
+  }
+
+  // MasterFiles — TaxTable e Products (T3.1/T3.3)
+  if (data.tabelaImpostos && data.tabelaImpostos.length > 0) {
+    data.tabelaImpostos.forEach((t, idx) => {
+      if (!t.codigo) erros.push(`TaxTable #${idx + 1}: código do imposto em falta`);
+      if (![0, 7, 14].includes(t.taxa)) {
+        erros.push(`TaxTable #${idx + 1}: taxa de IVA inválida (${t.taxa}) — use 0, 7 ou 14`);
+      }
+    });
+  } else {
+    erros.push('TaxTable (MasterFiles) vazia — declare as taxas de IVA usadas no período');
+  }
+
+  if (data.artigos && data.artigos.length > 0) {
+    data.artigos.forEach((a, idx) => {
+      if (!a.codigo) erros.push(`Products #${idx + 1}: código do artigo em falta`);
+      if (!a.descricao) erros.push(`Products #${idx + 1}: descrição do artigo em falta`);
+      if (a.preco < 0) erros.push(`Products #${idx + 1}: preço unitário não pode ser negativo`);
+      if (![0, 7, 14].includes(a.taxaIVA)) {
+        erros.push(`Products #${idx + 1}: taxa de IVA inválida (${a.taxaIVA})`);
+      }
+    });
+  }
+
+  if (data.documentosDetalhe) {
+    data.documentosDetalhe.forEach((doc, idx) => {
+      if (!doc.numeroCompleto) {
+        erros.push(`Documento #${idx + 1}: Número completo (InvoiceNo) em falta`);
+      }
+      if (!doc.tipo) {
+        erros.push(`Documento #${idx + 1}: Tipo de documento em falta`);
+      }
+      if (doc.total < 0) {
+        erros.push(`Documento #${idx + 1}: Valor total não pode ser negativo`);
+      }
+    });
+  }
+
+  return {
+    valido: erros.length === 0,
+    erros,
+  };
+}
+
+/**
+ * T3.4 · Módulo de Relatórios de IVA (Balancete & Modelo DP-IVA)
+ */
+export interface RelatorioDPIVA {
+  periodo: { mes: number; ano: number };
+  incidenciaTributavel: {
+    taxa0: number;
+    taxa7: number;
+    taxa14: number;
+  };
+  impostoApurado: {
+    taxa7: number;
+    taxa14: number;
+    totalImposto: number;
+  };
+  totalGeral: {
+    baseTributavel: number;
+    imposto: number;
+    faturacaoGlobal: number;
+  };
+}
+
+export function gerarRelatorioDPIVA(documentos: Documento[], mes: number, ano: number): RelatorioDPIVA {
+  const docsPeriodo = documentos.filter((d) => {
+    const data = new Date(d.dataEmissao);
+    return data.getMonth() + 1 === mes && data.getFullYear() === ano;
+  });
+
+  let base0 = 0;
+  let base7 = 0;
+  let base14 = 0;
+  let iva7 = 0;
+  let iva14 = 0;
+  let faturacaoGlobal = 0;
+
+  docsPeriodo.forEach((d) => {
+    faturacaoGlobal += d.total;
+    d.linhas.forEach((l) => {
+      const sub = l.total;
+      if (l.taxaIVA === 0) {
+        base0 += sub;
+      } else if (l.taxaIVA === 7) {
+        base7 += sub;
+        iva7 += (sub * 7) / 100;
+      } else if (l.taxaIVA === 14) {
+        base14 += sub;
+        iva14 += (sub * 14) / 100;
+      }
+    });
+  });
+
+  const baseTributavel = base0 + base7 + base14;
+  const totalImposto = iva7 + iva14;
+
+  return {
+    periodo: { mes, ano },
+    incidenciaTributavel: {
+      taxa0: base0,
+      taxa7: base7,
+      taxa14: base14,
+    },
+    impostoApurado: {
+      taxa7: iva7,
+      taxa14: iva14,
+      totalImposto,
+    },
+    totalGeral: {
+      baseTributavel,
+      imposto: totalImposto,
+      faturacaoGlobal,
+    },
   };
 }
 

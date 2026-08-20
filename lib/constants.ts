@@ -59,3 +59,13 @@ export const STATUS_COLORS: Record<string, { bg: string; text: string }> = {
 };
 
 export const DIAS_VENCIMENTO_DEFAULT = 30;
+
+/**
+ * Identidade do software de facturação certificado pela AGT (Art. 10º, alínea j,
+ * do Decreto Presidencial nº 71/25). Estes valores são FIXOS — pertencem à
+ * certificação do software Kima, não à empresa utilizadora, e não podem ser
+ * editados na página de configurações (evita adulteração da identidade fiscal).
+ */
+export const SOFTWARE_NOME = "Kima Fatura";
+export const SOFTWARE_VERSAO = "1.0.0";
+export const SOFTWARE_CERTIFICACAO_AGT = "999/AGT/2026";

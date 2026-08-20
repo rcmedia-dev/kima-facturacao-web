@@ -42,8 +42,8 @@ export function criarLogAuditoria(
   entidade: string,
   entidadeId: string,
   usuario?: UsuarioAutenticado,
-  alteracoesAnteriores?: Record<string, any>,
-  alteracoesNovas?: Record<string, any>,
+  alteracoesAnteriores?: Record<string, unknown>,
+  alteracoesNovas?: Record<string, unknown>,
   endereco?: string
 ): LogAuditoria {
   return {

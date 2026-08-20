@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAppStore } from "@/lib/store";
-import { Cliente, TipoDocumento } from "@/lib/types";
+import { Cliente, TipoDocumento, FaturaLinha } from "@/lib/types";
 import { Plus, UserCheck, ArrowRight, UserPlus, Info, FileSpreadsheet, ReceiptText } from "lucide-react";
 import { ClienteFormModal } from "@/app/clientes/components/cliente-form-modal";
 import {
@@ -23,7 +23,7 @@ interface Passo1ClienteProps {
   setTipoDocumento: (tipo: TipoDocumento) => void;
   documentoReferenciado?: string;
   setDocumentoReferenciado?: (ref: string) => void;
-  onImportLinhas?: (linhas: any[]) => void;
+  onImportLinhas?: (linhas: FaturaLinha[]) => void;
   motivo?: string;
   setMotivo?: (motivo: string) => void;
   onNext: () => void;
@@ -303,7 +303,13 @@ export function Passo1Cliente({
                 </SelectTrigger>
                 <SelectContent sideOffset={4}>
                   {store.documentos
-                    .filter((doc) => (isRecibo ? doc.tipo === "Fatura" || doc.tipo === "FaturaRecibo" : true))
+                    .filter(
+                      (doc) =>
+                        // Apenas facturas / facturas-recibo válidas como documento de origem (T4.1/T4.2 — F1/R4)
+                        (doc.tipo === "Fatura" || doc.tipo === "FaturaRecibo") &&
+                        doc.status !== "Cancelado" &&
+                        doc.status !== "Rascunho"
+                    )
                     .map((doc) => (
                       <SelectItem key={doc.id} value={doc.numeroCompleto || doc.numero || doc.id}>
                         <span className="font-mono font-bold text-slate-900 dark:text-white mr-2">

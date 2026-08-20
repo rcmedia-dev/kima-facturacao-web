@@ -14,6 +14,7 @@ import {
   Despesa,
 } from '@/lib/types';
 import { usuarioAtual } from '@/lib/session';
+import { SOFTWARE_NOME, SOFTWARE_CERTIFICACAO_AGT } from '@/lib/constants';
 
 /**
  * CAMADA DE DADOS — Kima Facturação
@@ -140,6 +141,11 @@ function mapearDocumento(r: any): Documento {
     total: Number(r.total),
     dataPagamento: r.data_pagamento ? new Date(r.data_pagamento) : undefined,
     hash: r.hash || undefined,
+    hashAnterior: r.hash_anterior || undefined,
+    assinaturaJWS: r.assinatura_jws || undefined,
+    qrPayload: r.qr_payload || undefined,
+    assinadoPor: r.assinado_por || undefined,
+    certAgtNumero: r.cert_agt_numero || undefined,
     motivoIsencaoIVA: r.motivo_isencao_iva || undefined,
     dataOperacao: r.data_operacao ? new Date(r.data_operacao) : undefined,
     criadoPor: r.created_by || undefined,
@@ -147,6 +153,13 @@ function mapearDocumento(r: any): Documento {
     dataAtualizacao: new Date(r.updated_at || r.created_at),
     documentoReferenciado: r.documento_referenciado || undefined,
     motivo: r.motivo || undefined,
+    transporteViatura: r.transporte_viatura || undefined,
+    transporteMatricula: r.transporte_matricula || undefined,
+    transporteMotorista: r.transporte_motorista || undefined,
+    statusAGT: r.status_agt || undefined,
+    erroAGT: r.erro_agt || undefined,
+    tentativasAGT: r.tentativas_agt || undefined,
+    dataTransmissaoAGT: r.data_transmissao_agt ? new Date(r.data_transmissao_agt) : undefined,
   };
 }
 
@@ -624,8 +637,16 @@ export async function criarDocumento(
       documento_referenciado: documento.documentoReferenciado || null,
       motivo: documento.motivo || null,
       hash: documento.hash || null,
+      hash_anterior: documento.hashAnterior || null,
+      assinatura_jws: documento.assinaturaJWS || null,
+      qr_payload: documento.qrPayload || null,
+      assinado_por: documento.assinadoPor || null,
+      cert_agt_numero: documento.certAgtNumero || null,
       motivo_isencao_iva: documento.motivoIsencaoIVA || null,
       data_operacao: documento.dataOperacao ? documento.dataOperacao.toISOString() : null,
+      transporte_viatura: documento.transporteViatura || null,
+      transporte_matricula: documento.transporteMatricula || null,
+      transporte_motorista: documento.transporteMotorista || null,
     })
     .select()
     .single();
@@ -1001,14 +1022,16 @@ export async function atualizarEmpresa(
     banco: dados.banco !== undefined ? dados.banco : empresa?.banco,
     inscricao_social: dados.inscricaoSocial !== undefined ? dados.inscricaoSocial : empresa?.inscricaoSocial,
     nif_regional: dados.nifRegional !== undefined ? dados.nifRegional : empresa?.nifRegional,
-    software_nome: dados.softwareNome !== undefined ? dados.softwareNome : empresa?.softwareNome,
-    software_certificacao_numero: dados.softwareCertificacaoNumero !== undefined ? dados.softwareCertificacaoNumero : empresa?.softwareCertificacaoNumero,
+    // Identificação do software certificado AGT: é um valor FIXO do software
+    // (certificação da Kima/AGT), não uma configuração editável da empresa.
+    software_nome: dados.softwareNome !== undefined ? dados.softwareNome : SOFTWARE_NOME,
+    software_certificacao_numero: dados.softwareCertificacaoNumero !== undefined ? dados.softwareCertificacaoNumero : SOFTWARE_CERTIFICACAO_AGT,
     dias_vencimento_padrao: dados.diasVencimentoPadrao !== undefined ? dados.diasVencimentoPadrao : empresa?.diasVencimentoPadrao || 30,
   };
 
   const { error } = await db
     .from('company_settings')
-    .upsert({ company_id: companyId, settings })
+    .upsert({ company_id: companyId, settings }, { onConflict: "company_id" })
     .select()
     .single();
   if (error) throw new Error(error.message);

@@ -1,6 +1,7 @@
+import { normalizarErro } from "@/lib/utils";
 import { NextResponse } from "next/server";
 import { obterDocumentoPorId, obterEmpresa } from "@/db/queries";
-import { gerarPDFFatura } from "@/lib/pdf-generator";
+import { gerarPDFFaturaAGT } from "@/lib/pdf-generator-agt";
 import { Documento, Cliente, ConfiguracaoEmpresa } from "@/lib/types";
 import { requireCompanyId } from "@/lib/company";
 
@@ -50,6 +51,11 @@ export async function GET(
       total: Number(dbFatura.total),
       dataPagamento: dbFatura.dataPagamento || undefined,
       hash: dbFatura.hash || undefined,
+      hashAnterior: dbFatura.hashAnterior || undefined,
+      assinaturaJWS: dbFatura.assinaturaJWS || undefined,
+      qrPayload: dbFatura.qrPayload || undefined,
+      assinadoPor: dbFatura.assinadoPor || undefined,
+      certAgtNumero: dbFatura.certAgtNumero || undefined,
       motivoIsencaoIVA: dbFatura.motivoIsencaoIVA || undefined,
       dataOperacao: dbFatura.dataOperacao || undefined,
       dataAtualizacao: dbFatura.dataAtualizacao,
@@ -92,7 +98,7 @@ export async function GET(
         }
       : null;
 
-    const pdfDoc = await gerarPDFFatura(fatura, cliente, empresa);
+    const pdfDoc = await gerarPDFFaturaAGT(fatura, cliente, empresa);
     const pdfBuffer = pdfDoc.output("arraybuffer");
 
     const fileName = `Fatura_${fatura.numeroCompleto || fatura.numero}.pdf`.replace(/[\/\\?%*:|"<>]/g, "_");
@@ -103,9 +109,9 @@ export async function GET(
         "Content-Disposition": `attachment; filename="${fileName}"`,
       },
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     return NextResponse.json(
-      { success: false, error: error.message || "Erro ao gerar PDF da fatura" },
+      { success: false, error: normalizarErro(error).mensagem || "Erro ao gerar PDF da fatura" },
       { status: 500 }
     );
   }

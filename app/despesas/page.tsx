@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useSyncExternalStore, useState } from "react";
 import { useAppStore } from "@/lib/store";
 import { useToastContext } from "@/components/ui/toast";
 import { Plus, Wallet, CheckCircle2, Clock, TrendingDown } from "lucide-react";
@@ -13,17 +13,13 @@ import { formatAOA } from "@/lib/formatters";
 export default function DespesasPage() {
   const store = useAppStore();
   const { success, error } = useToastContext();
-  const [mounted, setMounted] = useState(false);
+  const mounted = useSyncExternalStore(() => () => {}, () => true, () => false);
   const [searchTerm, setSearchTerm] = useState("");
   const [estadoFiltro, setEstadoFiltro] = useState<string>("Todos");
   const [categoriaFiltro, setCategoriaFiltro] = useState<string>("Todas");
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   const handleDelete = async () => {
     if (deleteId) {

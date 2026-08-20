@@ -1,3 +1,4 @@
+import { normalizarErro } from "@/lib/utils";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { registrarPagamento } from "@/db/queries";
@@ -44,14 +45,14 @@ export async function POST(request: Request) {
         status: documento.status,
       },
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Erro ao registrar pagamento via API:", error);
     return NextResponse.json(
       {
         success: false,
-        error: error.message || "Erro interno ao processar pagamento",
+        error: normalizarErro(error).mensagem || "Erro interno ao processar pagamento",
       },
-      { status: error.status || 500 }
+      { status: normalizarErro(error).status || 500 }
     );
   }
 }

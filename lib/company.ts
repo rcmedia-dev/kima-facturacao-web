@@ -6,7 +6,9 @@
 
 export function getCompanyId(request: Request): string | null {
   try {
-    const nextReq = request as any;
+    const nextReq = request as unknown as {
+      cookies?: { get?: (name: string) => { value?: string } | undefined };
+    };
     const fromApi = nextReq?.cookies?.get?.('kima-company-id')?.value;
     if (fromApi) return fromApi;
 

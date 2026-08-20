@@ -1,11 +1,13 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useState, useRef, useEffect, useSyncExternalStore } from "react";
 import { useAppStore } from "@/lib/store";
 import { useToastContext } from "@/components/ui/toast";
 import { ConfiguracaoEmpresa } from "@/lib/types";
 import { validarNIFAngolano } from "@/lib/utils";
+import { mensagemErro } from "@/lib/utils";
 import { SeriesManager } from "./components/series-manager";
+import { SOFTWARE_NOME, SOFTWARE_CERTIFICACAO_AGT } from "@/lib/constants";
 import {
   Upload,
   Building2,
@@ -14,31 +16,90 @@ import {
   Loader2,
   Settings,
   ShieldCheck,
+  Lock,
 } from "lucide-react";
+
+// ── Logotipo: limites e otimização ───────────────────────────────────────────
+// A logo é guardada como base64 no JSONB (company_settings.logo_url) e volta em
+// todos os GET /api/company — por isso é importante mantê-la leve.
+const MAX_LOGO_BYTES = 2 * 1024 * 1024; // 2MB de upload
+const MAX_LOGO_DIMENSAO = 1024; // px no lado maior (após redimensionamento)
+const MAX_LOGO_BASE64_LEN = 3_000_000; // ~2.2MB em base64 (cerca de 1.6MB binário)
+
+function lerImagem(dataUrl: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = () => reject(new Error("Não foi possível ler a imagem."));
+    img.src = dataUrl;
+  });
+}
+
+/** Reduz imagens bitmap grandes para no máximo 1024px, mantendo a logo leve no JSONB. */
+async function otimizarLogo(dataUrl: string, tipo: string): Promise<string> {
+  // SVG é vetorial e já é leve — não mexer.
+  if (tipo === "image/svg+xml") return dataUrl;
+  try {
+    const img = await lerImagem(dataUrl);
+    const { naturalWidth: w, naturalHeight: h } = img;
+    if (!w || !h || (w <= MAX_LOGO_DIMENSAO && h <= MAX_LOGO_DIMENSAO)) return dataUrl;
+
+    const escala = Math.min(MAX_LOGO_DIMENSAO / w, MAX_LOGO_DIMENSAO / h);
+    const nw = Math.max(1, Math.round(w * escala));
+    const nh = Math.max(1, Math.round(h * escala));
+    const canvas = document.createElement("canvas");
+    canvas.width = nw;
+    canvas.height = nh;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return dataUrl;
+
+    // JPEG/WebP não têm transparência — preenche com branco antes de desenhar.
+    if (tipo === "image/jpeg" || tipo === "image/webp") {
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, nw, nh);
+    }
+    ctx.drawImage(img, 0, 0, nw, nh);
+    return canvas.toDataURL(tipo === "image/png" ? "image/png" : "image/jpeg", 0.85);
+  } catch {
+    // Se o browser não conseguir redimensionar, devolve o original.
+    return dataUrl;
+  }
+}
 
 export default function ConfiguracoesPage() {
   const store = useAppStore();
   const { success, error } = useToastContext();
-  const [mounted, setMounted] = useState(false);
+  const mounted = useSyncExternalStore(() => () => {}, () => true, () => false);
   const [saving, setSaving] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const [formData, setFormData] = useState({
-    nomeEmpresa: "",
-    nif: "",
-    morada: "",
-    telefone: "",
-    email: "",
-    logoUrl: "" as string | undefined | null,
-    softwareNome: "",
-    softwareCertificacaoNumero: "",
+  // Inicializa o formulário a partir dos dados já carregados no store (Supabase).
+  // Lazy initializer: não depende do timing/timing do loadAll do store.
+  const [formData, setFormData] = useState(() => {
+    const e = store.empresa;
+    return {
+      nomeEmpresa: e?.nomeEmpresa || "",
+      nif: e?.nif || "",
+      morada: e?.morada || "",
+      telefone: e?.telefone || "",
+      email: e?.email || "",
+      logoUrl: e?.logoUrl || null,
+    };
   });
 
   const [nifError, setNifError] = useState<string | null>(null);
+  const [falhaCarregar, setFalhaCarregar] = useState(false);
+  // Começa como `undefined` (e não store.empresa) para que a sincronização abaixo
+  // também corra quando a empresa já estava no store no momento de montar a página.
+  const [prevEmpresa, setPrevEmpresa] = useState<ConfiguracaoEmpresa | null | undefined>(undefined);
+  // Marca se o utilizador já editou o formulário — impede que re-sincronizações
+  // (ex.: loadAll chamado pelo SeriesManager) apaguem edições ainda não guardadas.
+  const formTouchedRef = useRef(false);
 
-  useEffect(() => {
-    if (store.empresa) {
+  if (store.empresa !== prevEmpresa) {
+    setPrevEmpresa(store.empresa);
+    if (store.empresa && !formTouchedRef.current) {
       setFormData({
         nomeEmpresa: store.empresa.nomeEmpresa || "",
         nif: store.empresa.nif || "",
@@ -46,26 +107,49 @@ export default function ConfiguracoesPage() {
         telefone: store.empresa.telefone || "",
         email: store.empresa.email || "",
         logoUrl: store.empresa.logoUrl || null,
-        softwareNome: store.empresa.softwareNome || "",
-        softwareCertificacaoNumero: store.empresa.softwareCertificacaoNumero || "",
       });
     }
-    setMounted(true);
-  }, [store.empresa]);
+  }
 
-  // Validação em tempo real do NIF
+  // Se a empresa ainda não veio do store (o loadAll inicial falhou ou estava em curso),
+  // tenta buscar diretamente /api/company para preencher os campos.
   useEffect(() => {
-    if (formData.nif) {
-      const validacao = validarNIFAngolano(formData.nif);
-      if (!validacao.valido) {
-        setNifError(validacao.mensagem || "NIF inválido");
-      } else {
-        setNifError(null);
-      }
-    } else {
-      setNifError("NIF é obrigatório");
+    let ativo = true;
+    if (useAppStore.getState().empresa === null) {
+      fetch("/api/company")
+        .then((res) => res.json())
+        .then((json) => {
+          if (!ativo) return;
+          if (json?.success && json.data) {
+            const e = json.data;
+            useAppStore.setState({
+              empresa: {
+                id: e.id,
+                nomeEmpresa: e.nomeEmpresa,
+                nif: e.nif,
+                morada: e.morada || "",
+                telefone: e.telefone || "",
+                email: e.email || "",
+                logoUrl: e.logoUrl || undefined,
+                softwareNome: e.softwareNome || undefined,
+                softwareCertificacaoNumero: e.softwareCertificacaoNumero || undefined,
+                seriesPorTipo: e.seriesPorTipo || [],
+                diasVencimentoPadrao: e.diasVencimentoPadrao || 30,
+                criadoEm: e.criadoEm ? new Date(e.criadoEm) : new Date(),
+                ultimaAtualizacao: e.ultimaAtualizacao ? new Date(e.ultimaAtualizacao) : new Date(),
+              },
+            });
+          }
+        })
+        .catch(() => {})
+        .finally(() => {
+          if (ativo) setFalhaCarregar(true);
+        });
     }
-  }, [formData.nif]);
+    return () => {
+      ativo = false;
+    };
+  }, []);
 
   if (!mounted) {
     return (
@@ -79,30 +163,54 @@ export default function ConfiguracoesPage() {
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
+    formTouchedRef.current = true;
     setFormData((prev) => ({ ...prev, [name]: value }));
+    if (name === "nif") {
+      if (!value) {
+        setNifError("NIF é obrigatório");
+      } else {
+        const validacao = validarNIFAngolano(value);
+        setNifError(validacao.valido ? null : validacao.mensagem || "NIF inválido");
+      }
+    }
   };
 
   const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    // (b) Aviso imediato para ficheiros que não são imagem
     if (!file.type.startsWith("image/")) {
-      setErrorMsg("Por favor selecione um arquivo de imagem válido (PNG, JPG, SVG, WebP).");
+      setErrorMsg("Ficheiro inválido: selecione uma imagem (PNG, JPG, SVG ou WebP).");
       return;
     }
-    if (file.size > 2 * 1024 * 1024) {
+    if (file.size > MAX_LOGO_BYTES) {
       setErrorMsg("O tamanho do logotipo não deve exceder 2MB.");
       return;
     }
     setErrorMsg(null);
+    formTouchedRef.current = true;
+
     const reader = new FileReader();
-    reader.onload = (event) => {
-      const base64String = event.target?.result as string;
-      setFormData((prev) => ({ ...prev, logoUrl: base64String }));
+    reader.onload = async (event) => {
+      const dataUrl = event.target?.result as string;
+      try {
+        const base64String = await otimizarLogo(dataUrl, file.type);
+        if (base64String.length > MAX_LOGO_BASE64_LEN) {
+          setErrorMsg(
+            "A imagem processada do logotipo continua demasiado pesada. Use uma imagem mais pequena (recomendado: até 1024px)."
+          );
+          return;
+        }
+        setFormData((prev) => ({ ...prev, logoUrl: base64String }));
+      } catch {
+        setErrorMsg("Não foi possível processar a imagem do logotipo. Tente outro ficheiro.");
+      }
     };
     reader.readAsDataURL(file);
   };
 
   const handleRemoveLogo = () => {
+    formTouchedRef.current = true;
     setFormData((prev) => ({ ...prev, logoUrl: null }));
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
@@ -123,11 +231,15 @@ export default function ConfiguracoesPage() {
     setErrorMsg(null);
 
     try {
-      await fetch("/api/company", {
+      const res = await fetch("/api/company", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formData),
       });
+      const json = await res.json().catch(() => null);
+      if (!res.ok || !json?.success) {
+        throw new Error(json?.error || "Erro ao salvar as configurações.");
+      }
 
       const empresaAtualizada: ConfiguracaoEmpresa = {
         id: store.empresa?.id || "empresa-001",
@@ -137,18 +249,20 @@ export default function ConfiguracoesPage() {
         telefone: formData.telefone,
         email: formData.email,
         logoUrl: formData.logoUrl || undefined,
-        softwareNome: formData.softwareNome || undefined,
-        softwareCertificacaoNumero: formData.softwareCertificacaoNumero || undefined,
+        // Identidade do software certificado AGT: valores fixos (não editáveis)
+        softwareNome: SOFTWARE_NOME,
+        softwareCertificacaoNumero: SOFTWARE_CERTIFICACAO_AGT,
         seriesPorTipo: store.empresa?.seriesPorTipo || [],
         diasVencimentoPadrao: store.empresa?.diasVencimentoPadrao || 30,
         criadoEm: store.empresa?.criadoEm || new Date(),
         ultimaAtualizacao: new Date(),
       };
       store.setEmpresa(empresaAtualizada);
+      formTouchedRef.current = false;
 
       success("Sucesso", "Configurações guardadas com sucesso.");
-    } catch (err: any) {
-      error("Erro", err.message || "Erro ao salvar as configurações.");
+    } catch (err: unknown) {
+      error("Erro", mensagemErro(err, "Erro ao salvar as configurações."));
     } finally {
       setSaving(false);
     }
@@ -174,6 +288,23 @@ export default function ConfiguracoesPage() {
         <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-[var(--danger-light)] border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 animate-fade-in">
           <AlertCircle size={16} className="shrink-0" />
           <span className="text-sm font-medium">{errorMsg}</span>
+        </div>
+      )}
+
+      {/* ── AVISO: EMPRESA SEM DADOS CARREGADOS ─────── */}
+      {mounted && falhaCarregar && !store.empresa && (
+        <div className="flex items-start gap-3 px-4 py-3 rounded-xl bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-300 animate-fade-in">
+          <AlertCircle size={16} className="shrink-0 mt-0.5" />
+          <div className="text-sm">
+            <p className="font-semibold">Não foi possível carregar os dados da empresa.</p>
+            <p className="text-xs opacity-80 mt-0.5">
+              Verifique a sessão do Kima Hub (cookie{" "}
+              <code className="font-mono">kima-company-id</code>) ou a variável{" "}
+              <code className="font-mono">NEXT_PUBLIC_KIMA_FALLBACK_COMPANY_ID</code> no{" "}
+              <code className="font-mono">.env.local</code>. Os campos abaixo estão vazios porque o
+              servidor não encontrou uma empresa no Supabase para este contexto.
+            </p>
+          </div>
         </div>
       )}
 
@@ -340,34 +471,30 @@ export default function ConfiguracoesPage() {
                 </h4>
               </div>
               <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">
-                Estes dados constam nas facturas e documentos fiscais emitidos (Art. 10º, alínea j, do Decreto Presidencial nº 71/25).
+                Identificação do software de facturação certificado AGT (Art. 10º, alínea j, do
+                Decreto Presidencial nº 71/25). Estes valores são <strong>fixos</strong> — pertencem à
+                certificação da Kima pela AGT e constam em todas as facturas e documentos fiscais.
               </p>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div>
-                  <label htmlFor="softwareNome" className="label-kima">
-                    Nome do Software
-                  </label>
-                  <input
-                    id="softwareNome"
-                    name="softwareNome"
-                    value={formData.softwareNome}
-                    onChange={handleChange}
-                    placeholder="Ex: Kima Facturação"
-                    className="input-kima"
-                  />
+                  <span className="label-kima">Nome do Software</span>
+                  <div className="flex items-center gap-2 px-3.5 h-10 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 text-sm font-medium text-slate-700 dark:text-slate-300 select-none">
+                    <Lock size={13} className="text-slate-400 shrink-0" />
+                    {SOFTWARE_NOME}
+                  </div>
+                  <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-1">
+                    Valor fixo — identifica o software certificado pela AGT.
+                  </p>
                 </div>
                 <div>
-                  <label htmlFor="softwareCertificacaoNumero" className="label-kima">
-                    Nº de Certificação AGT
-                  </label>
-                  <input
-                    id="softwareCertificacaoNumero"
-                    name="softwareCertificacaoNumero"
-                    value={formData.softwareCertificacaoNumero}
-                    onChange={handleChange}
-                    placeholder="Ex: 123/AGT/2026"
-                    className="input-kima"
-                  />
+                  <span className="label-kima">Nº de Certificação AGT</span>
+                  <div className="flex items-center gap-2 px-3.5 h-10 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 text-sm font-medium text-emerald-700 dark:text-emerald-300 font-mono select-none">
+                    <ShieldCheck size={13} className="text-emerald-600 dark:text-emerald-400 shrink-0" />
+                    {SOFTWARE_CERTIFICACAO_AGT}
+                  </div>
+                  <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-1">
+                    Atribuído pela AGT à Kima na certificação do software.
+                  </p>
                 </div>
               </div>
             </div>

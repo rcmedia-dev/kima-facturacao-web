@@ -87,7 +87,7 @@ export function ArtigoTable({
         ) : (
           <>
             <p className="text-sm font-medium text-gray-600">Nenhum artigo cadastrado</p>
-            <p className="text-xs text-gray-400">Clique em "Novo Artigo" para começar.</p>
+            <p className="text-xs text-gray-400">Clique em &quot;Novo Artigo&quot; para começar.</p>
           </>
         )}
       </div>

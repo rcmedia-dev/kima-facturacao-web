@@ -13,6 +13,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import { mensagemErro } from "@/lib/utils";
 
 const TIPOS_DISPONIVEIS: { value: TipoDocumento; label: string }[] = [
   { value: "Fatura", label: "Factura" },
@@ -40,20 +41,25 @@ export function SeriesManager() {
   const [novoTipo, setNovoTipo] = useState<TipoDocumento>("Fatura");
 
   const carregar = async () => {
-    setLoading(true);
     try {
       const res = await fetch("/api/series");
       const json = await res.json();
       if (res.ok && json.success) setSeries(json.data || []);
-    } catch (err: any) {
-      error("Erro", err.message || "Erro ao carregar séries");
+    } catch (err: unknown) {
+      error("Erro", mensagemErro(err, "Erro ao carregar séries"));
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    carregar();
+    fetch("/api/series")
+      .then((res) => res.json())
+      .then((json) => {
+        if (json.success) setSeries(json.data || []);
+      })
+      .catch((err: unknown) => error("Erro", mensagemErro(err, "Erro ao carregar séries")))
+      .finally(() => setLoading(false));
   }, []);
 
   const criar = async () => {
@@ -75,8 +81,8 @@ export function SeriesManager() {
       setNovaSerie("");
       await carregar();
       await store.loadAll();
-    } catch (err: any) {
-      error("Erro", err.message);
+    } catch (err: unknown) {
+      error("Erro", mensagemErro(err));
     } finally {
       setSaving(false);
     }
@@ -91,8 +97,8 @@ export function SeriesManager() {
       });
       await carregar();
       await store.loadAll();
-    } catch (err: any) {
-      error("Erro", err.message);
+    } catch (err: unknown) {
+      error("Erro", mensagemErro(err));
     }
   };
 
@@ -105,8 +111,8 @@ export function SeriesManager() {
       });
       await carregar();
       await store.loadAll();
-    } catch (err: any) {
-      error("Erro", err.message);
+    } catch (err: unknown) {
+      error("Erro", mensagemErro(err));
     }
   };
 
@@ -117,8 +123,8 @@ export function SeriesManager() {
       success("Sucesso", "Série eliminada");
       await carregar();
       await store.loadAll();
-    } catch (err: any) {
-      error("Erro", err.message);
+    } catch (err: unknown) {
+      error("Erro", mensagemErro(err));
     }
   };
 
@@ -204,7 +210,7 @@ export function SeriesManager() {
         {/* Listagem por tipo */}
         {seriesPorTipo.length === 0 ? (
           <p className="text-sm text-slate-400 text-center py-6">
-            Sem séries configuradas. Ao emitir, a série "A" é criada automaticamente.
+            Sem séries configuradas. Ao emitir, a série &quot;A&quot; é criada automaticamente.
           </p>
         ) : (
           <div className="space-y-4">

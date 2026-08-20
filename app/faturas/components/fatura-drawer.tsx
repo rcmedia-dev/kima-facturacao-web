@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Dialog as DialogPrimitive } from "@base-ui/react/dialog";
 import { X, Download } from "lucide-react";
 import { Fatura } from "@/lib/types";
@@ -37,15 +37,17 @@ export function FaturaDrawer({ fatura, onClose }: FaturaDrawerProps) {
   // Retém a última fatura durante a animação de fecho
   const [open, setOpen] = useState(false);
   const [displayFatura, setDisplayFatura] = useState<Fatura | null>(null);
+  const [prevFatura, setPrevFatura] = useState<Fatura | null>(fatura);
 
-  useEffect(() => {
+  if (fatura !== prevFatura) {
+    setPrevFatura(fatura);
     if (fatura) {
       setDisplayFatura(fatura);
       setOpen(true);
     } else {
       setOpen(false);
     }
-  }, [fatura]);
+  }
 
   const cliente = displayFatura?.clienteId ? getClientePorId(displayFatura.clienteId) : undefined;
 

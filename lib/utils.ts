@@ -7,6 +7,35 @@ export function cn(...inputs: ClassValue[]) {
 
 export { formatMoedaAOA, formatAOA } from './formatters';
 
+interface ErroNormalizado {
+  mensagem: string;
+  status: number;
+  nome: string;
+  detalhes?: unknown;
+}
+
+/** Normaliza qualquer erro (Error, ZodError, objeto HTTP, string) para um formato seguro. */
+export function normalizarErro(err: unknown): ErroNormalizado {
+  if (err instanceof Error) {
+    return { mensagem: err.message, status: 0, nome: err.name };
+  }
+  if (typeof err === "object" && err !== null) {
+    const e = err as Record<string, unknown>;
+    return {
+      mensagem: typeof e.message === "string" ? e.message : "",
+      status: typeof e.status === "number" ? e.status : 0,
+      nome: typeof e.name === "string" ? e.name : "",
+      detalhes: e.errors,
+    };
+  }
+  return { mensagem: String(err), status: 0, nome: "" };
+}
+
+/** Mensagem legível de um erro desconhecido. */
+export function mensagemErro(err: unknown, fallback = "Erro inesperado"): string {
+  return normalizarErro(err).mensagem || fallback;
+}
+
 /**
  * Valida o NIF Angolano (Pessoa Jurídica e Pessoa Física)
  * - Pessoa Jurídica (PJ): 10 dígitos numéricos com validação Módulo 11.

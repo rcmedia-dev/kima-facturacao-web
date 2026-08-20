@@ -2,7 +2,7 @@
 
 import { useAppStore } from "@/lib/store";
 import { formatMoedaAOA } from "@/lib/formatters";
-import { ArrowRight, TrendingUp, Clock, Users, Receipt, FileText, ShoppingBag, FileMinus, FileClock, HandCoins, Plus } from "lucide-react";
+import { ArrowRight, TrendingUp, Clock, Users, Receipt, FileText, ShoppingBag, FileMinus, FileClock, HandCoins, FilePlus2, Truck, Plus, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { TipoDocumento } from "@/lib/types";
 import { DashboardFaturaTable } from "./components/dashboard-fatura-table";
@@ -10,7 +10,7 @@ import { DashboardFaturaTable } from "./components/dashboard-fatura-table";
 const QUICK_TIPOS: {
   tipo: TipoDocumento;
   label: string;
-  Icon: any;
+  Icon: LucideIcon;
   btn: string;
   icon: string;
 }[] = [
@@ -41,6 +41,20 @@ const QUICK_TIPOS: {
     Icon: FileMinus,
     btn: "bg-rose-50 dark:bg-rose-950/30 border-rose-100 dark:border-rose-900 text-rose-800 dark:text-rose-300 hover:bg-rose-100 dark:hover:bg-rose-900/40",
     icon: "bg-rose-600",
+  },
+  {
+    tipo: "NotaDebito",
+    label: "Nota de Débito",
+    Icon: FilePlus2,
+    btn: "bg-orange-50 dark:bg-orange-950/30 border-orange-100 dark:border-orange-900 text-orange-800 dark:text-orange-300 hover:bg-orange-100 dark:hover:bg-orange-900/40",
+    icon: "bg-orange-500",
+  },
+  {
+    tipo: "GuiaRemessa",
+    label: "Guia de Remessa",
+    Icon: Truck,
+    btn: "bg-cyan-50 dark:bg-cyan-950/30 border-cyan-100 dark:border-cyan-900 text-cyan-800 dark:text-cyan-300 hover:bg-cyan-100 dark:hover:bg-cyan-900/40",
+    icon: "bg-cyan-600",
   },
   {
     tipo: "Orcamento",
@@ -181,7 +195,7 @@ export default function DashboardPage() {
           </Link>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
           {QUICK_TIPOS.map(({ tipo, label, Icon, btn, icon }) => (
             <Link
               key={tipo}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useForm } from "react-hook-form";
+import { useForm, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Dialog as DialogPrimitive } from "@base-ui/react/dialog";
 import { Button } from "@/components/ui/button";
@@ -35,7 +35,7 @@ export function FornecedorFormModal({
     setError,
     clearErrors,
   } = useForm<FornecedorFormInput>({
-    resolver: zodResolver(fornecedorSchema) as any,
+    resolver: zodResolver(fornecedorSchema) as Resolver<FornecedorFormInput>,
     defaultValues: fornecedor
       ? {
           nome: fornecedor.nome,
