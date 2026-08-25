@@ -99,10 +99,7 @@ export function Sidebar({
             {!collapsed && (
               <div className="flex flex-col min-w-0">
                 <span className="text-sm font-bold tracking-tight text-white truncate">
-                  KIMA <span className="text-blue-100">FINANCEIRO</span>
-                </span>
-                <span className="text-[10px] uppercase font-semibold text-blue-100/70 tracking-wider">
-                  Facturação Web
+                  Kima <span className="text-blue-100">Factura</span>
                 </span>
               </div>
             )}

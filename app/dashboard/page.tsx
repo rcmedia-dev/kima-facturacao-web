@@ -2,10 +2,11 @@
 
 import { useAppStore } from "@/lib/store";
 import { formatMoedaAOA } from "@/lib/formatters";
-import { ArrowRight, TrendingUp, Clock, Users, Receipt, FileText, FileMinus, FileClock, HandCoins, FilePlus2, Plus, type LucideIcon } from "lucide-react";
+import { ArrowRight, ArrowUpRight, TrendingUp, Clock, Users, Receipt, FileText, FileMinus, FileClock, HandCoins, FilePlus2, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { TipoDocumento } from "@/lib/types";
 import { DashboardFaturaTable } from "./components/dashboard-fatura-table";
+import { DashboardGraficoFaturacao } from "./components/dashboard-grafico-faturacao";
 
 const QUICK_TIPOS: {
   tipo: TipoDocumento;
@@ -92,73 +93,101 @@ export default function DashboardPage() {
 
       {/* ── MÉTRICAS ─────────────────────────────────── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4">
+        {/* Faturado este Mês → /faturas */}
+        <Link
+          href="/faturas"
+          className="group bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 cursor-pointer transition-all duration-200 hover:shadow-md hover:-translate-y-0.5 hover:border-blue-200 dark:hover:border-blue-800"
+        >
           <div className="flex items-start justify-between">
             <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
               Faturado este Mês
             </span>
-            <span className="w-9 h-9 rounded-lg bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 flex items-center justify-center">
+            <span className="w-9 h-9 rounded-lg bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 flex items-center justify-center transition-transform duration-200 group-hover:scale-110">
               <TrendingUp size={16} />
             </span>
           </div>
           <p className="text-[22px] font-extrabold leading-tight text-slate-900 dark:text-white mt-1.5">
             {formatMoedaAOA(totalFaturadoMes)}
           </p>
-          <p className="text-[11.5px] font-medium text-slate-500 dark:text-slate-400 mt-0.5">
-            {faturasEsteMes.length} {faturasEsteMes.length === 1 ? "doc. emitido" : "doc. emitidos"}
-          </p>
-        </div>
+          <div className="flex items-center justify-between mt-0.5">
+            <p className="text-[11.5px] font-medium text-slate-500 dark:text-slate-400">
+              {faturasEsteMes.length} {faturasEsteMes.length === 1 ? "doc. emitido" : "doc. emitidos"}
+            </p>
+            <ArrowUpRight size={13} className="text-blue-400 dark:text-blue-500 opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
+          </div>
+        </Link>
 
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4">
+        {/* Faturas Pendentes → /faturas filtrado por Pendente */}
+        <Link
+          href="/faturas?status=Pendente"
+          className="group bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 cursor-pointer transition-all duration-200 hover:shadow-md hover:-translate-y-0.5 hover:border-amber-200 dark:hover:border-amber-800"
+        >
           <div className="flex items-start justify-between">
             <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
               Faturas Pendentes
             </span>
-            <span className="w-9 h-9 rounded-lg bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 flex items-center justify-center">
+            <span className="w-9 h-9 rounded-lg bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 flex items-center justify-center transition-transform duration-200 group-hover:scale-110">
               <Clock size={16} />
             </span>
           </div>
           <p className="text-[22px] font-extrabold leading-tight text-slate-900 dark:text-white mt-1.5">
             {faturasPendentes.length}
           </p>
-          <p className="text-[11.5px] font-medium text-slate-500 dark:text-slate-400 mt-0.5">
-            Aguardam pagamento
-          </p>
-        </div>
+          <div className="flex items-center justify-between mt-0.5">
+            <p className="text-[11.5px] font-medium text-slate-500 dark:text-slate-400">
+              Aguardam pagamento
+            </p>
+            <ArrowUpRight size={13} className="text-amber-400 dark:text-amber-500 opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
+          </div>
+        </Link>
 
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4">
+        {/* Clientes Activos → /clientes */}
+        <Link
+          href="/clientes"
+          className="group bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 cursor-pointer transition-all duration-200 hover:shadow-md hover:-translate-y-0.5 hover:border-teal-200 dark:hover:border-teal-800"
+        >
           <div className="flex items-start justify-between">
             <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
               Clientes Activos
             </span>
-            <span className="w-9 h-9 rounded-lg bg-teal-50 dark:bg-teal-900/30 text-teal-600 dark:text-teal-400 flex items-center justify-center">
+            <span className="w-9 h-9 rounded-lg bg-teal-50 dark:bg-teal-900/30 text-teal-600 dark:text-teal-400 flex items-center justify-center transition-transform duration-200 group-hover:scale-110">
               <Users size={16} />
             </span>
           </div>
           <p className="text-[22px] font-extrabold leading-tight text-slate-900 dark:text-white mt-1.5">
             {totalClientes}
           </p>
-          <p className="text-[11.5px] font-medium text-slate-500 dark:text-slate-400 mt-0.5">
-            Base de clientes
-          </p>
-        </div>
+          <div className="flex items-center justify-between mt-0.5">
+            <p className="text-[11.5px] font-medium text-slate-500 dark:text-slate-400">
+              Base de clientes
+            </p>
+            <ArrowUpRight size={13} className="text-teal-400 dark:text-teal-500 opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
+          </div>
+        </Link>
 
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4">
+        {/* Total de Faturas → /faturas */}
+        <Link
+          href="/faturas"
+          className="group bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 cursor-pointer transition-all duration-200 hover:shadow-md hover:-translate-y-0.5 hover:border-indigo-200 dark:hover:border-indigo-800"
+        >
           <div className="flex items-start justify-between">
             <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
               Total de Faturas
             </span>
-            <span className="w-9 h-9 rounded-lg bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
+            <span className="w-9 h-9 rounded-lg bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 flex items-center justify-center transition-transform duration-200 group-hover:scale-110">
               <Receipt size={16} />
             </span>
           </div>
           <p className="text-[22px] font-extrabold leading-tight text-slate-900 dark:text-white mt-1.5">
             {totalFaturas}
           </p>
-          <p className="text-[11.5px] font-medium text-slate-500 dark:text-slate-400 mt-0.5">
-            Documentos emitidos
-          </p>
-        </div>
+          <div className="flex items-center justify-between mt-0.5">
+            <p className="text-[11.5px] font-medium text-slate-500 dark:text-slate-400">
+              Documentos emitidos
+            </p>
+            <ArrowUpRight size={13} className="text-indigo-400 dark:text-indigo-500 opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
+          </div>
+        </Link>
       </div>
 
       {/* ── CRIAÇÃO RÁPIDA ──────────────────────────── */}
@@ -224,41 +253,8 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* ── CTA NOVA FATURA ──────────────────────────── */}
-      <div className="relative overflow-hidden bg-gradient-to-br from-blue-600 via-blue-600 to-indigo-700 rounded-xl p-6 shadow-md">
-        {/* Círculo decorativo */}
-        <div className="absolute -top-8 -right-8 w-40 h-40 bg-white/10 rounded-full" />
-        <div className="absolute -bottom-6 -left-6 w-28 h-28 bg-white/10 rounded-full" />
-
-        <div className="relative z-10">
-          <h3 className="text-lg font-bold text-white mb-1">
-            Pronto para emitir uma fatura?
-          </h3>
-          <p className="text-blue-100 text-sm mb-5">
-            Adicione clientes e artigos, depois emita a sua fatura em segundos.
-          </p>
-          <div className="flex flex-wrap gap-3">
-            <Link href="/clientes">
-              <button
-                id="dashboard-btn-clientes"
-                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold text-blue-700 bg-white hover:bg-blue-50 shadow-sm transition-all duration-200"
-              >
-                <Users size={15} />
-                Gerir Clientes
-              </button>
-            </Link>
-            <Link href="/faturas/nova">
-              <button
-                id="dashboard-btn-nova-fatura"
-                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold text-white bg-white/20 hover:bg-white/30 border border-white/30 shadow-sm transition-all duration-200"
-              >
-                <Receipt size={15} />
-                Nova Fatura
-              </button>
-            </Link>
-          </div>
-        </div>
-      </div>
+      {/* ── GRÁFICO DE EVOLUÇÃO ──────────────────────────── */}
+      <DashboardGraficoFaturacao />
 
     </div>
   );

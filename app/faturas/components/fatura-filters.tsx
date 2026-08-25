@@ -1,50 +1,42 @@
 "use client";
 
 import { Search, X, CalendarDays, FilterX } from "lucide-react";
-import { STATUS_DOCUMENTO } from "@/lib/constants";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 
 interface FaturaFiltersProps {
-  statusFiltro: string;
-  onStatusChange: (status: string) => void;
   dataInicio: Date | null;
   onDataInicioChange: (data: Date | null) => void;
   dataFim: Date | null;
   onDataFimChange: (data: Date | null) => void;
   searchTerm: string;
   onSearchTermChange: (term: string) => void;
+  onResetStatus: () => void;
+  statusFiltro: string;
 }
 
 export function FaturaFilters({
-  statusFiltro,
-  onStatusChange,
   dataInicio,
   onDataInicioChange,
   dataFim,
   onDataFimChange,
   searchTerm,
   onSearchTermChange,
+  onResetStatus,
+  statusFiltro,
 }: FaturaFiltersProps) {
   const hasActiveFilters =
     statusFiltro !== "Todos" || dataInicio !== null || dataFim !== null || searchTerm !== "";
 
   const handleClear = () => {
-    onStatusChange("Todos");
+    onResetStatus();
     onDataInicioChange(null);
     onDataFimChange(null);
     onSearchTermChange("");
   };
 
   return (
-    <div className="space-y-4">
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 items-end">
+    <div className="space-y-3">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
         {/* Pesquisa Geral */}
         <div className="space-y-1.5">
           <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
@@ -56,8 +48,8 @@ export function FaturaFilters({
               type="text"
               value={searchTerm}
               onChange={(e) => onSearchTermChange(e.target.value)}
-              placeholder="Nº da fatura ou cliente..."
-              className="pl-10 pr-8"
+              placeholder="Nº do documento ou cliente..."
+              className="pl-10 pr-8 h-10 text-xs"
             />
             {searchTerm && (
               <button
@@ -69,24 +61,6 @@ export function FaturaFilters({
               </button>
             )}
           </div>
-        </div>
-
-        {/* Estado da Fatura */}
-        <div className="space-y-1.5">
-          <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
-            Estado
-          </label>
-          <Select value={statusFiltro} onValueChange={(v) => onStatusChange(v ?? "Todos")}>
-            <SelectTrigger className="w-full !h-11">
-              <SelectValue placeholder="Todos os Estados" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="Todos">Todos os Estados</SelectItem>
-              <SelectItem value={STATUS_DOCUMENTO.PENDENTE}>{STATUS_DOCUMENTO.PENDENTE}</SelectItem>
-              <SelectItem value={STATUS_DOCUMENTO.PAGO}>{STATUS_DOCUMENTO.PAGO}</SelectItem>
-              <SelectItem value={STATUS_DOCUMENTO.CANCELADO}>{STATUS_DOCUMENTO.CANCELADO}</SelectItem>
-            </SelectContent>
-          </Select>
         </div>
 
         {/* Data Inicial */}
@@ -102,7 +76,7 @@ export function FaturaFilters({
               onChange={(e) =>
                 onDataInicioChange(e.target.value ? new Date(e.target.value) : null)
               }
-              className="pl-10 [color-scheme:light] dark:[color-scheme:dark]"
+              className="pl-10 h-10 text-xs [color-scheme:light] dark:[color-scheme:dark]"
             />
           </div>
         </div>
@@ -121,7 +95,7 @@ export function FaturaFilters({
                 onChange={(e) =>
                   onDataFimChange(e.target.value ? new Date(e.target.value) : null)
                 }
-                className="pl-10 [color-scheme:light] dark:[color-scheme:dark]"
+                className="pl-10 h-10 text-xs [color-scheme:light] dark:[color-scheme:dark]"
               />
             </div>
 
@@ -129,7 +103,7 @@ export function FaturaFilters({
               <button
                 type="button"
                 onClick={handleClear}
-                className="px-3 py-2 text-xs font-semibold rounded-xl border border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors shrink-0 flex items-center gap-1.5"
+                className="px-3 h-10 text-xs font-semibold rounded-xl border border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors shrink-0 flex items-center gap-1.5"
                 title="Limpar filtros"
               >
                 <FilterX size={13} />
