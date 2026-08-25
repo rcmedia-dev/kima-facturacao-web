@@ -30,11 +30,11 @@ export default function RelatoriosPage() {
   const mounted = useSyncExternalStore(() => () => {}, () => true, () => false);
 
   const hoje = new Date();
-  const mesAnterior = hoje.getMonth() === 0 ? 12 : hoje.getMonth();
-  const anoAnterior = hoje.getMonth() === 0 ? hoje.getFullYear() - 1 : hoje.getFullYear();
+  const mesAtual = hoje.getMonth() + 1;
+  const anoAtual = hoje.getFullYear();
 
-  const [mes, setMes] = useState(mesAnterior);
-  const [ano, setAno] = useState(anoAnterior);
+  const [mes, setMes] = useState(mesAtual);
+  const [ano, setAno] = useState(anoAtual);
 
   const resumo = useMemo(() => {
     if (!mounted) return null;
@@ -136,7 +136,7 @@ export default function RelatoriosPage() {
     <div className="max-w-5xl mx-auto px-4 py-8 space-y-6 animate-fade-in">
       {/* Header */}
       <div className="flex items-center gap-3">
-        <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-950">
+        <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-900/30">
           <ShieldCheck size={20} className="text-blue-600 dark:text-blue-400" />
         </div>
         <div>
@@ -148,7 +148,7 @@ export default function RelatoriosPage() {
       </div>
 
       {/* Seleção de período */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm flex flex-col sm:flex-row items-end gap-4">
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-sm flex flex-col sm:flex-row items-end gap-4">
         <div className="w-full sm:w-64">
           <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Mês</label>
           <select
@@ -187,21 +187,21 @@ export default function RelatoriosPage() {
 
       {/* Resumo do período */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-sm">
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 shadow-sm">
           <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Documentos</p>
           <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">
             {resumo.documentos.reduce((s, d) => s + d.quantidade, 0)}
           </p>
           <p className="text-xs text-slate-400 mt-1">{MESES[mes - 1]} {ano}</p>
         </div>
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-sm">
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 shadow-sm">
           <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Total Faturado</p>
           <p className="text-xl font-bold text-slate-900 dark:text-white mt-1 font-mono">
             {formatMoedaAOA(resumo.totalIVA.total)}
           </p>
           <p className="text-xs text-slate-400 mt-1">IVA incluído</p>
         </div>
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-sm">
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 shadow-sm">
           <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">IVA Liquidado</p>
           <p className="text-xl font-bold text-slate-900 dark:text-white mt-1 font-mono">
             {formatMoedaAOA(resumo.totalIVA.taxa14 + resumo.totalIVA.taxa7)}
@@ -210,16 +210,16 @@ export default function RelatoriosPage() {
             IVA 7%: {formatMoedaAOA(resumo.totalIVA.taxa7)} · IVA 14%: {formatMoedaAOA(resumo.totalIVA.taxa14)}
           </p>
         </div>
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-sm">
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 shadow-sm">
           <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Clientes</p>
           <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">{resumo.clientes.length}</p>
-          <p className="text-xs text-slate-400 mt-1">com faturas no período</p>
+          <p className="text-xs text-slate-400 mt-1">com documentos no período</p>
         </div>
       </div>
 
       {/* Detalhe por tipo */}
       {resumo.documentos.length > 0 && (
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden shadow-sm">
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-sm">
           <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-800 font-bold text-slate-900 dark:text-white text-sm">
             Documentos por tipo
           </div>
@@ -248,7 +248,7 @@ export default function RelatoriosPage() {
 
       {/* T3.4 — Relatório DP-IVA (Declaração Periódica de IVA) */}
       {relatorioDPIVA && (
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden shadow-sm">
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-sm">
           <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
             <div className="flex items-center gap-2 font-bold text-slate-900 dark:text-white text-sm">
               <FileSpreadsheet className="w-4 h-4 text-blue-500" />
@@ -303,7 +303,7 @@ export default function RelatoriosPage() {
       )}
 
       {/* Validação / problemas */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden shadow-sm">
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-sm">
         <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center gap-2 font-bold text-slate-900 dark:text-white text-sm">
           {problemasValidacao.length === 0 ? (
             <><CheckCircle2 className="w-4 h-4 text-emerald-500" /> Documentos do período</>

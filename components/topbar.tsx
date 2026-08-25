@@ -16,7 +16,7 @@ export function Topbar({ onOpenMobile }: TopbarProps) {
     if (path.startsWith("/dashboard"))      return { title: "Dashboard",           subtitle: "Visão geral e desempenho financeiro" };
     if (path.startsWith("/clientes"))       return { title: "Clientes",            subtitle: "Gestão e cadastro de clientes" };
     if (path.startsWith("/artigos"))        return { title: "Artigos & Serviços",  subtitle: "Catálogo de artigos e controlo de stock" };
-    if (path.startsWith("/faturas/nova"))   return { title: "Nova Fatura",         subtitle: "Emissão guiada em 3 passos" };
+    if (path.startsWith("/faturas/nova"))   return { title: "Novo Documento",      subtitle: "Emissão guiada em 3 passos" };
     if (path.startsWith("/faturas"))        return { title: "Faturas & Documentos",subtitle: "Histórico de documentos emitidos" };
     if (path.startsWith("/configuracoes"))  return { title: "Configurações",       subtitle: "Definições da empresa e sistema" };
     return { title: "Kima Financeiro", subtitle: "Sistema de Facturação" };
