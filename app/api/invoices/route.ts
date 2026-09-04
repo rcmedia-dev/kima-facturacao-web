@@ -215,11 +215,21 @@ export async function POST(request: Request) {
     const numeroCompleto = `${serie}/${String(numero).padStart(6, "0")}`;
 
     const cliente = validatedData.clienteId
-      ? await db.from("clientes").select("nif").eq("id", validatedData.clienteId).maybeSingle()
+      ? await db.from("clientes").select("nif").eq("company_id", companyId).eq("id", validatedData.clienteId).maybeSingle()
       : null;
     const fornecedor = validatedData.fornecedorId
-      ? await db.from("fornecedores").select("nif").eq("id", validatedData.fornecedorId).maybeSingle()
+      ? await db.from("fornecedores").select("nif").eq("company_id", companyId).eq("id", validatedData.fornecedorId).maybeSingle()
       : null;
+
+    // Isolamento: o cliente/fornecedor tem de pertencer a esta empresa.
+    if (validatedData.clienteId && !cliente?.data) {
+      const err = Object.assign(new Error('O cliente indicado não pertence a esta empresa'), { status: 400 });
+      throw err;
+    }
+    if (validatedData.fornecedorId && !fornecedor?.data) {
+      const err = Object.assign(new Error('O fornecedor indicado não pertence a esta empresa'), { status: 400 });
+      throw err;
+    }
 
     // ── FASE 1 · Motor criptográfico AGT (R8/R9/R12/R13/R14/R15) ───────────────
     // Hash encadeado SHA-256 com o hash do documento anterior da mesma série (T1.1)

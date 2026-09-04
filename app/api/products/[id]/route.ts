@@ -3,14 +3,14 @@ import { NextResponse } from "next/server";
 import { obterArtigoPorId } from "@/db/queries";
 import { atualizarArtigo, deletarArtigo } from "@/db/queries";
 import { artigoSchemaInput } from "@/lib/schemas";
-import { requireCompanyId } from "@/lib/company";
+import { requireCompanyMembership } from "@/lib/company";
 
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const companyId = requireCompanyId(request);
+    const companyId = await requireCompanyMembership(request);
     const { id } = await params;
     const artigo = await obterArtigoPorId(companyId, id);
 
@@ -35,7 +35,7 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const companyId = requireCompanyId(request);
+    const companyId = await requireCompanyMembership(request);
     const { id } = await params;
     const body = await request.json();
     const validatedData = artigoSchemaInput.partial().parse(body);
@@ -75,7 +75,7 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const companyId = requireCompanyId(request);
+    const companyId = await requireCompanyMembership(request);
     const { id } = await params;
     await deletarArtigo(companyId, id);
 

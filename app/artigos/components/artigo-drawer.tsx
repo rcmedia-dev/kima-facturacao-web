@@ -94,8 +94,7 @@ export function ArtigoDrawer({ artigo, onClose, onEdit }: ArtigoDrawerProps) {
                   <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-white/20 bg-white/10">
                     <Package size={24} className="text-teal-300" />
                   </div>
-                  <p className="mt-3.5 font-mono text-[15px] font-extrabold leading-snug">{a.codigo}</p>
-                  <p className="mt-1 text-xs leading-snug text-slate-400">{a.descricao}</p>
+                  <p className="mt-3.5 text-[15px] font-extrabold leading-snug">{a.descricao}</p>
                   <div className="mt-2.5 flex flex-wrap gap-1.5">
                     <Badge className={`ring-1 ${a.ativo ? sidebarBadge.ativo : sidebarBadge.inativo}`}>
                       {a.ativo ? "Ativo" : "Inativo"}
@@ -131,8 +130,8 @@ export function ArtigoDrawer({ artigo, onClose, onEdit }: ArtigoDrawerProps) {
                   <p className="mt-5 text-[10.5px] font-bold uppercase tracking-[0.1em] text-slate-400">Identificação</p>
                   <div className="mt-2 space-y-1.5 text-xs">
                     <div className="flex items-center justify-between gap-3">
-                      <span className="text-slate-400">Categoria</span>
-                      <span className="text-right font-semibold text-slate-200">{a.categoria || "-"}</span>
+                      <span className="text-slate-400">Tipo</span>
+                      <span className="text-right font-semibold text-slate-200">{a.tipo || "Produto"}</span>
                     </div>
                     <div className="flex items-center justify-between gap-3">
                       <span className="text-slate-400">Unidade</span>
@@ -159,7 +158,7 @@ export function ArtigoDrawer({ artigo, onClose, onEdit }: ArtigoDrawerProps) {
                       <Package size={18} className="text-teal-600 dark:text-teal-400" />
                     </div>
                     <div className="min-w-0">
-                      <p className="truncate font-mono text-sm font-bold text-slate-900 dark:text-white">{a.codigo}</p>
+                      <p className="truncate text-sm font-bold text-slate-900 dark:text-white">{a.descricao}</p>
                       <IVABadge taxa={a.taxaIVA} />
                     </div>
                   </div>
@@ -192,9 +191,8 @@ export function ArtigoDrawer({ artigo, onClose, onEdit }: ArtigoDrawerProps) {
                   <section className="rounded-xl border border-slate-200 p-4 dark:border-slate-800">
                     <h3 className="mb-3 text-xs font-bold uppercase tracking-wider text-slate-400">Identificação</h3>
                     <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-3">
-                      <InfoCell label="Código" value={a.codigo} mono />
                       <InfoCell label="Descrição" value={a.descricao || "-"} />
-                      <InfoCell label="Categoria" value={a.categoria || "-"} />
+                      <InfoCell label="Tipo" value={a.tipo || "Produto"} />
                       <InfoCell label="Unidade de Medida" value={UNIDADE_MEDIDA_LABEL[a.unidadeMedida] || a.unidadeMedida} />
                     </div>
                   </section>

@@ -31,3 +31,42 @@ export function requireCompanyId(request: Request): string {
   }
   return companyId;
 }
+
+/**
+ * Valida que o utilizador autenticado é membro da empresa ativa.
+ * Sem isto, bastaria forjar o cookie `kima-company-id` para ler os
+ * clientes/artigos de outra empresa (IDOR). Usar nas rotas de API
+ * antes de qualquer query.
+ */
+export async function assertMembership(companyId: string): Promise<void> {
+  const { usuarioAtual } = await import('@/lib/session');
+  const user = await usuarioAtual();
+  if (!user) {
+    throw Object.assign(new Error('Não autenticado. Faça login no Kima Hub.'), { status: 401 });
+  }
+  const { createClient } = await import('@supabase/supabase-js');
+  const admin = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
+  const { data, error } = await admin
+    .from('memberships')
+    .select('company_id')
+    .eq('user_id', user.id)
+    .eq('company_id', companyId)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!data) {
+    throw Object.assign(new Error('Sem acesso a esta empresa.'), { status: 403 });
+  }
+}
+
+/**
+ * Extrai o company_id do cookie e valida o membership do utilizador.
+ * Substitui `requireCompanyId` nas rotas que isolam dados por empresa.
+ */
+export async function requireCompanyMembership(request: Request): Promise<string> {
+  const companyId = requireCompanyId(request);
+  await assertMembership(companyId);
+  return companyId;
+}

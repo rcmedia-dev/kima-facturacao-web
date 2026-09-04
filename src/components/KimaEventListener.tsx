@@ -28,7 +28,14 @@ export function KimaEventListener() {
         window.location.href = '/login';
       })
       .on('broadcast', { event: 'COMPANY_SWITCHED' }, () => {
-        router.refresh();
+        // Troca de empresa: limpar dados da empresa anterior ANTES de
+        // recarregar, senão /clientes e /artigos exibem dados alheios.
+        void (async () => {
+          const { useAppStore } = await import('@/lib/store');
+          useAppStore.getState().clearAllData();
+          await useAppStore.getState().loadAll();
+          router.refresh();
+        })();
       })
       .on('broadcast', { event: 'MODULE_STATUS_CHANGED' }, (payload: { moduleKey?: string; status?: string }) => {
         if (payload?.moduleKey === MODULE_KEY && payload?.status !== 'Ativo') {

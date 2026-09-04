@@ -75,17 +75,6 @@ export function ArtigoFormModal({
   const [isSaving, setIsSaving] = useState(false);
   const { success, error } = useToastContext();
 
-  const gerarCodigo = (t: TipoArtigo): string => {
-    const prefix = t === "Serviço" ? "SERV" : "PROD";
-    const max = store.artigos
-      .filter((a) => a.codigo?.startsWith(prefix))
-      .reduce((m, a) => {
-        const n = parseInt((a.codigo || "").split("-")[1] || "0", 10);
-        return Math.max(m, isNaN(n) ? 0 : n);
-      }, 0);
-    return `${prefix}-${String(max + 1).padStart(3, "0")}`;
-  };
-
   const {
     register,
     handleSubmit,
@@ -131,9 +120,6 @@ export function ArtigoFormModal({
   const [stockMinimoTexto, setStockMinimoTexto] = useState<string>(() =>
     String(artigo?.stockMinimo ?? 0)
   );
-  const [codigoPreview, setCodigoPreview] = useState<string>(() =>
-    gerarCodigo(artigo?.tipo ?? "Produto")
-  );
 
   const isEditing = !!artigo;
   const titulo = `${isEditing ? "Editar" : "Novo"} ${tipo}`;
@@ -144,7 +130,6 @@ export function ArtigoFormModal({
   const mudarTipo = (novoTipo: TipoArtigo) => {
     if (novoTipo === tipo) return;
     setValue("tipo", novoTipo, { shouldValidate: false });
-    setCodigoPreview(gerarCodigo(novoTipo));
     if (novoTipo === "Serviço" && !SERVICO_UNIDADES.includes(unidadeMedida)) {
       setValue("unidadeMedida", "MES");
     }
@@ -186,7 +171,6 @@ export function ArtigoFormModal({
     setIsSaving(true);
     const artigoData = {
       tipo: data.tipo ?? "Produto",
-      codigo: isEditing ? artigo.codigo : gerarCodigo(data.tipo ?? "Produto"),
       descricao: data.descricao,
       preco:
         data.preco ?? (precoTexto === "" ? 0 : parsePreco(precoTexto)),
@@ -294,19 +278,7 @@ export function ArtigoFormModal({
             <div className="overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800">
               <CardHeader icon={<Tag size={15} />} label="Identificação" />
               <div className="grid grid-cols-2 gap-4 p-4">
-                <div className="space-y-1.5">
-                  <Label>Código automático</Label>
-                  <div
-                    title="Atribuído automaticamente"
-                    className="flex h-10 items-center justify-between gap-2 rounded-xl border border-dashed border-slate-300 bg-slate-50 px-3.5 font-mono text-sm font-semibold text-slate-500 dark:border-slate-700 dark:bg-slate-800/40 dark:text-slate-400"
-                  >
-                    {codigoPreview}
-                    <span className="rounded-md bg-teal-50 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-teal-600 dark:bg-teal-900/30 dark:text-teal-400">
-                      auto
-                    </span>
-                  </div>
-                </div>
-                <div className="space-y-1.5">
+                <div className="space-y-1.5 col-span-2">
                   <Label required>Unidade</Label>
                   <Select
                     value={unidadeMedida}

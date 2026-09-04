@@ -48,7 +48,6 @@ export function ClienteFormModal({
           tipo: cliente.tipo ?? "PJ",
           ativo: cliente.ativo ?? true,
           responsavel: cliente.responsavel,
-          inscricaoSocial: cliente.inscricaoSocial,
         }
       : {
           tipo: "PJ",
@@ -82,7 +81,6 @@ export function ClienteFormModal({
       tipo: data.tipo ?? "PJ",
       ativo: data.ativo ?? true,
       responsavel: data.responsavel,
-      inscricaoSocial: data.inscricaoSocial,
     };
     try {
       if (cliente) {
@@ -152,7 +150,7 @@ export function ClienteFormModal({
           {/* Abas PJ / PF */}
           <div className="border-b border-slate-100 dark:border-slate-800 px-6 pt-4 pb-0">
             <div className="flex gap-1 rounded-xl bg-slate-100 p-1 dark:bg-slate-800">
-              <button
+                <button
                 type="button"
                 onClick={() => setValue("tipo", "PJ")}
                 className={cn(
@@ -162,7 +160,7 @@ export function ClienteFormModal({
                     : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
                 )}
               >
-                <Building2 size={15} /> Pessoa Jurídica
+                <Building2 size={15} /> Cliente Empresa
               </button>
               <button
                 type="button"
@@ -174,7 +172,7 @@ export function ClienteFormModal({
                     : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
                 )}
               >
-                <UserCircle2 size={15} /> Pessoa Física
+                <UserCircle2 size={15} /> Cliente Individual
               </button>
             </div>
           </div>
@@ -197,7 +195,7 @@ export function ClienteFormModal({
                   )}
                 </div>
                 <div className="space-y-1.5 col-span-2">
-                  <Label required>NIF Angolano</Label>
+                  <Label required>NIF</Label>
                   <Input
                     {...register("nif")}
                     placeholder={tipo === "PJ" ? "Ex: 5417001234 (10 dígitos)" : "Ex: 005432198LA042 (BI)"}
@@ -260,19 +258,11 @@ export function ClienteFormModal({
               <div className="overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800">
                 <CardHeader icon={<Building2 size={15} />} label="Dados da Empresa" />
                 <div className="grid grid-cols-2 gap-4 p-4">
-                  <div className="space-y-1.5">
+                  <div className="space-y-1.5 col-span-2">
                     <Label>Responsável</Label>
                     <Input
                       {...register("responsavel")}
                       placeholder="Nome do responsável"
-                      className="h-10"
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label>Inscrição Social</Label>
-                    <Input
-                      {...register("inscricaoSocial")}
-                      placeholder="IS-2024-001"
                       className="h-10"
                     />
                   </div>
