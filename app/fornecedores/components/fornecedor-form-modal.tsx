@@ -158,7 +158,7 @@ export function FornecedorFormModal({
                   )}
                 </div>
                 <div className="space-y-1.5 col-span-2">
-                  <Label required>NIF Angolano</Label>
+                  <Label required>NIF</Label>
                   <Input
                     {...register("nif")}
                     placeholder="Ex: 5417001234 (10 dígitos)"
