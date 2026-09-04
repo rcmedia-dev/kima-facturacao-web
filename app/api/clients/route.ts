@@ -2,11 +2,11 @@ import { normalizarErro } from "@/lib/utils";
 import { NextResponse } from "next/server";
 import { clienteSchema } from "@/lib/schemas";
 import { obterClientes, criarCliente } from "@/db/queries";
-import { requireCompanyId } from "@/lib/company";
+import { requireCompanyMembership } from "@/lib/company";
 
 export async function GET(request: Request) {
   try {
-    const companyId = requireCompanyId(request);
+    const companyId = await requireCompanyMembership(request);
     const clientes = await obterClientes(companyId);
     return NextResponse.json({ success: true, data: clientes });
   } catch (error: unknown) {
@@ -19,7 +19,7 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const companyId = requireCompanyId(request);
+    const companyId = await requireCompanyMembership(request);
     const body = await request.json();
     const validatedData = clienteSchema.parse(body);
 

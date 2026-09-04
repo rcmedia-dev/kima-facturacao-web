@@ -49,11 +49,26 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
-  // 1. Resolver a empresa ativa: usa o cookie de SSO quando existir,
-  //    senão procura a associação do próprio user na tabela `memberships`.
+  // 1. Resolver a empresa ativa e validar o membership do utilizador.
+  //    O cookie NUNCA é confiável por si só: um cookie forjado com o
+  //    company_id de outra empresa permitiria ler clientes/artigos alheios.
   const cookieCompanyId = request.cookies.get('kima-company-id')?.value;
 
-  let activeCompanyId: string | null = cookieCompanyId ?? null;
+  let activeCompanyId: string | null = null;
+
+  if (cookieCompanyId) {
+    const { data: membership } = await supabase
+      .from('memberships')
+      .select('company_id')
+      .eq('user_id', user.id)
+      .eq('company_id', cookieCompanyId)
+      .maybeSingle();
+
+    if (membership?.company_id) {
+      activeCompanyId = membership.company_id;
+    }
+    // Cookie inválido/forjado: ignora e resolve abaixo pela membership real.
+  }
 
   if (!activeCompanyId) {
     const { data: membership } = await supabase

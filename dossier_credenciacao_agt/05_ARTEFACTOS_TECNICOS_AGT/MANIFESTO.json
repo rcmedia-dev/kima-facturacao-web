@@ -1,0 +1,25 @@
+{
+  "empresa": {
+    "nome": "RC MEDIA ANGOLA - PRESTAÇÃO DE SERVIÇOS, LDA",
+    "nif": "5002670119",
+    "morada": "Bairro Kinaxixi, Rua do Largo do Kinaxixi, Edifício da 1ª Conservatória, 1º Andar, Luanda, Angola",
+    "telefones": "929 884 781 / 929 884 810",
+    "email": "geral@rcmedia.ao",
+    "softwareNome": "Kima Facturação Web",
+    "softwareVersao": "1.0.0",
+    "certificacaoNumero": "999/AGT/2026",
+    "representanteLegal": "Representante Legal da RC Media",
+    "responsavelTecnico": "Diretor de Engenharia e Tecnologias de Informação"
+  },
+  "dataGeracao": "2026-08-31T09:47:55.686Z",
+  "artefactos": [
+    "SAFT-AO-AMOSTRA-2026.xml",
+    "CHAVE_PUBLICA_RSA2048.pem",
+    "saft-ao.xsd"
+  ],
+  "conformidadeLegal": [
+    "Decreto Presidencial n.º 71/25 (Regulamento de Faturação Eletrónica)",
+    "Decreto Executivo n.º 683/25 (Especificações Técnicas de Software)",
+    "Decreto Presidencial n.º 312/18 (Regime Jurídico das Faturas)"
+  ]
+}

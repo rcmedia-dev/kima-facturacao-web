@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<SAF-T xmlns="urn:DGCI:SAF-T:1.0">
+  <Header>
+    <AuditFileVersion>1.0</AuditFileVersion>
+    <CompanyID>5002670119</CompanyID>
+    <CompanyName>RC MEDIA ANGOLA - PRESTAÇÃO DE SERVIÇOS, LDA</CompanyName>
+    <TaxRegistrationNumber>5002670119</TaxRegistrationNumber>
+    <TaxAccountingBasis>F</TaxAccountingBasis>
+    <FiscalYear>2026</FiscalYear>
+    <StartDate>2026-08-01</StartDate>
+    <EndDate>2026-08-31</EndDate>
+    <CurrencyCode>AOA</CurrencyCode>
+    <DateCreated>2026-08-31T09:47:55.609Z</DateCreated>
+    <TaxEntity>Global</TaxEntity>
+    <SoftwareCompanyName>RC MEDIA ANGOLA - PRESTAÇÃO DE SERVIÇOS, LDA</SoftwareCompanyName>
+    <SoftwareName>Kima Facturação Web</SoftwareName>
+    <SoftwareVersion>1.0.0</SoftwareVersion>
+    <CertificationNumber>999/AGT/2026</CertificationNumber>
+    <ProductID>KIMA-FAC</ProductID>
+    <ProductVersion>1.0</ProductVersion>
+    <HeaderComment>Dossier de Credenciamento AGT 2026 - Decreto Presidencial n.º 71/25</HeaderComment>
+  </Header>
+  <MasterFiles>
+    <Customer>
+      <CustomerID>5401123456</CustomerID>
+      <AccountID>Desconhecido</AccountID>
+      <CustomerTaxID>5401123456</CustomerTaxID>
+      <CompanyName>Empresa de Teste e Demonstracao, Lda</CompanyName>
+      <BillingAddress>
+        <AddressDetail>Avenida 4 de Fevereiro, n.º 100</AddressDetail>
+        <City>Luanda</City>
+        <PostalCode>0000</PostalCode>
+        <Country>AO</Country>
+      </BillingAddress>
+      <SelfBillingIndicator>0</SelfBillingIndicator>
+    </Customer>
+    <Product>
+      <ProductType>S</ProductType>
+      <ProductCode>SRV-001</ProductCode>
+      <ProductGroup>Servicos</ProductGroup>
+      <ProductDescription>Licenciamento de Software de Faturacao Kima (Mensal)</ProductDescription>
+      <ProductNumberCode>SRV-001</ProductNumberCode>
+    </Product>
+  </MasterFiles>
+  <TaxTable>
+    <TaxTableEntry>
+      <TaxType>IVA</TaxType>
+      <TaxCountryRegion>AO</TaxCountryRegion>
+      <TaxCode>NOR</TaxCode>
+      <Description>Taxa Geral de IVA</Description>
+      <TaxPercentage>14</TaxPercentage>
+    </TaxTableEntry>
+  </TaxTable>
+  <SourceDocuments>
+    <SalesInvoices>
+      <NumberOfEntries>1</NumberOfEntries>
+      <TotalDebit>0.00</TotalDebit>
+      <TotalCredit>57000.00</TotalCredit>
+      <Invoice>
+        <InvoiceNo>FT A/000001</InvoiceNo>
+        <DocumentStatus>
+          <InvoiceStatus>N</InvoiceStatus>
+          <InvoiceStatusDate>2026-08-18T10:00:00</InvoiceStatusDate>
+          <SourceID>1</SourceID>
+          <SourceBilling>P</SourceBilling>
+        </DocumentStatus>
+        <Hash>AMOSTRA_HASH_SHA256_64_CARACTERES_KIMA_AGT_2026_ABCDEF0123456789</Hash>
+        <HashControl>1</HashControl>
+        <Period>8</Period>
+        <InvoiceDate>2026-08-18</InvoiceDate>
+        <InvoiceType>FT</InvoiceType>
+        <SpecialRegimes>
+          <SelfBillingIndicator>0</SelfBillingIndicator>
+          <CashVATSchemeIndicator>0</CashVATSchemeIndicator>
+          <ThirdPartiesBillingIndicator>0</ThirdPartiesBillingIndicator>
+        </SpecialRegimes>
+        <SourceID>1</SourceID>
+        <SystemEntryDate>2026-08-18T10:00:00</SystemEntryDate>
+        <CustomerID>5401123456</CustomerID>
+        <Line>
+          <LineNumber>1</LineNumber>
+          <ProductCode>SRV-001</ProductCode>
+          <ProductDescription>Licenciamento de Software de Faturacao Kima (Mensal)</ProductDescription>
+          <Quantity>1.00</Quantity>
+          <UnitOfMeasure>Un</UnitOfMeasure>
+          <UnitPrice>50000.00</UnitPrice>
+          <TaxPointDate>2026-08-18</TaxPointDate>
+          <Description>Licenciamento de Software de Faturacao Kima (Mensal)</Description>
+          <CreditAmount>50000.00</CreditAmount>
+          <Tax>
+            <TaxType>IVA</TaxType>
+            <TaxCountryRegion>AO</TaxCountryRegion>
+            <TaxCode>NOR</TaxCode>
+            <TaxPercentage>14</TaxPercentage>
+          </Tax>
+          <SettlementAmount>0.00</SettlementAmount>
+        </Line>
+        <DocumentTotals>
+          <TaxPayable>7000.00</TaxPayable>
+          <NetTotal>50000.00</NetTotal>
+          <GrossTotal>57000.00</GrossTotal>
+        </DocumentTotals>
+      </Invoice>
+    </SalesInvoices>
+  </SourceDocuments>
+</SAF-T>
