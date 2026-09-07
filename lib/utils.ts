@@ -17,7 +17,9 @@ interface ErroNormalizado {
 /** Normaliza qualquer erro (Error, ZodError, objeto HTTP, string) para um formato seguro. */
 export function normalizarErro(err: unknown): ErroNormalizado {
   if (err instanceof Error) {
-    return { mensagem: err.message, status: 0, nome: err.name };
+    const customStatus = (err as unknown as { status?: unknown })?.status;
+    const status = typeof customStatus === "number" ? customStatus : 0;
+    return { mensagem: err.message, status, nome: err.name };
   }
   if (typeof err === "object" && err !== null) {
     const e = err as Record<string, unknown>;

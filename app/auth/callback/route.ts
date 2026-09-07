@@ -5,13 +5,14 @@ export async function GET(request: NextRequest) {
   const token = requestUrl.searchParams.get('token');
   const redirectTarget = requestUrl.searchParams.get('redirect') || '/';
 
-  const response = NextResponse.redirect(new URL(redirectTarget, request.url));
-  const COOKIE_DOMAIN = process.env.NODE_ENV === 'production' ? '.kima.ao' : undefined;
+  const host = request.headers.get('host') || '';
+  const rootDomain = process.env.NEXT_PUBLIC_KIMA_ROOT_DOMAIN || 'kima.ao';
+  const COOKIE_DOMAIN = host.includes(rootDomain) ? `.${rootDomain}` : undefined;
 
   if (token) {
     try {
       const verifyRes = await fetch(
-        `${process.env.NEXT_PUBLIC_KIMA_HUB_URL}/api/sso/verify?token=${token}`,
+        `${process.env.NEXT_PUBLIC_KIMA_HUB_URL || 'https://kima-hub.vercel.app'}/api/sso/verify?token=${token}`,
         { cache: 'no-store' }
       );
 
@@ -21,9 +22,9 @@ export async function GET(request: NextRequest) {
           response.cookies.set('kima-company-id', data.companyId, {
             domain: COOKIE_DOMAIN,
             path: '/',
-            httpOnly: true,
+            httpOnly: false,
             sameSite: 'lax',
-            secure: process.env.NODE_ENV === 'production',
+            secure: process.env.NODE_ENV === 'production' && request.nextUrl.protocol === 'https:',
             maxAge: 60 * 60 * 24 * 30,
           });
         }

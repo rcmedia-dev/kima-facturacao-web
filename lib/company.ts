@@ -62,11 +62,57 @@ export async function assertMembership(companyId: string): Promise<void> {
 }
 
 /**
- * Extrai o company_id do cookie e valida o membership do utilizador.
- * Substitui `requireCompanyId` nas rotas que isolam dados por empresa.
+ * Extrai o company_id do cookie ou resolve automaticamente pela membership real
+ * do utilizador autenticado. Garante isolamento multiempresa e evita bloqueios
+ * causados por cookies obsoletos ou ausentes.
  */
 export async function requireCompanyMembership(request: Request): Promise<string> {
-  const companyId = requireCompanyId(request);
-  await assertMembership(companyId);
-  return companyId;
+  const { usuarioAtual } = await import('@/lib/session');
+  const user = await usuarioAtual();
+  if (!user) {
+    throw Object.assign(new Error('Não autenticado. Faça login no Kima Hub.'), { status: 401 });
+  }
+
+  const { createClient } = await import('@supabase/supabase-js');
+  const admin = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
+
+  const cookieCompanyId = getCompanyId(request);
+
+  // 1. Se veio um company_id no cookie, verificar se o utilizador autenticado é membro
+  if (cookieCompanyId) {
+    const { data: memberData } = await admin
+      .from('memberships')
+      .select('company_id')
+      .eq('user_id', user.id)
+      .eq('company_id', cookieCompanyId)
+      .maybeSingle();
+
+    if (memberData?.company_id) {
+      return memberData.company_id;
+    }
+    // Se o cookie apontava para outra empresa (ex: resíduo de sessão anterior),
+    // prossegue para resolver a empresa correta do utilizador abaixo.
+  }
+
+  // 2. Se o cookie não veio ou não pertence ao utilizador, resolve a empresa ativa do utilizador
+  const { data: userMemberships, error } = await admin
+    .from('memberships')
+    .select('company_id')
+    .eq('user_id', user.id)
+    .limit(1);
+
+  if (error) throw new Error(error.message);
+
+  if (userMemberships && userMemberships.length > 0) {
+    return userMemberships[0].company_id;
+  }
+
+  // 3. Utilizador não possui vínculo com nenhuma empresa
+  throw Object.assign(
+    new Error('Sem empresa associada a este utilizador. Configure a sua empresa no Kima Hub.'),
+    { status: 403 }
+  );
 }
