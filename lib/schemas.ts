@@ -66,7 +66,7 @@ export const despesaSchema = despesaSchemaInput.transform((data) => ({
 }));
 
 export const faturaLinhaSchema = z.object({
-  artigoId: z.string().min(1, "Artigo é obrigatório"),
+  artigoId: z.string().min(1).optional(),
   quantidade: z.number().min(1, "Quantidade deve ser maior que 0"),
   descricao: z.string(),
   preco: z.number(),

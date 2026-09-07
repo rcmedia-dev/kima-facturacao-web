@@ -93,101 +93,77 @@ export default function DashboardPage() {
 
       {/* ── MÉTRICAS ─────────────────────────────────── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Faturado este Mês → /faturas */}
-        <Link
-          href="/faturas"
-          className="group bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 cursor-pointer transition-all duration-200 hover:shadow-md hover:-translate-y-0.5 hover:border-blue-200 dark:hover:border-blue-800"
-        >
+        {/* Faturado este Mês */}
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 shadow-sm">
           <div className="flex items-start justify-between">
             <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
               Faturado este Mês
             </span>
-            <span className="w-9 h-9 rounded-lg bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 flex items-center justify-center transition-transform duration-200 group-hover:scale-110">
+            <span className="w-9 h-9 rounded-lg bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 flex items-center justify-center">
               <TrendingUp size={16} />
             </span>
           </div>
           <p className="text-[22px] font-extrabold leading-tight text-slate-900 dark:text-white mt-1.5">
             {formatMoedaAOA(totalFaturadoMes)}
           </p>
-          <div className="flex items-center justify-between mt-0.5">
-            <p className="text-[11.5px] font-medium text-slate-500 dark:text-slate-400">
-              {faturasEsteMes.length} {faturasEsteMes.length === 1 ? "doc. emitido" : "doc. emitidos"}
-            </p>
-            <ArrowUpRight size={13} className="text-blue-400 dark:text-blue-500 opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
-          </div>
-        </Link>
+          <p className="text-[11.5px] font-medium text-slate-500 dark:text-slate-400 mt-0.5">
+            {faturasEsteMes.length} {faturasEsteMes.length === 1 ? "doc. emitido" : "doc. emitidos"}
+          </p>
+        </div>
 
-        {/* Faturas Pendentes → /faturas filtrado por Pendente */}
-        <Link
-          href="/faturas?status=Pendente"
-          className="group bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 cursor-pointer transition-all duration-200 hover:shadow-md hover:-translate-y-0.5 hover:border-amber-200 dark:hover:border-amber-800"
-        >
+        {/* Faturas Pendentes */}
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 shadow-sm">
           <div className="flex items-start justify-between">
             <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
               Faturas Pendentes
             </span>
-            <span className="w-9 h-9 rounded-lg bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 flex items-center justify-center transition-transform duration-200 group-hover:scale-110">
+            <span className="w-9 h-9 rounded-lg bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 flex items-center justify-center">
               <Clock size={16} />
             </span>
           </div>
           <p className="text-[22px] font-extrabold leading-tight text-slate-900 dark:text-white mt-1.5">
             {faturasPendentes.length}
           </p>
-          <div className="flex items-center justify-between mt-0.5">
-            <p className="text-[11.5px] font-medium text-slate-500 dark:text-slate-400">
-              Aguardam pagamento
-            </p>
-            <ArrowUpRight size={13} className="text-amber-400 dark:text-amber-500 opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
-          </div>
-        </Link>
+          <p className="text-[11.5px] font-medium text-slate-500 dark:text-slate-400 mt-0.5">
+            Aguardam pagamento
+          </p>
+        </div>
 
-        {/* Clientes Activos → /clientes */}
-        <Link
-          href="/clientes"
-          className="group bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 cursor-pointer transition-all duration-200 hover:shadow-md hover:-translate-y-0.5 hover:border-teal-200 dark:hover:border-teal-800"
-        >
+        {/* Clientes Activos */}
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 shadow-sm">
           <div className="flex items-start justify-between">
             <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
               Clientes Activos
             </span>
-            <span className="w-9 h-9 rounded-lg bg-teal-50 dark:bg-teal-900/30 text-teal-600 dark:text-teal-400 flex items-center justify-center transition-transform duration-200 group-hover:scale-110">
+            <span className="w-9 h-9 rounded-lg bg-teal-50 dark:bg-teal-900/30 text-teal-600 dark:text-teal-400 flex items-center justify-center">
               <Users size={16} />
             </span>
           </div>
           <p className="text-[22px] font-extrabold leading-tight text-slate-900 dark:text-white mt-1.5">
             {totalClientes}
           </p>
-          <div className="flex items-center justify-between mt-0.5">
-            <p className="text-[11.5px] font-medium text-slate-500 dark:text-slate-400">
-              Base de clientes
-            </p>
-            <ArrowUpRight size={13} className="text-teal-400 dark:text-teal-500 opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
-          </div>
-        </Link>
+          <p className="text-[11.5px] font-medium text-slate-500 dark:text-slate-400 mt-0.5">
+            Base de clientes
+          </p>
+        </div>
 
-        {/* Total de Faturas → /faturas */}
-        <Link
-          href="/faturas"
-          className="group bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 cursor-pointer transition-all duration-200 hover:shadow-md hover:-translate-y-0.5 hover:border-indigo-200 dark:hover:border-indigo-800"
-        >
+        {/* Total de Faturas */}
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 shadow-sm">
           <div className="flex items-start justify-between">
             <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
               Total de Faturas
             </span>
-            <span className="w-9 h-9 rounded-lg bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 flex items-center justify-center transition-transform duration-200 group-hover:scale-110">
+            <span className="w-9 h-9 rounded-lg bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
               <Receipt size={16} />
             </span>
           </div>
           <p className="text-[22px] font-extrabold leading-tight text-slate-900 dark:text-white mt-1.5">
             {totalFaturas}
           </p>
-          <div className="flex items-center justify-between mt-0.5">
-            <p className="text-[11.5px] font-medium text-slate-500 dark:text-slate-400">
-              Documentos emitidos
-            </p>
-            <ArrowUpRight size={13} className="text-indigo-400 dark:text-indigo-500 opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
-          </div>
-        </Link>
+          <p className="text-[11.5px] font-medium text-slate-500 dark:text-slate-400 mt-0.5">
+            Documentos emitidos
+          </p>
+        </div>
       </div>
 
       {/* ── CRIAÇÃO RÁPIDA ──────────────────────────── */}

@@ -40,6 +40,34 @@ const UNIDADE_MEDIDA_LABEL: Record<string, string> = {
 const PRODUTO_UNIDADES: UnidadeMedida[] = ["UN", "KG", "M", "M2", "L"];
 const SERVICO_UNIDADES: UnidadeMedida[] = ["UN", "H", "DIA", "MES"];
 
+const CATEGORIAS_PRODUTO = [
+  "Geral",
+  "Alimentos e Bebidas",
+  "Electrónica",
+  "Vestuário",
+  "Material de Escritório",
+  "Consumíveis",
+  "Construção e Ferramentas",
+  "Saúde e Higiene",
+  "Automóvel",
+  "Combustíveis",
+  "Matérias-Primas",
+  "Tecnologia",
+  "Personalizado",
+];
+
+const CATEGORIAS_SERVICO = [
+  "Geral",
+  "Consultoria",
+  "Manutenção",
+  "Transporte",
+  "Formação",
+  "Serviços Profissionais",
+  "Telecomunicações",
+  "Serviços Gerais",
+  "Personalizado",
+];
+
 function parsePreco(texto: string): number {
   const normalizado = texto.replace(/\s/g, "").replace(/\./g, "").replace(",", ".");
   const valor = parseFloat(normalizado);
@@ -120,12 +148,21 @@ export function ArtigoFormModal({
   const [stockMinimoTexto, setStockMinimoTexto] = useState<string>(() =>
     String(artigo?.stockMinimo ?? 0)
   );
+  const [categoriaPersonalizada, setCategoriaPersonalizada] = useState<string>(() => {
+    const cat = artigo?.categoria || "Geral";
+    const cats = (artigo?.tipo ?? "Produto") === "Serviço" ? CATEGORIAS_SERVICO : CATEGORIAS_PRODUTO;
+    return cats.includes(cat) ? "" : cat;
+  });
 
   const isEditing = !!artigo;
   const titulo = `${isEditing ? "Editar" : "Novo"} ${tipo}`;
   const subtitulo = `Preencha os dados abaixo para ${isEditing ? "atualizar" : "registar"} o ${tipo.toLowerCase()}.`;
 
   const unidadesDisponiveis = tipo === "Serviço" ? SERVICO_UNIDADES : PRODUTO_UNIDADES;
+  const categoriasDisponiveis = tipo === "Serviço" ? CATEGORIAS_SERVICO : CATEGORIAS_PRODUTO;
+
+  const categoriaAtual = watch("categoria") ?? "Geral";
+  const isPersonalizado = categoriaAtual === "Personalizado";
 
   const mudarTipo = (novoTipo: TipoArtigo) => {
     if (novoTipo === tipo) return;
@@ -135,6 +172,11 @@ export function ArtigoFormModal({
     }
     if (novoTipo === "Produto" && !PRODUTO_UNIDADES.includes(unidadeMedida)) {
       setValue("unidadeMedida", "UN");
+    }
+    const cats = novoTipo === "Serviço" ? CATEGORIAS_SERVICO : CATEGORIAS_PRODUTO;
+    if (!cats.includes(categoriaAtual)) {
+      setValue("categoria", "Geral");
+      setCategoriaPersonalizada("");
     }
   };
 
@@ -175,11 +217,12 @@ export function ArtigoFormModal({
       preco:
         data.preco ?? (precoTexto === "" ? 0 : parsePreco(precoTexto)),
       taxaIVA: parseInt(data.taxaIVA) as 0 | 7 | 14,
-      categoria: data.categoria ?? "Geral",
+      categoria: (data.categoria === "Personalizado" && categoriaPersonalizada) ? categoriaPersonalizada : (data.categoria ?? "Geral"),
       unidadeMedida: (data.unidadeMedida ?? "UN") as UnidadeMedida,
       stock: stockTexto === "" ? 0 : parseInt(stockTexto, 10) || 0,
       stockMinimo: stockMinimoTexto === "" ? 0 : parseInt(stockMinimoTexto, 10) || 0,
       ativo: data.ativo ?? true,
+      codigo: artigo?.codigo ?? "",
     };
     try {
       if (artigo) {
@@ -313,43 +356,76 @@ export function ArtigoFormModal({
             {/* Preço & IVA */}
             <div className="overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800">
               <CardHeader icon={<Coins size={15} />} label="Preço & IVA" />
-              <div className="grid grid-cols-3 gap-4 p-4">
+              <div className="space-y-4 p-4">
                 <div className="space-y-1.5">
                   <Label required>Categoria</Label>
-                  <Input
-                    {...register("categoria")}
-                    placeholder={tipo === "Serviço" ? "Ex: Serviços" : "Ex: Consumíveis"}
-                    className="h-10"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label required>Preço (AOA)</Label>
-                  <Input
-                    inputMode="decimal"
-                    value={precoTexto}
-                    onChange={onPrecoChange}
-                    placeholder="Ex: 185.000 ou 185.000,50"
-                    className="h-10 text-right font-mono"
-                  />
-                  {errors.preco && (
-                    <p className="text-red-500 text-sm mt-1">{errors.preco.message}</p>
-                  )}
-                </div>
-                <div className="space-y-1.5">
-                  <Label required>Taxa de IVA</Label>
                   <Select
-                    value={taxaIVA}
-                    onValueChange={(value) => setValue("taxaIVA", value as "0" | "7" | "14")}
+                    value={isPersonalizado ? "Personalizado" : categoriaAtual}
+                    onValueChange={(value) => {
+                      if (!value) return;
+                      if (value === "Personalizado") {
+                        setValue("categoria", categoriaPersonalizada || "Personalizado");
+                      } else {
+                        setValue("categoria", value);
+                        setCategoriaPersonalizada("");
+                      }
+                    }}
                   >
-                    <SelectTrigger className="h-10">
-                      <SelectValue />
+                    <SelectTrigger className="h-10 w-full">
+                      <SelectValue placeholder="Selecionar categoria" />
                     </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="0">0% (Isento)</SelectItem>
-                      <SelectItem value="7">7%</SelectItem>
-                      <SelectItem value="14">14%</SelectItem>
+                    <SelectContent side="bottom" align="start">
+                      {categoriasDisponiveis.map((c) => (
+                        <SelectItem key={c} value={c}>
+                          {c}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
+                  {isPersonalizado && (
+                    <Input
+                      value={categoriaPersonalizada}
+                      onChange={(e) => {
+                        setCategoriaPersonalizada(e.target.value);
+                      }}
+                      placeholder="Digite a categoria"
+                      className="h-10 mt-2"
+                    />
+                  )}
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <Label required>Preço (AOA)</Label>
+                    <Input
+                      inputMode="decimal"
+                      value={precoTexto}
+                      onChange={onPrecoChange}
+                      placeholder="Ex: 185.000 ou 185.000,50"
+                      className="h-10 text-right font-mono"
+                    />
+                    {errors.preco && (
+                      <p className="text-red-500 text-sm mt-1">{errors.preco.message}</p>
+                    )}
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label required>Taxa de IVA</Label>
+                    <Select
+                      value={taxaIVA}
+                      onValueChange={(value) => {
+                        if (!value) return;
+                        setValue("taxaIVA", value as "0" | "7" | "14");
+                      }}
+                    >
+                      <SelectTrigger className="h-10">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent side="bottom" align="start">
+                        <SelectItem value="0">0% (Isento)</SelectItem>
+                        <SelectItem value="7">7%</SelectItem>
+                        <SelectItem value="14">14%</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
               </div>
             </div>

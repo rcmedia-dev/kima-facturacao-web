@@ -2,11 +2,11 @@ import { normalizarErro } from "@/lib/utils";
 import { NextResponse } from "next/server";
 import { empresaSchema } from "@/lib/schemas";
 import { obterEmpresa, atualizarEmpresa } from "@/db/queries";
-import { requireCompanyId } from "@/lib/company";
+import { requireCompanyMembership } from "@/lib/company";
 
 export async function GET(request: Request) {
   try {
-    const companyId = requireCompanyId(request);
+    const companyId = await requireCompanyMembership(request);
     const empresa = await obterEmpresa(companyId);
     return NextResponse.json({
       success: true,
@@ -22,7 +22,7 @@ export async function GET(request: Request) {
 
 export async function PUT(request: Request) {
   try {
-    const companyId = requireCompanyId(request);
+    const companyId = await requireCompanyMembership(request);
     const body = await request.json();
     const validatedData = empresaSchema.parse(body);
 

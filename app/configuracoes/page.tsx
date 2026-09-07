@@ -89,7 +89,7 @@ function ConfiguracoesInner({
     logoUrl: empresa?.logoUrl || null,
   });
 
-  const [initialData] = useState({
+  const [initialData, setInitialData] = useState({
     nomeEmpresa: empresa?.nomeEmpresa || "",
     nif: empresa?.nif || "",
     morada: empresa?.morada || "",
@@ -97,6 +97,21 @@ function ConfiguracoesInner({
     email: empresa?.email || "",
     logoUrl: empresa?.logoUrl || null,
   });
+
+  useEffect(() => {
+    if (empresa) {
+      const data = {
+        nomeEmpresa: empresa.nomeEmpresa || "",
+        nif: empresa.nif || "",
+        morada: empresa.morada || "",
+        telefone: empresa.telefone || "",
+        email: empresa.email || "",
+        logoUrl: empresa.logoUrl || null,
+      };
+      setFormData(data);
+      setInitialData(data);
+    }
+  }, [empresa]);
 
   const hasChanges =
     formData.nomeEmpresa !== initialData.nomeEmpresa ||
@@ -112,7 +127,7 @@ function ConfiguracoesInner({
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
     if (name === "nif") {
-      if (!value) {
+      if (!value.trim()) {
         setNifError("NIF é obrigatório");
       } else {
         const validacao = validarNIFAngolano(value);
@@ -163,10 +178,27 @@ function ConfiguracoesInner({
       setErrorMsg("O nome da empresa é obrigatório.");
       return;
     }
+    if (!formData.nif.trim()) {
+      setNifError("NIF é obrigatório");
+      setErrorMsg("Por favor insira o NIF da empresa.");
+      return;
+    }
     const nifValid = validarNIFAngolano(formData.nif);
     if (!nifValid.valido) {
-      setNifError("NIF Angolano inválido (deve possuir 10 dígitos numéricos)");
-      setErrorMsg("Por favor insira um NIF Angolano válido antes de salvar.");
+      setNifError(nifValid.mensagem || "NIF inválido (10 dígitos para empresas)");
+      setErrorMsg("Por favor insira um NIF válido antes de salvar.");
+      return;
+    }
+    if (!formData.morada.trim()) {
+      setErrorMsg("A morada é obrigatória.");
+      return;
+    }
+    if (!formData.telefone.trim()) {
+      setErrorMsg("O telefone de contacto é obrigatório.");
+      return;
+    }
+    if (!formData.email.trim()) {
+      setErrorMsg("O email institucional é obrigatório.");
       return;
     }
 
@@ -200,6 +232,7 @@ function ConfiguracoesInner({
         ultimaAtualizacao: new Date(),
       };
       store.setEmpresa(empresaAtualizada);
+      setInitialData(formData);
 
       success("Sucesso", "Configurações guardadas com sucesso.");
     } catch (err: unknown) {
@@ -326,21 +359,21 @@ function ConfiguracoesInner({
 
             <div className="space-y-1.5">
               <label htmlFor="nif" className="label-kima">
-                NIF Angolano <span className="text-red-500">*</span>
+                NIF <span className="text-red-500">*</span>
               </label>
               <input
                 id="nif"
                 name="nif"
                 value={formData.nif}
                 onChange={handleChange}
-                placeholder="Ex: 5417001234"
+                placeholder="Insira o NIF da empresa"
                 className={`input-kima h-10 py-2 text-xs ${nifError ? "border-red-500" : ""}`}
                 required
               />
               {nifError ? (
                 <p className="text-[10px] text-red-500">{nifError}</p>
               ) : (
-                <p className="text-[10px] text-slate-400">Validação Módulo 11 — 10 dígitos</p>
+                <p className="text-[10px] text-slate-400">Validação Módulo 11 (PJ de 10 dígitos) ou BI (PF)</p>
               )}
             </div>
           </div>
@@ -443,11 +476,11 @@ function ConfiguracoesInner({
           <div className="pt-2">
             <button
               type="submit"
-              disabled={saving || !hasChanges || !formData.nomeEmpresa || !formData.nif || !!nifError}
+              disabled={saving || !hasChanges || !!nifError}
               className={`h-10 px-4 text-xs w-full font-semibold rounded-xl transition-all duration-200 flex items-center justify-center gap-2 ${
-                hasChanges && !saving
-                  ? "bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40"
-                  : "bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 cursor-not-allowed"
+                saving || !hasChanges || !!nifError
+                  ? "bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 cursor-not-allowed border border-slate-200 dark:border-slate-800 opacity-60"
+                  : "bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 cursor-pointer"
               }`}
             >
               {saving ? (
@@ -503,10 +536,12 @@ export default function ConfiguracoesPage() {
                 ultimaAtualizacao: e.ultimaAtualizacao ? new Date(e.ultimaAtualizacao) : new Date(),
               },
             });
+            setFalhaCarregar(false);
+          } else {
+            setFalhaCarregar(true);
           }
         })
-        .catch(() => {})
-        .finally(() => {
+        .catch(() => {
           if (ativo) setFalhaCarregar(true);
         });
     }

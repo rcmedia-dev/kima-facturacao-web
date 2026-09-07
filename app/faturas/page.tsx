@@ -6,7 +6,7 @@ import Link from "next/link";
 import { FaturaFilters } from "./components/fatura-filters";
 import { FaturaTable } from "./components/fatura-table";
 import { formatMoedaAOA } from "@/lib/formatters";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 const TIPOS_TAB = [
   { value: "Todos", label: "Todos os Documentos" },
@@ -22,6 +22,12 @@ export default function FaturasPage() {
   // Seletores individuais para garantir reatividade correcta no Zustand
   const documentos = useAppStore((s) => s.documentos);
   const getClientePorId = useAppStore((s) => s.getClientePorId);
+  const loadAll = useAppStore((s) => s.loadAll);
+
+  // Refresh documentos every time this page is mounted
+  useEffect(() => {
+    loadAll();
+  }, [loadAll]);
 
   const [dataInicio, setDataInicio] = useState<Date | null>(null);
   const [dataFim, setDataFim] = useState<Date | null>(null);

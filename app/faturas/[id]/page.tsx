@@ -233,13 +233,13 @@ export default function FaturaDetailPage() {
             </p>
           </div>
 
-          {/* Ação Principal: Baixar PDF A4 */}
+          {/* Ação Principal: Baixar PDF */}
           <Button
             onClick={() => handleDownloadPDF("original")}
             className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-xl shadow-sm text-sm"
           >
             <Download className="w-4 h-4 mr-2" />
-            Baixar {(LABELS_DOCUMENTO[fatura.tipo] || fatura.tipo || "Documento")} em PDF (A4)
+            Baixar Documento
           </Button>
 
           {/* Ação Secundária: Imprimir */}
@@ -250,16 +250,6 @@ export default function FaturaDetailPage() {
           >
             <Printer className="w-4 h-4 mr-2" />
             Imprimir Documento
-          </Button>
-
-          {/* Reimpressão: 2.ª via (Art. 7º, n.ºs 4 e 5 — DP 71/25) */}
-          <Button
-            variant="outline"
-            onClick={() => handleDownloadPDF("2via")}
-            className="w-full rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-300"
-          >
-            <Printer className="w-4 h-4 mr-2" />
-            Reimprimir (2.ª via)
           </Button>
 
           {/* Registar Pagamento (se não estiver pago) */}

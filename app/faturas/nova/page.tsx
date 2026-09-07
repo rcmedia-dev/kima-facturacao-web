@@ -23,6 +23,9 @@ const TIPOS_VALIDOS: TipoDocumento[] = [
   "Recibo",
 ];
 
+/** Tipos que obrigam a referência a uma fatura de origem (backend valida isto) */
+const TIPOS_QUE_EXIGEM_REFERENCIA: TipoDocumento[] = ["NotaCredito", "NotaDebito", "Recibo"];
+
 const passos = [
   { id: "passo1", numero: 1, rotulo: "Cliente" },
   { id: "passo2", numero: 2, rotulo: "Artigos" },
@@ -59,7 +62,9 @@ function NovaFaturaContent() {
   }
 
   const canGoPasso2 = clienteSelecionado !== null;
-  const canGoPasso3 = canGoPasso2 && linhas.length > 0;
+  const precisaReferencia = TIPOS_QUE_EXIGEM_REFERENCIA.includes(tipoDocumento);
+  const canGoPasso3 = canGoPasso2 && linhas.length > 0 && (!precisaReferencia || !!documentoReferenciado);
+
 
   // Passo atual (para o indicador de progresso)
   const progressoAtual =
