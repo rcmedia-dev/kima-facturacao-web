@@ -60,6 +60,14 @@ export function ProfileDropdown({ collapsed = false, variant = "default" }: Prof
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
     );
     await supabase.auth.signOut();
+    // Limpar cookie da empresa ativa e dados em memória
+    document.cookie = "kima-company-id=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax";
+    try {
+      const { useAppStore } = await import("@/lib/store");
+      useAppStore.getState().clearAllData();
+    } catch {
+      // Ignora se o store não estiver montado
+    }
     router.push("/login");
     router.refresh();
   };

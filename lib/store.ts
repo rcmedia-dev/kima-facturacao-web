@@ -509,8 +509,3 @@ export const useAppStore = create<AppStore>((set, get) => ({
     }
   },
 }));
-
-// Carrega dados do servidor (Supabase) ao iniciar a aplicação.
-if (typeof window !== "undefined") {
-  useAppStore.getState().loadAll();
-}

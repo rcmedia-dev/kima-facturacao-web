@@ -59,6 +59,21 @@ export default function LoginPage() {
       }
 
       if (authData.user) {
+        // Obter empresa do utilizador para definir o cookie no navegador
+        try {
+          const { data: membership } = await supabase
+            .from('memberships')
+            .select('company_id')
+            .eq('user_id', authData.user.id)
+            .maybeSingle();
+
+          if (membership?.company_id) {
+            document.cookie = `kima-company-id=${encodeURIComponent(membership.company_id)}; path=/; max-age=2592000; SameSite=Lax`;
+          }
+        } catch (cookieErr) {
+          console.warn('Aviso ao sincronizar empresa no login:', cookieErr);
+        }
+
         success("Bem-vindo!", `Sessão iniciada como ${authData.user.email}.`);
         router.push(redirectTo);
         router.refresh();
