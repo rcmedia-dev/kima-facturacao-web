@@ -15,6 +15,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import { formatMoedaAOA } from "@/lib/formatters";
 
 interface Passo1ClienteProps {
   clienteSelecionado: Cliente | null;
@@ -238,10 +239,36 @@ export function Passo1Cliente({
                 value={documentoReferenciado ?? undefined}
                 onValueChange={handleSelectDocumentoOrigem}
               >
-                <SelectTrigger className="bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700 h-10 text-xs">
-                  <SelectValue placeholder={isRecibo ? "Selecione a fatura a liquidar..." : "Selecione a fatura a retificar..."} />
+                <SelectTrigger className="w-full bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700 min-h-12 h-auto py-2 text-xs *:data-[slot=select-value]:line-clamp-none *:data-[slot=select-value]:block">
+                  <SelectValue placeholder={isRecibo ? "Selecione a fatura a liquidar..." : "Selecione a fatura a retificar..."}>
+                    {documentoReferenciado ? (() => {
+                      const docSel = store.documentos.find(
+                        (d) => (d.numeroCompleto || d.numero || d.id) === documentoReferenciado
+                      );
+                      if (!docSel) return documentoReferenciado;
+                      const resumoArtigos =
+                        docSel.linhas && docSel.linhas.length > 0
+                          ? docSel.linhas.map((l) => l.descricao).join(", ")
+                          : "Fatura sem artigos";
+                      return (
+                        <div className="flex flex-col text-left py-0.5 w-full">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="font-semibold text-slate-900 dark:text-white truncate max-w-[260px] sm:max-w-[320px]">
+                              {resumoArtigos}
+                            </span>
+                            <span className="font-bold text-emerald-600 dark:text-emerald-400 text-xs shrink-0">
+                              {formatMoedaAOA(docSel.total || 0)}
+                            </span>
+                          </div>
+                          <span className="text-[11px] text-slate-500 dark:text-slate-400 font-mono mt-0.5">
+                            N.º {docSel.numeroCompleto || docSel.numero} {docSel.serie ? `· Série ${docSel.serie}` : ""}
+                          </span>
+                        </div>
+                      );
+                    })() : undefined}
+                  </SelectValue>
                 </SelectTrigger>
-                <SelectContent sideOffset={4}>
+                <SelectContent sideOffset={4} className="w-[var(--radix-select-trigger-width)] min-w-[340px] sm:min-w-[500px] max-w-[650px] p-1">
                   {store.documentos
                     .filter(
                       (doc) =>
@@ -250,14 +277,36 @@ export function Passo1Cliente({
                         doc.status !== "Cancelado" &&
                         doc.status !== "Rascunho"
                     )
-                    .map((doc) => (
-                      <SelectItem key={doc.id} value={doc.numeroCompleto || doc.numero || doc.id}>
-                        <span className="font-mono font-bold text-slate-900 dark:text-white mr-2">
-                          {doc.numeroCompleto || doc.numero}
-                        </span>
-                        ({doc.total ? `${doc.total} Kz` : ""})
-                      </SelectItem>
-                    ))}
+                    .map((doc) => {
+                      const resumoArtigos =
+                        doc.linhas && doc.linhas.length > 0
+                          ? doc.linhas.map((l) => l.descricao).join(", ")
+                          : "Fatura sem artigos";
+                      const valorFormatado = formatMoedaAOA(doc.total || 0);
+
+                      return (
+                        <SelectItem
+                          key={doc.id}
+                          value={doc.numeroCompleto || doc.numero || doc.id}
+                          className="py-2.5 px-3 border-b border-slate-100 dark:border-slate-800/60 last:border-0 cursor-pointer"
+                        >
+                          <div className="flex flex-col gap-0.5 w-full text-left">
+                            <div className="flex items-center justify-between gap-3 text-xs">
+                              <span className="font-semibold text-slate-900 dark:text-white truncate max-w-[320px]">
+                                {resumoArtigos}
+                              </span>
+                              <span className="font-bold text-emerald-600 dark:text-emerald-400 shrink-0">
+                                {valorFormatado}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-2 text-[11px] text-slate-500 dark:text-slate-400 font-mono">
+                              <span>N.º {doc.numeroCompleto || doc.numero}</span>
+                              {doc.serie && <span>· Série {doc.serie}</span>}
+                            </div>
+                          </div>
+                        </SelectItem>
+                      );
+                    })}
                 </SelectContent>
               </Select>
             </div>

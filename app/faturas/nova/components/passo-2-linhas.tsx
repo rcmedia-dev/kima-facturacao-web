@@ -8,7 +8,8 @@ import { Cliente, FaturaLinha } from "@/lib/types";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { formatMoedaAOA } from "@/lib/formatters";
-import { Plus, Trash2, ArrowLeft, ArrowRight, Package, CheckCircle2, ClipboardList } from "lucide-react";
+import { Plus, Trash2, ArrowLeft, ArrowRight, Package, CheckCircle2, ClipboardList, PackagePlus } from "lucide-react";
+import { ArtigoFormModal } from "@/app/artigos/components/artigo-form-modal";
 import {
   Select,
   SelectContent,
@@ -41,6 +42,7 @@ export function Passo2Linhas({
   const store = useAppStore();
   const [artigoId, setArtigoId] = useState<string>("");
   const [quantidade, setQuantidade] = useState<string>("1");
+  const [showArtigoModal, setShowArtigoModal] = useState(false);
 
   const isRetificacao = tipoDocumento === "NotaCredito" || tipoDocumento === "NotaDebito";
 
@@ -114,84 +116,116 @@ export function Passo2Linhas({
         <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-2">
           Que artigo ou serviço quer incluir? <span className="text-red-500">*</span>
         </label>
-        {/* Linha 1: Select de artigo — largura total */}
-        <div className="w-full">
-          <Select value={artigoId} onValueChange={(v) => setArtigoId(v ?? "")}>
-            <SelectTrigger className="w-full bg-white dark:bg-slate-950 border-slate-300 dark:border-slate-700 h-10 text-sm">
-              <SelectValue placeholder="Escolha um artigo ou serviço...">
-                {artigoId ? (() => {
-                  const a = store.getArtigoPorId(artigoId);
-                  return a ? a.descricao : undefined;
-                })() : undefined}
-              </SelectValue>
-            </SelectTrigger>
-            <SelectContent
-              className="w-[var(--radix-select-trigger-width)] min-w-[480px]"
-              sideOffset={4}
+
+        {store.artigos.length === 0 ? (
+          /* ── EMPTY STATE: sem artigos ─────────────────── */
+          <div className="text-center py-10 bg-slate-50 dark:bg-slate-800/50 rounded-xl border-2 border-dashed border-slate-200 dark:border-slate-700">
+            <PackagePlus className="w-10 h-10 text-slate-400 mx-auto mb-3" />
+            <p className="text-slate-600 dark:text-slate-300 font-medium text-sm">
+              Ainda não tem artigos registados
+            </p>
+            <p className="text-slate-400 text-xs mt-1 mb-5">
+              Adicione o primeiro artigo ou serviço para incluir no documento.
+            </p>
+            <Button
+              onClick={() => setShowArtigoModal(true)}
+              className="bg-blue-600 hover:bg-blue-700 text-white"
             >
-              {store.artigos.map((artigo) => (
-                <SelectItem key={artigo.id} value={artigo.id} className="py-2.5">
-                  <div className="flex flex-col">
-                    <span className="text-sm font-semibold text-slate-900 dark:text-white">
-                      <span className="font-mono text-xs font-bold text-blue-600 dark:text-blue-400 mr-1.5">
-                        [{artigo.codigo}]
-                      </span>
-                      {artigo.descricao}
-                    </span>
-                    <span className="text-xs text-slate-400 mt-0.5">
-                      {formatMoedaAOA(artigo.preco)} · IVA {artigo.taxaIVA}%
-                    </span>
-                  </div>
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        {/* Linha 2: Quantidade + Botão — sempre lado a lado */}
-        <div className="grid grid-cols-[1fr_auto] gap-3 items-end">
-          <div>
-            <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">
-              Quantidade
-            </label>
-            <Input
-              inputMode="numeric"
-              value={quantidade}
-              onChange={(e) => setQuantidade(e.target.value.replace(/\D/g, ""))}
-              className="bg-white dark:bg-slate-950 border-slate-300 dark:border-slate-700 h-10 text-sm"
-            />
+              <Plus className="w-4 h-4 mr-2" />
+              Adicionar Artigo
+            </Button>
           </div>
+        ) : (
+          <>
+            {/* Linha 1: Select de artigo — largura total */}
+            <div className="w-full">
+              <Select value={artigoId} onValueChange={(v) => setArtigoId(v ?? "")}>
+                <SelectTrigger className="w-full bg-white dark:bg-slate-950 border-slate-300 dark:border-slate-700 h-10 text-sm">
+                  <SelectValue placeholder="Escolha um artigo ou serviço...">
+                    {artigoId ? (() => {
+                      const a = store.getArtigoPorId(artigoId);
+                      return a ? a.descricao : undefined;
+                    })() : undefined}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent
+                  className="w-[var(--radix-select-trigger-width)] min-w-[480px]"
+                  sideOffset={4}
+                >
+                  {store.artigos.map((artigo) => (
+                    <SelectItem key={artigo.id} value={artigo.id} className="py-2.5">
+                      <div className="flex flex-col">
+                        <span className="text-sm font-semibold text-slate-900 dark:text-white">
+                          <span className="font-mono text-xs font-bold text-blue-600 dark:text-blue-400 mr-1.5">
+                            {artigo.codigo}
+                          </span>
+                          {artigo.descricao}
+                        </span>
+                        <span className="text-xs text-slate-400 mt-0.5">
+                          {formatMoedaAOA(artigo.preco)} · IVA {artigo.taxaIVA}%
+                        </span>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
-          <Button
-            onClick={handleAddLinha}
-            disabled={!artigoId || quantidadeNumerica <= 0}
-            className="bg-blue-600 hover:bg-blue-700 text-white h-10 whitespace-nowrap"
-          >
-            <Plus className="w-4 h-4 mr-1.5" />
-            Adicionar Linha
-          </Button>
-        </div>
+            {/* Botão secundário: adicionar novo artigo */}
+            <button
+              onClick={() => setShowArtigoModal(true)}
+              className="flex items-center justify-center gap-2 w-full mt-2 py-2.5 rounded-xl border border-dashed border-slate-300 dark:border-slate-700 text-xs font-semibold text-slate-500 dark:text-slate-400 hover:border-blue-500 hover:text-blue-600 dark:hover:border-blue-400 dark:hover:text-blue-400 hover:bg-blue-50/30 dark:hover:bg-blue-950/20 transition-colors"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              Não encontrou? Adicionar novo artigo
+            </button>
 
-        {/* Preview rápido do artigo selecionado */}
-        {artigoSelecionado && (
-          <div className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs text-slate-600 dark:text-slate-400 font-medium">
-            <span>
-              Preço unit.:{" "}
-              <strong className="text-slate-800 dark:text-slate-200">
-                {formatMoedaAOA(artigoSelecionado.preco)}
-              </strong>{" "}
-              · IVA:{" "}
-              <strong className="text-slate-800 dark:text-slate-200">
-                {artigoSelecionado.taxaIVA}%
-              </strong>
-            </span>
-            <span>
-              Subtotal da linha:{" "}
-              <strong className="text-slate-800 dark:text-slate-200">
-                {formatMoedaAOA(artigoSelecionado.preco * quantidadeNumerica)}
-              </strong>
-            </span>
-          </div>
+            {/* Linha 2: Quantidade + Botão — sempre lado a lado */}
+            <div className="grid grid-cols-[1fr_auto] gap-3 items-end mt-3">
+              <div>
+                <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">
+                  Quantidade
+                </label>
+                <Input
+                  inputMode="numeric"
+                  value={quantidade}
+                  onChange={(e) => setQuantidade(e.target.value.replace(/\D/g, ""))}
+                  className="bg-white dark:bg-slate-950 border-slate-300 dark:border-slate-700 h-10 text-sm"
+                />
+              </div>
+
+              <Button
+                onClick={handleAddLinha}
+                disabled={!artigoId || quantidadeNumerica <= 0}
+                className="bg-blue-600 hover:bg-blue-700 text-white h-10 whitespace-nowrap"
+              >
+                <Plus className="w-4 h-4 mr-1.5" />
+                Adicionar Linha
+              </Button>
+            </div>
+
+            {/* Preview rápido do artigo selecionado */}
+            {artigoSelecionado && (
+              <div className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs text-slate-600 dark:text-slate-400 font-medium">
+                <span>
+                  Preço unit.:{" "}
+                  <strong className="text-slate-800 dark:text-slate-200">
+                    {formatMoedaAOA(artigoSelecionado.preco)}
+                  </strong>{" "}
+                  · IVA:{" "}
+                  <strong className="text-slate-800 dark:text-slate-200">
+                    {artigoSelecionado.taxaIVA}%
+                  </strong>
+                </span>
+                <span>
+                  Subtotal da linha:{" "}
+                  <strong className="text-slate-800 dark:text-slate-200">
+                    {formatMoedaAOA(artigoSelecionado.preco * quantidadeNumerica)}
+                  </strong>
+                </span>
+              </div>
+            )}
+          </>
         )}
       </div>
 
@@ -308,6 +342,17 @@ export function Passo2Linhas({
           </Button>
         </div>
       </div>
+
+      {/* Modal: Adicionar Artigo */}
+      {showArtigoModal && (
+        <ArtigoFormModal
+          onClose={() => setShowArtigoModal(false)}
+          onSave={() => {
+            store.loadArtigos?.() ?? store.loadAll();
+            setShowArtigoModal(false);
+          }}
+        />
+      )}
     </div>
   );
 }

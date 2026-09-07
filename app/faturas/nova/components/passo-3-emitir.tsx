@@ -67,80 +67,74 @@ export function Passo3Emitir({
   const [loading, setLoading] = useState(false);
   const [faturaCriada, setFaturaCriada] = useState<boolean>(false);
 
+  const [erroEmissao, setErroEmissao] = useState<string | null>(null);
+
   const rotulo = ROTULO_DOCUMENTO[tipoDocumento] || tipoDocumento;
+
+  const TIPOS_QUE_EXIGEM_REFERENCIA = ["NotaCredito", "NotaDebito", "Recibo"];
 
   const handleEmitir = async () => {
     if (!clienteSelecionado || linhas.length === 0) return;
 
+    // Validação frontend: Recibo / Nota de Crédito / Nota de Débito exigem fatura de referência
+    if (TIPOS_QUE_EXIGEM_REFERENCIA.includes(tipoDocumento) && !documentoReferenciado) {
+      setErroEmissao(
+        `${rotulo} requer a indicação da fatura de origem. Volte ao Passo 1 e selecione a fatura a referenciar.`
+      );
+      return;
+    }
+
     setLoading(true);
+    setErroEmissao(null);
+
     try {
-      // 1. Tentar salvar no Backend via POST /api/invoices
-      let apiData: Documento | null = null;
-      try {
-        const response = await fetch("/api/invoices", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            tipo: tipoDocumento,
-            clienteId: clienteSelecionado?.id,
-            linhas: linhas.map((l) => ({
+      // 1. Salvar no Backend via POST /api/invoices
+      const response = await fetch("/api/invoices", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          tipo: tipoDocumento,
+          clienteId: clienteSelecionado?.id,
+          linhas: linhas.map((l) => {
+            const iva = Number(l.taxaIVA);
+            const taxaIVAStr = ([0, 7, 14].includes(iva) ? String(iva) : "0") as "0" | "7" | "14";
+            return {
               artigoId: l.artigoId,
               quantidade: l.quantidade,
               descricao: l.descricao,
               preco: l.preco,
-              taxaIVA: String(l.taxaIVA) as "0" | "7" | "14",
-            })),
-            formaPagamento,
-            observacoes,
-            motivoIsencaoIVA,
-            dataOperacao,
-            documentoReferenciado: documentoReferenciado || undefined,
-            motivo: motivo || undefined,
+              taxaIVA: taxaIVAStr,
+            };
           }),
-        });
-
-        if (response.ok) {
-          const resData = await response.json();
-          if (resData.data?.id) {
-            apiData = resData.data;
-          }
-        }
-      } catch (err) {
-        console.warn("Servidor backend offline ou falhou, salvando no localStorage...", err);
-      }
-
-      // 2. Salvar no Zustand store local
-      const proximoNumeroNum = store.documentos.length + 1;
-      const initialStatus = (tipoDocumento === "FaturaRecibo" || tipoDocumento === "Recibo") ? "Pago" : "Pendente";
-
-      const faturaLocal = store.addFatura({
-        id: apiData?.id,
-        tipo: tipoDocumento,
-        serie: apiData?.serie || "A",
-        numero: apiData?.numero || String(proximoNumeroNum),
-        numeroCompleto: apiData?.numeroCompleto,
-        clienteId: clienteSelecionado?.id,
-        dataEmissao: apiData?.dataEmissao ? new Date(apiData.dataEmissao) : new Date(),
-        dataVencimento: apiData?.dataVencimento ? new Date(apiData.dataVencimento) : dataVencimento,
-        formaPagamento: formaPagamento as FormaPagamento,
-        status: initialStatus as Documento["status"],
-        dataPagamento: initialStatus === "Pago" ? new Date() : undefined,
-        linhas,
-        observacoes,
-        subtotal,
-        totalIVA,
-        total,
-        dataOperacao: dataOperacao ? new Date(dataOperacao) : undefined,
-        documentoReferenciado: documentoReferenciado || undefined,
-        motivo: motivo || undefined,
+          formaPagamento,
+          observacoes,
+          motivoIsencaoIVA,
+          dataOperacao,
+          documentoReferenciado: documentoReferenciado || undefined,
+          motivo: motivo || undefined,
+        }),
       });
 
-      const finalId = faturaLocal.id;
+      const resData = await response.json().catch(() => null);
+
+      if (!response.ok || !resData?.success || !resData?.data) {
+        const msg = resData?.error || "Erro ao emitir documento no servidor.";
+        setErroEmissao(msg);
+        return;
+      }
+
+      const apiData: Documento = resData.data;
+
+      // 2. Atualizar o Zustand store
+      store.addFatura(apiData);
+
       setFaturaCriada(true);
 
       setTimeout(() => {
-        router.push(`/faturas/${finalId}`);
-      }, 1200);
+        router.push(`/faturas/${apiData.id}`);
+      }, 1000);
+    } catch (err: unknown) {
+      setErroEmissao(err instanceof Error ? err.message : "Ocorreu um erro inesperado.");
     } finally {
       setLoading(false);
     }
@@ -172,6 +166,13 @@ export function Passo3Emitir({
 
   return (
     <div className="space-y-5">
+      {erroEmissao && (
+        <div className="p-4 rounded-xl border border-red-200 dark:border-red-900/60 bg-red-50 dark:bg-red-950/30 text-red-700 dark:text-red-300 flex items-start gap-3 animate-fade-in text-xs font-medium">
+          <span className="font-bold shrink-0">Erro de Validação AGT / Backend:</span>
+          <span>{erroEmissao}</span>
+        </div>
+      )}
+
       {/* Título do passo */}
       <div>
         <h3 className="text-base font-bold text-slate-900 dark:text-white">

@@ -12,8 +12,10 @@ import {
 } from "@/lib/queries-agt-fase1";
 import { usuarioAtual } from "@/lib/session";
 import { z } from "zod";
-import { requireCompanyId } from "@/lib/company";
+import { requireCompanyMembership } from "@/lib/company";
 import { SOFTWARE_NOME } from "@/lib/constants";
+
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 const criarDocumentoSchema = z.object({
   tipo: z.enum(["Fatura", "FaturaRecibo", "NotaCredito", "NotaDebito", "Orcamento", "Recibo"]).default("Fatura"),
@@ -58,14 +60,14 @@ async function proximoNumero(companyId: string, tipo: string, serie: string): Pr
 
 export async function GET(request: Request) {
   try {
-    const companyId = requireCompanyId(request);
+    const companyId = await requireCompanyMembership(request);
     const { searchParams } = new URL(request.url);
     const tipo = searchParams.get("tipo") || undefined;
     const status = searchParams.get("status");
     const dataInicioStr = searchParams.get("dataInicio");
     const dataFimStr = searchParams.get("dataFim");
     const page = parseInt(searchParams.get("page") || "1", 10);
-    const limit = parseInt(searchParams.get("limit") || "50", 10);
+    const limit = searchParams.has("limit") ? parseInt(searchParams.get("limit")!, 10) : 5000;
 
     let documentos = await obterDocumentos(companyId, tipo);
 
@@ -106,7 +108,7 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const companyId = requireCompanyId(request);
+    const companyId = await requireCompanyMembership(request);
     const body = await request.json();
     const validatedData = criarDocumentoSchema.parse(body);
 
@@ -147,12 +149,19 @@ export async function POST(request: Request) {
       }
 
       // Vincular ao documento original emitido na mesma empresa
-      const { data: docOrigem, error: errOrigem } = await db
+      const isUUIDRef = UUID_REGEX.test(validatedData.documentoReferenciado);
+      let queryDocOrigem = db
         .from("documentos")
         .select("id, tipo, numero_completo, cliente_id, status, total")
-        .eq("company_id", companyId)
-        .eq("numero_completo", validatedData.documentoReferenciado)
-        .maybeSingle();
+        .eq("company_id", companyId);
+
+      if (isUUIDRef) {
+        queryDocOrigem = queryDocOrigem.eq("id", validatedData.documentoReferenciado);
+      } else {
+        queryDocOrigem = queryDocOrigem.or(`numero_completo.eq.${validatedData.documentoReferenciado},id.eq.${validatedData.documentoReferenciado}`);
+      }
+
+      const { data: docOrigem, error: errOrigem } = await queryDocOrigem.maybeSingle();
 
       if (errOrigem) throw new Error(errOrigem.message);
 
@@ -329,6 +338,16 @@ export async function POST(request: Request) {
     if (!novoDocumento) {
       throw new Error("Documento criado mas não foi possível relê-lo");
     }
+
+    // Se for Recibo e fizer referência a uma fatura de origem, marca a fatura de origem como Pago
+    if (validatedData.tipo === "Recibo" && validatedData.documentoReferenciado) {
+      const isUUIDDoc = UUID_REGEX.test(validatedData.documentoReferenciado);
+      await db
+        .from("documentos")
+        .update({ status: "Pago", data_pagamento: dataEmissao.toISOString() })
+        .eq("company_id", companyId)
+        .or(`numero_completo.eq.${validatedData.documentoReferenciado},id.eq.${isUUIDDoc ? validatedData.documentoReferenciado : '00000000-0000-0000-0000-000000000000'}`);
+    }
     await registarAuditoriaAGT(companyId, 'EMITIR_DOCUMENTO', 'Documento', novoDocumento.id, {
       novas: {
         tipo: validatedData.tipo,
@@ -356,15 +375,29 @@ export async function POST(request: Request) {
       { status: 201 }
     );
   } catch (error: unknown) {
-    if (normalizarErro(error).nome === "ZodError") {
+    const errNorm = normalizarErro(error);
+    const stack = error instanceof Error ? error.stack : undefined;
+    console.error("ERRO NO POST /api/invoices:", error, stack);
+
+    if (errNorm.nome === "ZodError") {
+      const details = errNorm.detalhes;
+      const firstMsg = Array.isArray(details) && details[0]?.message ? details[0].message : JSON.stringify(details);
       return NextResponse.json(
-        { success: false, error: "Dados inválidos", details: normalizarErro(error).detalhes },
+        { success: false, error: `Dados inválidos: ${firstMsg}`, details },
         { status: 400 }
       );
     }
+
+    const httpStatus = errNorm.status && errNorm.status >= 400 ? errNorm.status : 500;
+    const mensagem = errNorm.mensagem || (error instanceof Error ? error.message : String(error)) || "Erro ao emitir documento";
+
     return NextResponse.json(
-      { success: false, error: normalizarErro(error).mensagem || "Erro ao emitir documento" },
-      { status: 500 }
+      {
+        success: false,
+        error: mensagem,
+        ...(process.env.NODE_ENV === "development" && stack ? { stack } : {}),
+      },
+      { status: httpStatus }
     );
   }
-}
+}

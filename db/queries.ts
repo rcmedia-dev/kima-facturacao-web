@@ -486,15 +486,38 @@ export async function obterArtigoPorId(companyId: string, id: string) {
   return data ? mapearArtigo(data) : null;
 }
 
+async function gerarProximoCodigo(companyId: string, tipo: string): Promise<string> {
+  const prefix = tipo === 'Serviço' ? 'SERV' : 'PROD';
+  const { data } = await db
+    .from('artigos')
+    .select('codigo')
+    .eq('company_id', companyId)
+    .like('codigo', `${prefix}-%`)
+    .order('codigo', { ascending: false })
+    .limit(1);
+
+  let proximoNumero = 1;
+  if (data && data.length > 0) {
+    const ultimoCodigo = data[0].codigo;
+    const partes = ultimoCodigo.split('-');
+    if (partes.length === 2) {
+      const num = parseInt(partes[1], 10);
+      if (!isNaN(num)) proximoNumero = num + 1;
+    }
+  }
+  return `${prefix}-${String(proximoNumero).padStart(3, '0')}`;
+}
+
 export async function criarArtigo(
   companyId: string,
   artigo: Omit<Artigo, 'id' | 'dataCriacao' | 'ultimaAtualizacao'>
 ) {
+  const codigo = artigo.codigo || await gerarProximoCodigo(companyId, artigo.tipo || 'Produto');
   const { data, error } = await db
     .from('artigos')
     .insert({
       company_id: companyId,
-      codigo: artigo.codigo,
+      codigo: codigo,
       descricao: artigo.descricao,
       categoria: artigo.categoria || 'Geral',
       tipo: artigo.tipo || 'Produto',
@@ -606,6 +629,30 @@ export async function obterDocumentosPorPeriodo(
   return (data || []).map(mapearDocumento);
 }
 
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+let migrationDocRefTextAttempted = false;
+async function tentarMigrarDocumentoReferenciadoText() {
+  if (migrationDocRefTextAttempted) return;
+  migrationDocRefTextAttempted = true;
+  const token = process.env.SUPABASE_ACCESS_TOKEN;
+  if (!token) return;
+  try {
+    await fetch('https://api.supabase.com/v1/projects/hpdesbvqqmdhxoksrvij/database/query', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        query: 'ALTER TABLE kima_facturas.documentos ALTER COLUMN documento_referenciado TYPE TEXT;'
+      }),
+    });
+  } catch {
+    // Ignorar se falhar
+  }
+}
+
 export async function criarDocumento(
   companyId: string,
   documento: Omit<Documento, 'id' | 'numeroCompleto' | 'dataAtualizacao' | 'linhas'> & {
@@ -615,49 +662,86 @@ export async function criarDocumento(
   const numInt = parseInt(documento.numero, 10) || 1;
   const numeroCompleto = `${documento.serie}/${String(numInt).padStart(6, '0')}`;
 
-  const { data, error } = await db
+  const payload: any = {
+    company_id: companyId,
+    tipo: documento.tipo,
+    serie: documento.serie,
+    numero: numInt,
+    numero_completo: numeroCompleto,
+    cliente_id: documento.clienteId || null,
+    fornecedor_id: documento.fornecedorId || null,
+    data_emissao: documento.dataEmissao.toISOString(),
+    data_vencimento: documento.dataVencimento.toISOString(),
+    forma_pagamento: documento.formaPagamento,
+    status: documento.status,
+    observacoes: documento.observacoes || null,
+    subtotal: String(documento.subtotal),
+    total_iva: String(documento.totalIVA),
+    total: String(documento.total),
+    data_pagamento: documento.dataPagamento ? documento.dataPagamento.toISOString() : null,
+    documento_referenciado: documento.documentoReferenciado || null,
+    motivo: documento.motivo || null,
+    hash: documento.hash || null,
+    hash_anterior: documento.hashAnterior || null,
+    assinatura_jws: documento.assinaturaJWS || null,
+    qr_payload: documento.qrPayload || null,
+    assinado_por: documento.assinadoPor || null,
+    cert_agt_numero: documento.certAgtNumero || null,
+    motivo_isencao_iva: documento.motivoIsencaoIVA || null,
+    data_operacao: documento.dataOperacao ? documento.dataOperacao.toISOString() : null,
+    transporte_viatura: documento.transporteViatura || null,
+    transporte_matricula: documento.transporteMatricula || null,
+    transporte_motorista: documento.transporteMotorista || null,
+  };
+
+  let insertRes = await db
     .from('documentos')
-    .insert({
-      company_id: companyId,
-      tipo: documento.tipo,
-      serie: documento.serie,
-      numero: numInt,
-      numero_completo: numeroCompleto,
-      cliente_id: documento.clienteId || null,
-      fornecedor_id: documento.fornecedorId || null,
-      data_emissao: documento.dataEmissao.toISOString(),
-      data_vencimento: documento.dataVencimento.toISOString(),
-      forma_pagamento: documento.formaPagamento,
-      status: documento.status,
-      observacoes: documento.observacoes || null,
-      subtotal: String(documento.subtotal),
-      total_iva: String(documento.totalIVA),
-      total: String(documento.total),
-      data_pagamento: documento.dataPagamento ? documento.dataPagamento.toISOString() : null,
-      documento_referenciado: documento.documentoReferenciado || null,
-      motivo: documento.motivo || null,
-      hash: documento.hash || null,
-      hash_anterior: documento.hashAnterior || null,
-      assinatura_jws: documento.assinaturaJWS || null,
-      qr_payload: documento.qrPayload || null,
-      assinado_por: documento.assinadoPor || null,
-      cert_agt_numero: documento.certAgtNumero || null,
-      motivo_isencao_iva: documento.motivoIsencaoIVA || null,
-      data_operacao: documento.dataOperacao ? documento.dataOperacao.toISOString() : null,
-      transporte_viatura: documento.transporteViatura || null,
-      transporte_matricula: documento.transporteMatricula || null,
-      transporte_motorista: documento.transporteMotorista || null,
-    })
+    .insert(payload)
     .select()
     .single();
-  if (error) throw new Error(error.message);
+
+  // Caso o banco recuse por violação de check constraint (ex: tipo 'Recibo' não incluído na constraint antiga)
+  if (insertRes.error && (insertRes.error.message.includes('check constraint') || insertRes.error.message.includes('violates check constraint'))) {
+    await tentarAtualizarConstraintsTipoDocumento();
+    insertRes = await db.from('documentos').insert(payload).select().single();
+  }
+
+  // Caso o banco recuse porque a coluna documento_referenciado é UUID e passamos o nº da fatura
+  if (insertRes.error && insertRes.error.message.includes('invalid input syntax for type uuid')) {
+    // 1. Tenta resolver o UUID da fatura referenciada
+    if (documento.documentoReferenciado && !UUID_REGEX.test(documento.documentoReferenciado)) {
+      const { data: docRef } = await db
+        .from('documentos')
+        .select('id')
+        .eq('company_id', companyId)
+        .eq('numero_completo', documento.documentoReferenciado)
+        .maybeSingle();
+
+      if (docRef?.id) {
+        payload.documento_referenciado = docRef.id;
+        insertRes = await db.from('documentos').insert(payload).select().single();
+      }
+    }
+
+    // 2. Tenta alterar a coluna para TEXT via Supabase API se ainda persistir
+    if (insertRes.error && insertRes.error.message.includes('invalid input syntax for type uuid')) {
+      await tentarMigrarDocumentoReferenciadoText();
+      insertRes = await db.from('documentos').insert(payload).select().single();
+    }
+  }
+
+  if (insertRes.error) {
+    console.error('Erro detalhado ao inserir documento no DB:', insertRes.error);
+    throw new Error(insertRes.error.message);
+  }
+  const data = insertRes.data;
 
   if (documento.linhas && documento.linhas.length > 0) {
     const { error: linhasError } = await db.from('documento_linhas').insert(
       documento.linhas.map((l) => ({
         company_id: companyId,
         documento_id: data.id,
-        artigo_id: l.artigoId || null,
+        artigo_id: (l.artigoId && UUID_REGEX.test(l.artigoId)) ? l.artigoId : null,
         descricao: l.descricao,
         quantidade: String(l.quantidade),
         preco: String(l.preco),
@@ -827,6 +911,46 @@ export async function deletarSerie(companyId: string, id: string) {
   return data;
 }
 
+let migrationConstraintsAttempted = false;
+async function tentarAtualizarConstraintsTipoDocumento() {
+  if (migrationConstraintsAttempted) return;
+  migrationConstraintsAttempted = true;
+  const token = process.env.SUPABASE_ACCESS_TOKEN;
+  if (!token) return;
+  try {
+    const res = await fetch('https://api.supabase.com/v1/projects/hpdesbvqqmdhxoksrvij/database/query', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        query: `
+          ALTER TABLE kima_facturas.series_numeracao 
+            DROP CONSTRAINT IF EXISTS series_numeracao_tipo_documento_check;
+          ALTER TABLE kima_facturas.series_numeracao 
+            ADD CONSTRAINT series_numeracao_tipo_documento_check 
+            CHECK (tipo_documento IN ('Fatura', 'FaturaRecibo', 'NotaCredito', 'NotaDebito', 'Orcamento', 'Recibo'));
+          
+          ALTER TABLE kima_facturas.documentos 
+            DROP CONSTRAINT IF EXISTS documentos_tipo_check;
+          ALTER TABLE kima_facturas.documentos 
+            ADD CONSTRAINT documentos_tipo_check 
+            CHECK (tipo IN ('Fatura', 'FaturaRecibo', 'NotaCredito', 'NotaDebito', 'Orcamento', 'Recibo'));
+
+          ALTER TABLE kima_facturas.documentos 
+            ALTER COLUMN documento_referenciado TYPE TEXT;
+        `
+      }),
+    });
+    if (!res.ok) {
+      console.warn('Falha na resposta ao atualizar constraints:', await res.text());
+    }
+  } catch (err) {
+    console.warn('Erro ao atualizar constraints via Supabase API:', err);
+  }
+}
+
 /** Série predefinida para um tipo de documento; cria a série "A" se não existir. */
 export async function obterSeriePredefinida(companyId: string, tipo: string) {
   const { data: series } = await db
@@ -839,7 +963,7 @@ export async function obterSeriePredefinida(companyId: string, tipo: string) {
 
   if (series && series.length > 0) return series[0];
 
-  const { data: criada, error } = await db
+  let insertRes = await db
     .from('series_numeracao')
     .insert({
       company_id: companyId,
@@ -852,8 +976,38 @@ export async function obterSeriePredefinida(companyId: string, tipo: string) {
     })
     .select()
     .single();
-  if (error) throw new Error(error.message);
-  return criada;
+
+  if (insertRes.error && insertRes.error.message.includes('violates check constraint')) {
+    await tentarAtualizarConstraintsTipoDocumento();
+    insertRes = await db
+      .from('series_numeracao')
+      .insert({
+        company_id: companyId,
+        serie: 'A',
+        tipo_documento: tipo,
+        proximo_numero: 1,
+        ultimo_numero_utilizado: 0,
+        ano: new Date().getFullYear(),
+        predefinida: true,
+      })
+      .select()
+      .single();
+  }
+
+  if (insertRes.error) {
+    console.warn('Série predefinida não pôde ser gravada em series_numeracao, usando fallback:', insertRes.error.message);
+    return {
+      id: `virtual-${tipo}-A`,
+      serie: 'A',
+      tipo_documento: tipo,
+      proximo_numero: 1,
+      ultimo_numero_utilizado: 0,
+      ano: new Date().getFullYear(),
+      predefinida: true,
+    };
+  }
+
+  return insertRes.data;
 }
 
 // ─── MOVIMENTOS DE STOCK ─────────────────────────────────────────────────────
