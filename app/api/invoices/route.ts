@@ -158,7 +158,7 @@ export async function POST(request: Request) {
       if (isUUIDRef) {
         queryDocOrigem = queryDocOrigem.eq("id", validatedData.documentoReferenciado);
       } else {
-        queryDocOrigem = queryDocOrigem.or(`numero_completo.eq.${validatedData.documentoReferenciado},id.eq.${validatedData.documentoReferenciado}`);
+        queryDocOrigem = queryDocOrigem.eq("numero_completo", validatedData.documentoReferenciado);
       }
 
       const { data: docOrigem, error: errOrigem } = await queryDocOrigem.maybeSingle();
@@ -342,11 +342,16 @@ export async function POST(request: Request) {
     // Se for Recibo e fizer referência a uma fatura de origem, marca a fatura de origem como Pago
     if (validatedData.tipo === "Recibo" && validatedData.documentoReferenciado) {
       const isUUIDDoc = UUID_REGEX.test(validatedData.documentoReferenciado);
-      await db
+      const updateQuery = db
         .from("documentos")
         .update({ status: "Pago", data_pagamento: dataEmissao.toISOString() })
-        .eq("company_id", companyId)
-        .or(`numero_completo.eq.${validatedData.documentoReferenciado},id.eq.${isUUIDDoc ? validatedData.documentoReferenciado : '00000000-0000-0000-0000-000000000000'}`);
+        .eq("company_id", companyId);
+
+      if (isUUIDDoc) {
+        await updateQuery.eq("id", validatedData.documentoReferenciado);
+      } else {
+        await updateQuery.eq("numero_completo", validatedData.documentoReferenciado);
+      }
     }
     await registarAuditoriaAGT(companyId, 'EMITIR_DOCUMENTO', 'Documento', novoDocumento.id, {
       novas: {

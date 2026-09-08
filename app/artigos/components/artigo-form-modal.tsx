@@ -222,7 +222,7 @@ export function ArtigoFormModal({
       stock: stockTexto === "" ? 0 : parseInt(stockTexto, 10) || 0,
       stockMinimo: stockMinimoTexto === "" ? 0 : parseInt(stockMinimoTexto, 10) || 0,
       ativo: data.ativo ?? true,
-      codigo: artigo?.codigo ?? "",
+      codigo: (artigo?.codigo && artigo.codigo.trim()) || undefined,
     };
     try {
       if (artigo) {

@@ -138,12 +138,37 @@ export function gerarResumoSAFT(
   });
 
   // Artigos usados no período (MasterFiles/Products — T3.1)
-  const artigosPeriodo = new Map<string, Artigo>();
+  const artigosPeriodo = new Map<
+    string,
+    {
+      codigo: string;
+      descricao: string;
+      unidadeMedida: string;
+      preco: number;
+      taxaIVA: number;
+    }
+  >();
+
+  let contadorArtigos = 1;
+
   docsPeriodo.forEach((d) => {
     d.linhas.forEach((l) => {
-      if (!l.artigoId) return;
-      const artigo = artigos.find((a) => a.id === l.artigoId);
-      if (artigo) artigosPeriodo.set(artigo.id, artigo);
+      const artigo = l.artigoId ? artigos.find((a) => a.id === l.artigoId) : undefined;
+      const key = l.artigoId || (l.descricao ? l.descricao.trim().toLowerCase() : `item-${contadorArtigos}`);
+
+      if (!artigosPeriodo.has(key)) {
+        const prefix = (artigo?.tipo === 'Serviço' || (l.descricao && /servi[çc]o/i.test(l.descricao))) ? 'SERV' : 'PROD';
+        const fallbackCodigo = `${prefix}-${String(contadorArtigos++).padStart(3, '0')}`;
+        const codigo = (artigo?.codigo && artigo.codigo.trim()) ? artigo.codigo.trim() : fallbackCodigo;
+
+        artigosPeriodo.set(key, {
+          codigo,
+          descricao: artigo?.descricao || l.descricao || 'Item Faturado',
+          unidadeMedida: artigo?.unidadeMedida || l.unidadeMedida || 'UN',
+          preco: artigo?.preco !== undefined ? artigo.preco : (l.preco || 0),
+          taxaIVA: (artigo?.taxaIVA !== undefined ? artigo.taxaIVA : l.taxaIVA) || 0,
+        });
+      }
     });
   });
 
@@ -186,13 +211,7 @@ export function gerarResumoSAFT(
     clientes: Array.from(clientesPeriodo.values()),
     documentosDetalhe,
     movimentos: logsRelevantes,
-    artigos: Array.from(artigosPeriodo.values()).map((a) => ({
-      codigo: a.codigo,
-      descricao: a.descricao,
-      unidadeMedida: a.unidadeMedida,
-      preco: a.preco,
-      taxaIVA: a.taxaIVA,
-    })),
+    artigos: Array.from(artigosPeriodo.values()),
     tabelaImpostos,
   };
 }

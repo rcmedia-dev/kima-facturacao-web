@@ -20,7 +20,7 @@
 
 ### 1.1 Pré-condições
 - [ ] `npx tsc --noEmit` sem erros.
-- [ ] **Migração 002 executada** no Supabase SQL Editor: `migrations/002_fase4_transporte_agt.sql` (colunas `transporte_viatura`, `transporte_matricula`, `transporte_motorista`).
+- [ ] **Migração 003 executada** no Supabase SQL Editor: `migrations/003_fase4_documentos_e_transporte.sql` (constraints dos 6 tipos de documentos, `documento_referenciado` em texto e colunas de transporte).
 - [ ] Empresa configurada com NIF e N.º de Certificado AGT (ex.: `999/AGT/2026`).
 - [ ] Existem clientes, artigos e **pelo menos 2 faturas emitidas no mês corrente**.
 

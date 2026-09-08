@@ -110,7 +110,7 @@ export function FaturaDrawer({ fatura, onClose }: FaturaDrawerProps) {
                 <div className="space-y-2">
                   <Button size="sm" className="w-full" onClick={handleDownloadPDF}>
                     <Download className="size-4" />
-                    Baixar PDF
+                    Baixar Documento
                   </Button>
                   <Button
                     size="sm"

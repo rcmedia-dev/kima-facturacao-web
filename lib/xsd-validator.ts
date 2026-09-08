@@ -22,7 +22,7 @@ export interface NoXML {
 
 function lerNome(xml: string, i: number): { nome: string; fim: number } {
   const inicio = i;
-  while (i < xml.length && !/[\s/>]/.test(xml[i])) i++;
+  while (i < xml.length && !/[\s/>=]/.test(xml[i])) i++;
   return { nome: xml.slice(inicio, i), fim: i };
 }
 

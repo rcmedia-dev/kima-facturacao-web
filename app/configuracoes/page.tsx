@@ -5,13 +5,10 @@ import { useAppStore } from "@/lib/store";
 import { useToastContext } from "@/components/ui/toast";
 import { ConfiguracaoEmpresa } from "@/lib/types";
 import { validarNIFAngolano, mensagemErro } from "@/lib/utils";
-import { SOFTWARE_NOME, SOFTWARE_CERTIFICACAO_AGT } from "@/lib/constants";
 import {
   Upload,
   AlertCircle,
   Loader2,
-  ShieldCheck,
-  Lock,
   Settings,
 } from "lucide-react";
 
@@ -213,7 +210,12 @@ function ConfiguracoesInner({
       });
       const json = await res.json().catch(() => null);
       if (!res.ok || !json?.success) {
-        throw new Error(json?.error || "Erro ao salvar as configurações.");
+        const msg = json?.error || "Erro ao salvar as configurações.";
+        if (msg.toLowerCase().includes("nif")) {
+          setNifError(msg);
+        }
+        setErrorMsg(msg);
+        throw new Error(msg);
       }
 
       const empresaAtualizada: ConfiguracaoEmpresa = {
@@ -224,8 +226,8 @@ function ConfiguracoesInner({
         telefone: formData.telefone,
         email: formData.email,
         logoUrl: formData.logoUrl || undefined,
-        softwareNome: SOFTWARE_NOME,
-        softwareCertificacaoNumero: SOFTWARE_CERTIFICACAO_AGT,
+        softwareNome: empresa?.softwareNome,
+        softwareCertificacaoNumero: empresa?.softwareCertificacaoNumero,
         seriesPorTipo: empresa?.seriesPorTipo || [],
         diasVencimentoPadrao: empresa?.diasVencimentoPadrao || 30,
         criadoEm: empresa?.criadoEm || new Date(),
@@ -236,7 +238,11 @@ function ConfiguracoesInner({
 
       success("Sucesso", "Configurações guardadas com sucesso.");
     } catch (err: unknown) {
-      error("Erro", mensagemErro(err, "Erro ao salvar as configurações."));
+      const msg = mensagemErro(err, "Erro ao salvar as configurações.");
+      if (msg.toLowerCase().includes("nif")) {
+        setNifError(msg);
+      }
+      error("Erro", msg);
     } finally {
       setSaving(false);
     }
@@ -425,50 +431,6 @@ function ConfiguracoesInner({
                 className="input-kima h-10 py-2 text-xs"
                 required
               />
-            </div>
-          </div>
-
-          {/* ── SEÇÃO AGT (Dentro do Card) ─────────── */}
-          <div className="pt-4 border-t border-slate-100 dark:border-slate-800">
-            <div className="flex items-center gap-2.5 mb-3">
-              <div className="flex items-center justify-center w-7 h-7 rounded-lg bg-emerald-50 dark:bg-emerald-950/40">
-                <ShieldCheck size={14} className="text-emerald-600 dark:text-emerald-400" />
-              </div>
-              <h4 className="text-sm font-bold text-slate-900 dark:text-white">Software de Facturação (AGT)</h4>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <label className="label-kima">Nome do Software</label>
-                <div className="relative">
-                  <input
-                    type="text"
-                    value={SOFTWARE_NOME}
-                    readOnly
-                    className="input-kima h-10 py-2 text-xs bg-slate-50 dark:bg-slate-800/50 cursor-not-allowed text-slate-700 dark:text-slate-300"
-                  />
-                  <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none">
-                    <Lock size={12} className="text-slate-400" />
-                  </div>
-                </div>
-                <p className="text-[10px] text-slate-400">Fixo — certificação AGT</p>
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="label-kima">Nº de Certificação AGT</label>
-                <div className="relative">
-                  <input
-                    type="text"
-                    value={SOFTWARE_CERTIFICACAO_AGT}
-                    readOnly
-                    className="input-kima h-10 py-2 text-xs bg-slate-50 dark:bg-slate-800/50 cursor-not-allowed text-slate-700 dark:text-slate-300 font-mono"
-                  />
-                  <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none">
-                    <Lock size={12} className="text-slate-400" />
-                  </div>
-                </div>
-                <p className="text-[10px] text-slate-400">Atribuído pela AGT</p>
-              </div>
             </div>
           </div>
 
