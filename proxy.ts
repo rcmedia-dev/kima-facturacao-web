@@ -126,16 +126,31 @@ export async function proxy(request: NextRequest) {
     { cookies: { getAll: () => [], setAll: () => {} } }
   );
 
-  const { data: hasModule } = await adminClient
+  const MODULE_KEYS = [MODULE_KEY, 'faturas', 'facturas', 'facturacao'];
+
+  const { data: moduleData } = await adminClient
     .from('company_modules')
-    .select('id, status, expires_at')
+    .select('id, module_key, status, expires_at')
     .eq('company_id', companyId)
-    .eq('module_key', MODULE_KEY)
+    .in('module_key', MODULE_KEYS)
     .maybeSingle();
 
-  if (!hasModule || hasModule.status !== 'Ativo') {
-    const isDev = process.env.NODE_ENV !== 'production' || request.headers.get('host')?.includes('localhost');
-    if (isDev || MODULE_KEY === 'faturas') {
+  const rawStatus = (moduleData?.status || '').toString().trim().toLowerCase();
+  const isActive = ['ativo', 'active', 'approved', 'aprovado'].includes(rawStatus);
+
+  let isExpired = false;
+  if (moduleData?.expires_at) {
+    const expDate = new Date(moduleData.expires_at);
+    if (!isNaN(expDate.getTime()) && expDate < new Date()) {
+      isExpired = true;
+    }
+  }
+
+  if (!moduleData || !isActive || isExpired) {
+    const isDev = process.env.NODE_ENV !== 'production' && request.headers.get('host')?.includes('localhost');
+
+    // Em ambiente de desenvolvimento local e sem registo de módulo prévio
+    if (isDev && !moduleData) {
       try {
         await adminClient.from('company_modules').upsert({
           company_id: companyId,
@@ -144,20 +159,23 @@ export async function proxy(request: NextRequest) {
         }, { onConflict: 'company_id,module_key' });
         return response;
       } catch {
-        // Se falhar o upsert por schema, prossegue permitindo acesso em dev/faturas
         return response;
       }
     }
 
     if (isApiRoute) {
       return NextResponse.json(
-        { success: false, error: 'Módulo de facturação não contratado ou inativo para esta empresa.' },
+        { success: false, error: 'Módulo de facturação não contratado ou subscrição pendente/inativa para esta empresa.' },
         { status: 403 }
       );
     }
-    const marketplaceUrl = new URL('/marketplace', process.env.NEXT_PUBLIC_KIMA_HUB_URL || 'https://kima-hub.vercel.app');
-    marketplaceUrl.searchParams.set('required_module', MODULE_KEY);
-    return NextResponse.redirect(marketplaceUrl);
+
+    const currentStatus = isExpired ? 'Expirado' : (moduleData?.status || 'none');
+    const loginUrl = new URL('/login', request.url);
+    loginUrl.searchParams.set('error', 'subscription_required');
+    loginUrl.searchParams.set('status', currentStatus);
+    loginUrl.searchParams.set('redirect', request.url);
+    return NextResponse.redirect(loginUrl);
   }
 
   return response;

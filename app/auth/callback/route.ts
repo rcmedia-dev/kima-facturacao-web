@@ -3,11 +3,14 @@ import { NextResponse, type NextRequest } from 'next/server';
 export async function GET(request: NextRequest) {
   const requestUrl = new URL(request.url);
   const token = requestUrl.searchParams.get('token');
-  const redirectTarget = requestUrl.searchParams.get('redirect') || '/';
+  const redirectTarget = requestUrl.searchParams.get('redirect') || '/dashboard';
 
   const host = request.headers.get('host') || '';
   const rootDomain = process.env.NEXT_PUBLIC_KIMA_ROOT_DOMAIN || 'kima.ao';
   const COOKIE_DOMAIN = host.includes(rootDomain) ? `.${rootDomain}` : undefined;
+
+  // Criar a resposta de redireccionamento desde o início
+  const response = NextResponse.redirect(new URL(redirectTarget, request.url));
 
   if (token) {
     try {
@@ -28,6 +31,8 @@ export async function GET(request: NextRequest) {
             maxAge: 60 * 60 * 24 * 30,
           });
         }
+      } else {
+        console.error('SSO verify falhou:', verifyRes.status, await verifyRes.text());
       }
     } catch (err) {
       console.error('Erro ao verificar SSO Token no Hub:', err);

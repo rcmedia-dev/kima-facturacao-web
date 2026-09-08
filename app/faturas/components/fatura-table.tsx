@@ -89,7 +89,7 @@ export function FaturaTable({ faturas, itemsPerPage = 20 }: FaturaTableProps) {
         <Table>
           <TableHeader className="bg-blue-600 text-white">
             <TableRow className="border-b border-blue-700">
-              <TableHead className="font-semibold text-xs text-white uppercase tracking-wider">Nº Fatura</TableHead>
+              <TableHead className="font-semibold text-xs text-white uppercase tracking-wider">Nº Documento</TableHead>
               <TableHead className="font-semibold text-xs text-white uppercase tracking-wider">Cliente</TableHead>
               <TableHead className="font-semibold text-xs text-white uppercase tracking-wider">Data Emissão</TableHead>
               <TableHead className="font-semibold text-xs text-white uppercase tracking-wider">Vencimento</TableHead>

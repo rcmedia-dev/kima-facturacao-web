@@ -16,6 +16,30 @@ import { gerarHashFiscal, formatarHash } from "@/lib/fiscal-hash";
 import { LABELS_DOCUMENTO } from "@/lib/constants";
 import { PagamentoModal } from "./components/pagamento-modal";
 
+function obterRotuloDocumento(tipo?: string, numeroCompleto?: string, serie?: string): string {
+  if (tipo) {
+    if (LABELS_DOCUMENTO[tipo]) return LABELS_DOCUMENTO[tipo];
+    const norm = tipo.toLowerCase().replace(/[_\s-]/g, "");
+    if (norm === "fatura" || norm === "factura") return "Factura";
+    if (norm === "faturarecibo" || norm === "facturarecibo") return "Factura-Recibo";
+    if (norm === "notacredito" || norm === "notadecredito") return "Nota de Crédito";
+    if (norm === "notadebito" || norm === "notadedebito") return "Nota de Débito";
+    if (norm === "orcamento" || norm === "proforma" || norm === "faturaproforma" || norm === "facturaproforma") return "Factura pro-forma";
+    if (norm === "recibo") return "Recibo";
+  }
+
+  const s = (serie || "").toUpperCase();
+  const nc = (numeroCompleto || "").toUpperCase();
+  if (s.startsWith("RC") || nc.startsWith("RC") || s.startsWith("REC")) return "Recibo";
+  if (s.startsWith("FR") || nc.startsWith("FR") || s.startsWith("FACREC")) return "Factura-Recibo";
+  if (s.startsWith("NC") || nc.startsWith("NC")) return "Nota de Crédito";
+  if (s.startsWith("ND") || nc.startsWith("ND")) return "Nota de Débito";
+  if (s.startsWith("FP") || nc.startsWith("FP") || s.startsWith("ORC") || s.startsWith("PRO")) return "Factura pro-forma";
+  if (s.startsWith("FT") || nc.startsWith("FT") || s.startsWith("FAC")) return "Factura";
+
+  return tipo || "Factura";
+}
+
 type FaturaApi = Documento & {
   cliente?: {
     id: string;
@@ -199,14 +223,17 @@ export default function FaturaDetailPage() {
           <Link href="/faturas" className="block">
             <Button variant="outline" className="w-full justify-start rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-300">
               <ArrowLeft className="w-4 h-4 mr-2" />
-              Voltar à lista de faturas
+              Voltar aos documentos
             </Button>
           </Link>
 
-          {/* Cabeçalho da fatura na sidebar */}
+          {/* Cabeçalho do documento na sidebar */}
           <div>
             <div className="mb-2">{getStatusBadge(fatura.status)}</div>
-            <h1 className="text-xl font-bold font-mono text-slate-900 dark:text-white">
+            <p className="text-[11px] font-medium uppercase tracking-widest text-slate-400">
+              {obterRotuloDocumento(fatura.tipo, fatura.numeroCompleto, fatura.serie)}
+            </p>
+            <h1 className="text-xl font-bold font-mono text-slate-900 dark:text-white mt-0.5">
               {fatura.numeroCompleto || `${fatura.serie}/${fatura.numero}`}
             </h1>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
@@ -306,7 +333,7 @@ export default function FaturaDetailPage() {
             </div>
             <div className="text-right">
               <span className="text-xs font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400">
-                {(LABELS_DOCUMENTO[fatura.tipo] || fatura.tipo || "FATURA").toUpperCase()}
+                {obterRotuloDocumento(fatura.tipo, fatura.numeroCompleto, fatura.serie).toUpperCase()}
               </span>
               <p className="text-base font-bold font-mono text-slate-900 dark:text-white mt-0.5">
                 {fatura.numeroCompleto || `${fatura.serie}/${fatura.numero}`}
