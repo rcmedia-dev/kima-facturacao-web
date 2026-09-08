@@ -103,9 +103,11 @@ function mapearDespesa(r: any): Despesa {
 }
 
 function mapearArtigo(r: any): Artigo {
+  const prefix = r.tipo === 'Serviço' ? 'SERV' : 'PROD';
+  const fallbackCodigo = r.id ? `${prefix}-${String(r.id).slice(0, 6).toUpperCase()}` : `${prefix}-001`;
   return {
     id: r.id,
-    codigo: r.codigo,
+    codigo: (r.codigo && r.codigo.trim()) || fallbackCodigo,
     descricao: r.descricao,
     categoria: r.categoria || 'Geral',
     unidadeMedida: r.unidade_medida,
@@ -512,7 +514,7 @@ export async function criarArtigo(
   companyId: string,
   artigo: Omit<Artigo, 'id' | 'dataCriacao' | 'ultimaAtualizacao'>
 ) {
-  const codigo = artigo.codigo || await gerarProximoCodigo(companyId, artigo.tipo || 'Produto');
+  const codigo = (artigo.codigo && artigo.codigo.trim()) || await gerarProximoCodigo(companyId, artigo.tipo || 'Produto');
   const { data, error } = await db
     .from('artigos')
     .insert({
@@ -544,8 +546,10 @@ export async function atualizarArtigo(
   const anteriores = await obterArtigoPorId(companyId, id);
   if (!anteriores) throw new Error('Artigo não encontrado');
 
+  const codigo = (artigo.codigo && artigo.codigo.trim()) || anteriores.codigo || await gerarProximoCodigo(companyId, artigo.tipo || anteriores.tipo || 'Produto');
+
   const payload: any = {
-    codigo: artigo.codigo ?? anteriores.codigo,
+    codigo,
     descricao: artigo.descricao ?? anteriores.descricao,
     categoria: artigo.categoria !== undefined ? artigo.categoria : undefined,
     tipo: artigo.tipo,
@@ -645,7 +649,10 @@ async function tentarMigrarDocumentoReferenciadoText() {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        query: 'ALTER TABLE kima_facturas.documentos ALTER COLUMN documento_referenciado TYPE TEXT;'
+        query: `
+          ALTER TABLE kima_facturas.documentos DROP CONSTRAINT IF EXISTS documentos_documento_referenciado_fkey;
+          ALTER TABLE kima_facturas.documentos ALTER COLUMN documento_referenciado TYPE TEXT;
+        `
       }),
     });
   } catch {
@@ -694,39 +701,57 @@ export async function criarDocumento(
     transporte_motorista: documento.transporteMotorista || null,
   };
 
+  // Se documentoReferenciado não for UUID e a coluna no DB puder ser UUID, busca o ID do documento
+  if (payload.documento_referenciado && !UUID_REGEX.test(payload.documento_referenciado)) {
+    const { data: docRef } = await db
+      .from('documentos')
+      .select('id')
+      .eq('company_id', companyId)
+      .eq('numero_completo', payload.documento_referenciado)
+      .maybeSingle();
+
+    // Se a coluna no Postgres for UUID, usamos o docRef.id se disponível
+    // Se a coluna já for TEXT, o próprio string número completo também é aceito
+  }
+
   let insertRes = await db
     .from('documentos')
     .insert(payload)
     .select()
     .single();
 
-  // Caso o banco recuse por violação de check constraint (ex: tipo 'Recibo' não incluído na constraint antiga)
-  if (insertRes.error && (insertRes.error.message.includes('check constraint') || insertRes.error.message.includes('violates check constraint'))) {
-    await tentarAtualizarConstraintsTipoDocumento();
-    insertRes = await db.from('documentos').insert(payload).select().single();
-  }
-
   // Caso o banco recuse porque a coluna documento_referenciado é UUID e passamos o nº da fatura
   if (insertRes.error && insertRes.error.message.includes('invalid input syntax for type uuid')) {
-    // 1. Tenta resolver o UUID da fatura referenciada
-    if (documento.documentoReferenciado && !UUID_REGEX.test(documento.documentoReferenciado)) {
+    if (payload.documento_referenciado && !UUID_REGEX.test(payload.documento_referenciado)) {
       const { data: docRef } = await db
         .from('documentos')
         .select('id')
         .eq('company_id', companyId)
-        .eq('numero_completo', documento.documentoReferenciado)
+        .eq('numero_completo', payload.documento_referenciado)
         .maybeSingle();
 
       if (docRef?.id) {
         payload.documento_referenciado = docRef.id;
         insertRes = await db.from('documentos').insert(payload).select().single();
+      } else {
+        // Se não encontrou o UUID, define como null para não bloquear a emissão se a coluna for UUID
+        payload.documento_referenciado = null;
+        insertRes = await db.from('documentos').insert(payload).select().single();
       }
     }
+  }
 
-    // 2. Tenta alterar a coluna para TEXT via Supabase API se ainda persistir
-    if (insertRes.error && insertRes.error.message.includes('invalid input syntax for type uuid')) {
-      await tentarMigrarDocumentoReferenciadoText();
-      insertRes = await db.from('documentos').insert(payload).select().single();
+  // Caso o banco recuse por violação de check constraint (ex: tipo 'Recibo' não incluído na constraint antiga do Supabase)
+  if (insertRes.error && (insertRes.error.message.includes('check constraint') || insertRes.error.message.includes('violates check constraint'))) {
+    console.warn('Check constraint violada — a tentar migrar constraints automaticamente...');
+    await tentarAtualizarConstraintsTipoDocumento();
+    insertRes = await db.from('documentos').insert(payload).select().single();
+
+    if (insertRes.error && (insertRes.error.message.includes('check constraint') || insertRes.error.message.includes('violates check constraint'))) {
+      throw new Error(
+        `O tipo de documento '${documento.tipo}' não é aceite pela base de dados (documentos_tipo_check). ` +
+        `Por favor, execute o script SQL da migração 'migrations/003_fase4_documentos_e_transporte.sql' no Supabase SQL Editor para atualizar a constraint dos 6 tipos de documentos.`
+      );
     }
   }
 
@@ -926,6 +951,36 @@ async function tentarAtualizarConstraintsTipoDocumento() {
       },
       body: JSON.stringify({
         query: `
+          DELETE FROM kima_facturas.series_numeracao
+          WHERE tipo_documento IN ('GuiaRemessa', 'Guia de Remessa', 'GUIA_REMESSA', 'GuiaTransporte');
+
+          DELETE FROM kima_facturas.documentos
+          WHERE tipo IN ('GuiaRemessa', 'Guia de Remessa', 'GUIA_REMESSA', 'GuiaTransporte');
+
+          UPDATE kima_facturas.series_numeracao
+          SET tipo_documento = CASE
+            WHEN tipo_documento IN ('Factura', 'FATURA', 'fatura') THEN 'Fatura'
+            WHEN tipo_documento IN ('Factura-Recibo', 'FacturaRecibo', 'FATURA_RECIBO') THEN 'FaturaRecibo'
+            WHEN tipo_documento IN ('Nota de Crédito', 'Nota_Credito', 'NotaCredito', 'NOTA_CREDITO') THEN 'NotaCredito'
+            WHEN tipo_documento IN ('Nota de Débito', 'Nota_Debito', 'NotaDebito', 'NOTA_DEBITO') THEN 'NotaDebito'
+            WHEN tipo_documento IN ('Factura pro-forma', 'Proforma', 'Orçamento', 'Orcamento', 'ORCAMENTO') THEN 'Orcamento'
+            WHEN tipo_documento IN ('Recibo', 'RECIBO', 'recibo') THEN 'Recibo'
+            ELSE 'Fatura'
+          END
+          WHERE tipo_documento NOT IN ('Fatura', 'FaturaRecibo', 'NotaCredito', 'NotaDebito', 'Orcamento', 'Recibo');
+
+          UPDATE kima_facturas.documentos
+          SET tipo = CASE
+            WHEN tipo IN ('Factura', 'FATURA', 'fatura') THEN 'Fatura'
+            WHEN tipo IN ('Factura-Recibo', 'FacturaRecibo', 'FATURA_RECIBO') THEN 'FaturaRecibo'
+            WHEN tipo IN ('Nota de Crédito', 'Nota_Credito', 'NotaCredito', 'NOTA_CREDITO') THEN 'NotaCredito'
+            WHEN tipo IN ('Nota de Débito', 'Nota_Debito', 'NotaDebito', 'NOTA_DEBITO') THEN 'NotaDebito'
+            WHEN tipo IN ('Factura pro-forma', 'Proforma', 'Orçamento', 'Orcamento', 'ORCAMENTO') THEN 'Orcamento'
+            WHEN tipo IN ('Recibo', 'RECIBO', 'recibo') THEN 'Recibo'
+            ELSE 'Fatura'
+          END
+          WHERE tipo NOT IN ('Fatura', 'FaturaRecibo', 'NotaCredito', 'NotaDebito', 'Orcamento', 'Recibo');
+
           ALTER TABLE kima_facturas.series_numeracao 
             DROP CONSTRAINT IF EXISTS series_numeracao_tipo_documento_check;
           ALTER TABLE kima_facturas.series_numeracao 
@@ -937,6 +992,9 @@ async function tentarAtualizarConstraintsTipoDocumento() {
           ALTER TABLE kima_facturas.documentos 
             ADD CONSTRAINT documentos_tipo_check 
             CHECK (tipo IN ('Fatura', 'FaturaRecibo', 'NotaCredito', 'NotaDebito', 'Orcamento', 'Recibo'));
+
+          ALTER TABLE kima_facturas.documentos 
+            DROP CONSTRAINT IF EXISTS documentos_documento_referenciado_fkey;
 
           ALTER TABLE kima_facturas.documentos 
             ALTER COLUMN documento_referenciado TYPE TEXT;
@@ -1158,7 +1216,22 @@ export async function atualizarEmpresa(
 
   const updateCompany: any = {};
   if (dados.nomeEmpresa !== undefined) updateCompany.name = dados.nomeEmpresa;
-  if (dados.nif !== undefined) updateCompany.nif = dados.nif;
+  if (dados.nif !== undefined) {
+    const nifLimpo = dados.nif.trim();
+    if (nifLimpo) {
+      const { data: existente } = await publicDb
+        .from('companies')
+        .select('id, name, nif')
+        .eq('nif', nifLimpo)
+        .neq('id', companyId)
+        .maybeSingle();
+
+      if (existente) {
+        throw new Error(`O NIF ${nifLimpo} já se encontra registado para a empresa "${existente.name}".`);
+      }
+    }
+    updateCompany.nif = nifLimpo;
+  }
 
   if (Object.keys(updateCompany).length > 0) {
     const { error } = await publicDb.from('companies').update(updateCompany).eq('id', companyId);
