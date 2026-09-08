@@ -302,12 +302,14 @@ export default function LoginPage() {
                     Manter sessão iniciada
                   </span>
                 </label>
-                <Link
-                  href="#"
+                <a
+                  href="https://kima-hub.vercel.app/forgot-password"
+                  target="_blank"
+                  rel="noopener noreferrer"
                   className="text-sm text-blue-600 dark:text-blue-400 font-medium hover:underline"
                 >
                   Esqueceu a palavra-passe?
-                </Link>
+                </a>
               </div>
 
               {/* Botão Entrar */}
