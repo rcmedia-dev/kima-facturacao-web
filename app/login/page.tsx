@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createBrowserClient } from "@supabase/ssr";
@@ -11,11 +11,28 @@ import {
   Eye,
   EyeOff,
   ShieldCheck,
+  AlertTriangle,
+  Clock,
+  XCircle,
+  ExternalLink,
+  Building2,
+  Lock,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { useToastContext } from "@/components/ui/toast";
 import { loginSchema, LoginFormData } from "@/lib/schemas";
+import { checkUserSubscription, SubscriptionStatusType } from "@/lib/subscription";
+
+interface SubscriptionAlertState {
+  type: SubscriptionStatusType;
+  title: string;
+  description: string;
+  planName?: string | null;
+  companyName?: string | null;
+  ctaText: string;
+  ctaUrl: string;
+}
 
 export default function LoginPage() {
   const router = useRouter();
@@ -27,10 +44,15 @@ export default function LoginPage() {
       : "/dashboard";
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isCheckingSession, setIsCheckingSession] = useState(true);
+  const [subscriptionAlert, setSubscriptionAlert] = useState<SubscriptionAlertState | null>(null);
+
+  const hubUrl = process.env.NEXT_PUBLIC_KIMA_HUB_URL || "https://kima-hub.vercel.app";
 
   const {
     register,
     handleSubmit,
+    setValue,
     formState: { errors },
   } = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema) as any,
@@ -40,46 +62,195 @@ export default function LoginPage() {
     },
   });
 
+  // Verificar parâmetros na URL e validar se já existe sessão ativa ao carregar a página
+  useEffect(() => {
+    const checkInitialState = async () => {
+      if (typeof window === "undefined") return;
+
+      const params = new URLSearchParams(window.location.search);
+      const urlError = params.get("error");
+      const urlStatus = params.get("status");
+
+      if (urlError === "subscription_required") {
+        if (urlStatus === "Pendente" || urlStatus === "pending") {
+          setSubscriptionAlert({
+            type: "pending",
+            title: "Subscrição Pendente de Aprovação",
+            description:
+              "O seu pedido de subscrição para o módulo KIMA Facturação ainda está a aguardar aprovação pelo administrador.",
+            ctaText: "Acompanhar no Kima Hub",
+            ctaUrl: `${hubUrl}/dashboard`,
+          });
+        } else if (urlStatus === "Expirado" || urlStatus === "expired") {
+          setSubscriptionAlert({
+            type: "expired",
+            title: "Subscrição Expirada",
+            description:
+              "A subscrição do módulo KIMA Facturação da sua empresa expirou. Renove o plano para restabelecer o acesso.",
+            ctaText: "Renovar no Kima Hub",
+            ctaUrl: `${hubUrl}/marketplace`,
+          });
+        } else {
+          setSubscriptionAlert({
+            type: "no_subscription",
+            title: "Subscrição do Módulo Necessária",
+            description:
+              "Para aceder ao KIMA Facturação, a sua empresa precisa de ter uma subscrição aprovada e ativa.",
+            ctaText: "Ver Planos no Kima Hub",
+            ctaUrl: `${hubUrl}/marketplace`,
+          });
+        }
+      }
+
+      try {
+        const supabase = createBrowserClient(
+          process.env.NEXT_PUBLIC_SUPABASE_URL!,
+          process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+        );
+
+        const { data: { user } } = await supabase.auth.getUser();
+
+        if (user) {
+          // Verificar se a sessão existente tem subscrição ativa
+          const subResult = await checkUserSubscription(supabase, user.id);
+
+          if (subResult.hasAccess && subResult.companyId) {
+            document.cookie = `kima-company-id=${encodeURIComponent(subResult.companyId)}; path=/; max-age=2592000; SameSite=Lax`;
+            router.replace(redirectTo);
+            return;
+          } else if (!subResult.hasAccess) {
+            // Sessão existe mas não tem plano aprovado/ativo
+            await supabase.auth.signOut();
+            handleSubscriptionError(subResult);
+          }
+        }
+      } catch (err) {
+        console.warn("Aviso ao verificar sessão inicial:", err);
+      } finally {
+        setIsCheckingSession(false);
+      }
+    };
+
+    checkInitialState();
+  }, [hubUrl, redirectTo, router]);
+
+  const handleSubscriptionError = (subResult: {
+    status: SubscriptionStatusType;
+    message: string;
+    companyName?: string | null;
+    planName?: string | null;
+  }) => {
+    switch (subResult.status) {
+      case "pending":
+        setSubscriptionAlert({
+          type: "pending",
+          title: "Subscrição Pendente de Aprovação",
+          description:
+            "O seu plano para o módulo KIMA Facturação foi subscrito com sucesso, mas ainda está a aguardar aprovação pelo administrador. Assim que for aprovado, poderá entrar imediatamente.",
+          companyName: subResult.companyName,
+          planName: subResult.planName,
+          ctaText: "Acompanhar Estado no Kima Hub",
+          ctaUrl: `${hubUrl}/dashboard`,
+        });
+        break;
+
+      case "expired":
+        setSubscriptionAlert({
+          type: "expired",
+          title: "Subscrição Expirada",
+          description:
+            "A subscrição do módulo KIMA Facturação para a sua empresa expirou. Renove a subscrição no Kima Hub para continuar a emitir facturas.",
+          companyName: subResult.companyName,
+          planName: subResult.planName,
+          ctaText: "Renovar Subscrição no Kima Hub",
+          ctaUrl: `${hubUrl}/marketplace`,
+        });
+        break;
+
+      case "no_subscription":
+        setSubscriptionAlert({
+          type: "no_subscription",
+          title: "Sem Subscrição no Módulo",
+          description:
+            "A sua conta ainda não possui uma subscrição registada para o módulo KIMA Facturação. Escolha um plano no Kima Hub para começar.",
+          companyName: subResult.companyName,
+          ctaText: "Escolher Plano no Kima Hub",
+          ctaUrl: `${hubUrl}/marketplace`,
+        });
+        break;
+
+      case "no_company":
+        setSubscriptionAlert({
+          type: "no_company",
+          title: "Empresa Não Encontrada",
+          description:
+            "A sua conta não tem nenhuma empresa vinculada. Conclua a configuração da sua empresa no Kima Hub.",
+          ctaText: "Configurar Empresa no Kima Hub",
+          ctaUrl: `${hubUrl}/onboarding`,
+        });
+        break;
+
+      default:
+        setSubscriptionAlert({
+          type: "inactive",
+          title: "Acesso Não Permitido",
+          description: subResult.message || "A sua subscrição para este módulo encontra-se inativa ou cancelada.",
+          companyName: subResult.companyName,
+          planName: subResult.planName,
+          ctaText: "Gerir Subscrições no Kima Hub",
+          ctaUrl: `${hubUrl}/dashboard`,
+        });
+        break;
+    }
+  };
+
   const onSubmit = async (data: LoginFormData) => {
     setIsLoading(true);
+    setSubscriptionAlert(null);
+
     try {
       const supabase = createBrowserClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
       );
 
+      // 1. Autenticação com Email e Senha
       const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
         email: data.email,
         password: data.password,
       });
 
       if (authError) {
-        error("Erro no login", authError.message);
+        error("Erro no login", authError.message || "Credenciais inválidas.");
         return;
       }
 
-      if (authData.user) {
-        // Obter empresa do utilizador para definir o cookie no navegador
-        try {
-          const { data: membership } = await supabase
-            .from('memberships')
-            .select('company_id')
-            .eq('user_id', authData.user.id)
-            .maybeSingle();
-
-          if (membership?.company_id) {
-            document.cookie = `kima-company-id=${encodeURIComponent(membership.company_id)}; path=/; max-age=2592000; SameSite=Lax`;
-          }
-        } catch (cookieErr) {
-          console.warn('Aviso ao sincronizar empresa no login:', cookieErr);
-        }
-
-        success("Bem-vindo!", `Sessão iniciada como ${authData.user.email}.`);
-        router.push(redirectTo);
-        router.refresh();
+      if (!authData.user) {
+        error("Erro no login", "Não foi possível identificar o utilizador.");
+        return;
       }
-    } catch (e) {
-      error("Erro no login", "Não foi possível iniciar a sessão.");
+
+      // 2. Verificar rigorosamente se a empresa do utilizador tem o plano subscrito e ativo
+      const subResult = await checkUserSubscription(supabase, authData.user.id);
+
+      if (!subResult.hasAccess) {
+        // Se não tiver subscrição ativa/aprovada, desliga a sessão do sub-app
+        await supabase.auth.signOut();
+        handleSubscriptionError(subResult);
+        error("Subscrição necessária", subResult.message);
+        return;
+      }
+
+      // 3. Subscrição Ativa: Definir cookie de contexto da empresa
+      if (subResult.companyId) {
+        document.cookie = `kima-company-id=${encodeURIComponent(subResult.companyId)}; path=/; max-age=2592000; SameSite=Lax`;
+      }
+
+      success("Bem-vindo!", `Sessão iniciada como ${authData.user.email}.`);
+      router.push(redirectTo);
+      router.refresh();
+    } catch (e: any) {
+      error("Erro no login", e?.message || "Não foi possível iniciar a sessão.");
     } finally {
       setIsLoading(false);
     }
@@ -227,14 +398,92 @@ export default function LoginPage() {
             </div>
 
             {/* Título e subtítulo */}
-            <div className="mb-8">
+            <div className="mb-6">
               <h2 className="text-2xl sm:text-[28px] font-bold tracking-tight text-slate-900 dark:text-white">
                 Entrar na sua conta
               </h2>
               <p className="text-sm text-slate-400 dark:text-slate-500 mt-1.5">
-                Introduza os seus dados para entrar.
+                Introduza os seus dados para aceder ao sistema de facturação.
               </p>
             </div>
+
+            {/* ── ALERTA DE SUBSCRIÇÃO / PLANO ────────────────────── */}
+            {subscriptionAlert && (
+              <div
+                className={`mb-6 p-4 rounded-xl border transition-all duration-200 animate-scale-in ${
+                  subscriptionAlert.type === "pending"
+                    ? "bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800/60 text-amber-900 dark:text-amber-200"
+                    : subscriptionAlert.type === "expired"
+                    ? "bg-rose-50 dark:bg-rose-950/30 border-rose-200 dark:border-rose-800/60 text-rose-900 dark:text-rose-200"
+                    : subscriptionAlert.type === "no_company"
+                    ? "bg-purple-50 dark:bg-purple-950/30 border-purple-200 dark:border-purple-800/60 text-purple-900 dark:text-purple-200"
+                    : "bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-800/60 text-blue-900 dark:text-blue-200"
+                }`}
+              >
+                <div className="flex items-start gap-3">
+                  <div className="shrink-0 mt-0.5">
+                    {subscriptionAlert.type === "pending" && (
+                      <Clock className="w-5 h-5 text-amber-600 dark:text-amber-400 animate-pulse" />
+                    )}
+                    {subscriptionAlert.type === "expired" && (
+                      <AlertTriangle className="w-5 h-5 text-rose-600 dark:text-rose-400" />
+                    )}
+                    {subscriptionAlert.type === "no_company" && (
+                      <Building2 className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+                    )}
+                    {subscriptionAlert.type === "no_subscription" && (
+                      <Lock className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                    )}
+                    {subscriptionAlert.type === "inactive" && (
+                      <XCircle className="w-5 h-5 text-rose-600 dark:text-rose-400" />
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-sm font-bold tracking-tight">
+                      {subscriptionAlert.title}
+                    </h3>
+                    <p className="text-xs mt-1 leading-relaxed opacity-90">
+                      {subscriptionAlert.description}
+                    </p>
+
+                    {(subscriptionAlert.companyName || subscriptionAlert.planName) && (
+                      <div className="flex flex-wrap gap-1.5 mt-2.5">
+                        {subscriptionAlert.companyName && (
+                          <span className="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-md bg-white/70 dark:bg-slate-900/60 border border-current/10">
+                            <Building2 size={12} />
+                            {subscriptionAlert.companyName}
+                          </span>
+                        )}
+                        {subscriptionAlert.planName && (
+                          <span className="inline-flex items-center text-[11px] font-medium px-2 py-0.5 rounded-md bg-white/70 dark:bg-slate-900/60 border border-current/10">
+                            Plano: {subscriptionAlert.planName}
+                          </span>
+                        )}
+                      </div>
+                    )}
+
+                    <div className="mt-3.5 pt-2 border-t border-current/10 flex items-center justify-between">
+                      <a
+                        href={subscriptionAlert.ctaUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 text-xs font-semibold underline hover:opacity-80 transition-opacity"
+                      >
+                        {subscriptionAlert.ctaText}
+                        <ExternalLink size={13} />
+                      </a>
+                      <button
+                        type="button"
+                        onClick={() => setSubscriptionAlert(null)}
+                        className="text-[11px] opacity-70 hover:opacity-100 transition-opacity"
+                      >
+                        Fechar
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
 
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-5" noValidate>
               {/* Email */}
