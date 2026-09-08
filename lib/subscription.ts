@@ -25,70 +25,102 @@ const MODULE_KEYS = [
   'faturas',
   'facturas',
   'facturacao',
+  'fatura',
+  'factura',
 ];
 
 /**
  * Verifica se um utilizador tem uma empresa associada e um plano/módulo ativo e aprovado.
+ * Usa a rota de API do servidor para evitar restrições de RLS no cliente e garantir dados fiáveis.
  */
 export async function checkUserSubscription(
   supabase: SupabaseClient,
   userId: string,
   targetCompanyId?: string | null
 ): Promise<SubscriptionCheckResult> {
+  // 1. Tentar verificar via API do servidor (mais robusto, sem problemas de joins/RLS)
   try {
-    // 1. Obter a empresa associada ao utilizador (memberships)
-    let membershipQuery = supabase
-      .from('memberships')
-      .select('company_id, role, companies(id, name, trade_name)')
-      .eq('user_id', userId);
+    const res = await fetch('/api/auth/check-subscription', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId }),
+    });
 
-    if (targetCompanyId) {
-      membershipQuery = membershipQuery.eq('company_id', targetCompanyId);
-    }
-
-    const { data: membershipData, error: membershipError } = await membershipQuery.maybeSingle();
-
-    if (membershipError) {
-      console.warn('Erro ao consultar membership:', membershipError.message);
-    }
-
-    const membership = membershipData as {
-      company_id: string;
-      role?: string;
-      companies?: { id: string; name?: string; trade_name?: string } | null;
-    } | null;
-
-    if (!membership?.company_id) {
-      // Tentar busca sem filtro de targetCompanyId se o especificado falhou
-      if (targetCompanyId) {
-        return checkUserSubscription(supabase, userId, null);
+    if (res.ok) {
+      const data = await res.json();
+      if (data.success) {
+        return {
+          hasAccess: Boolean(data.hasAccess),
+          status: data.status as SubscriptionStatusType,
+          rawStatus: data.rawStatus,
+          companyId: data.companyId || null,
+          companyName: data.companyName || null,
+          planName: data.planName || null,
+          expiresAt: data.expiresAt || null,
+          message: data.message || 'Verificação concluída.',
+        };
       }
+    }
+  } catch (apiErr) {
+    console.warn('Falha ao contactar /api/auth/check-subscription, a recorrer à consulta direta:', apiErr);
+  }
 
+  // 2. Fallback: Consulta direta via cliente Supabase
+  try {
+    let companyId: string | null = targetCompanyId || null;
+
+    if (!companyId) {
+      const { data: memberData } = await supabase
+        .from('memberships')
+        .select('company_id, role, status')
+        .eq('user_id', userId)
+        .limit(1);
+
+      if (memberData && memberData.length > 0) {
+        companyId = memberData[0].company_id;
+      }
+    }
+
+    if (!companyId) {
+      const { data: ownedCompanies } = await supabase
+        .from('companies')
+        .select('id')
+        .or(`owner_id.eq.${userId},created_by.eq.${userId}`)
+        .limit(1);
+
+      if (ownedCompanies && ownedCompanies.length > 0) {
+        companyId = ownedCompanies[0].id;
+      }
+    }
+
+    if (!companyId) {
       return {
         hasAccess: false,
         status: 'no_company',
         companyId: null,
-        message: 'A sua conta ainda não está associada a nenhuma empresa. Configure a sua empresa no Kima Hub para prosseguir.',
+        message: 'A sua conta não tem nenhuma empresa vinculada. Conclua a configuração da sua empresa no Kima Hub.',
       };
     }
 
-    const companyId = membership.company_id;
-    const companyName =
-      membership.companies?.trade_name ||
-      membership.companies?.name ||
-      null;
+    // Obter nome da empresa
+    let companyName: string | null = null;
+    const { data: comp } = await supabase
+      .from('companies')
+      .select('name, trade_name')
+      .eq('id', companyId)
+      .maybeSingle();
 
-    // 2. Consultar o módulo / subscrição da empresa (company_modules)
-    const { data: moduleData, error: moduleError } = await supabase
+    if (comp) {
+      companyName = comp.trade_name || comp.name || null;
+    }
+
+    // Consultar `company_modules`
+    const { data: moduleData } = await supabase
       .from('company_modules')
-      .select('id, module_key, status, plan, expires_at, created_at')
+      .select('id, module_key, status, plan, expires_at')
       .eq('company_id', companyId)
       .in('module_key', MODULE_KEYS)
       .maybeSingle();
-
-    if (moduleError && moduleError.code !== 'PGRST116') {
-      console.warn('Aviso ao consultar company_modules:', moduleError.message);
-    }
 
     if (!moduleData) {
       return {
@@ -102,13 +134,12 @@ export async function checkUserSubscription(
 
     const rawStatus = (moduleData.status || '').toString().trim();
     const statusLower = rawStatus.toLowerCase();
-    const planName = moduleData.plan || 'Plano Padrão';
+    const planName = moduleData.plan || 'Plano Facturação';
     const expiresAt = moduleData.expires_at || null;
 
-    // Verificar se expirou por data
     if (expiresAt) {
-      const expirationDate = new Date(expiresAt);
-      if (!isNaN(expirationDate.getTime()) && expirationDate < new Date()) {
+      const expDate = new Date(expiresAt);
+      if (!isNaN(expDate.getTime()) && expDate < new Date()) {
         return {
           hasAccess: false,
           status: 'expired',
@@ -122,7 +153,6 @@ export async function checkUserSubscription(
       }
     }
 
-    // Validação de estados
     if (['ativo', 'active', 'approved', 'aprovado'].includes(statusLower)) {
       return {
         hasAccess: true,
@@ -145,7 +175,7 @@ export async function checkUserSubscription(
         companyName,
         planName,
         expiresAt,
-        message: 'A sua subscrição do módulo KIMA Facturação ainda está a aguardar aprovação pelo administrador.',
+        message: 'O seu pedido de subscrição para o módulo KIMA Facturação ainda está a aguardar aprovação pelo administrador.',
       };
     }
 
@@ -162,19 +192,6 @@ export async function checkUserSubscription(
       };
     }
 
-    if (['rejeitado', 'rejected', 'cancelado', 'cancelled', 'inativo', 'inactive'].includes(statusLower)) {
-      return {
-        hasAccess: false,
-        status: 'inactive',
-        rawStatus,
-        companyId,
-        companyName,
-        planName,
-        expiresAt,
-        message: 'A sua subscrição para o módulo KIMA Facturação foi cancelada ou está inativa.',
-      };
-    }
-
     return {
       hasAccess: false,
       status: 'inactive',
@@ -183,10 +200,10 @@ export async function checkUserSubscription(
       companyName,
       planName,
       expiresAt,
-      message: `O estado atual da sua subscrição é "${rawStatus}". Contacte o suporte ou consulte o Kima Hub.`,
+      message: 'A sua subscrição para o módulo KIMA Facturação foi cancelada ou está inativa.',
     };
   } catch (err: any) {
-    console.error('Erro inesperado na verificação de subscrição:', err);
+    console.error('Erro ao verificar subscrição no cliente:', err);
     return {
       hasAccess: false,
       status: 'error',

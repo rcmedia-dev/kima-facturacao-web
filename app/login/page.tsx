@@ -57,82 +57,51 @@ export default function LoginPage() {
   } = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema) as any,
     defaultValues: {
-      email: "hello@mimicdesign.co",
-      password: "**********",
+      email: "",
+      password: "",
     },
   });
 
-  // Verificar parâmetros na URL e validar se já existe sessão ativa ao carregar a página
+  // Verificar parâmetros na URL ao carregar a página (sem redirecionar automaticamente)
   useEffect(() => {
-    const checkInitialState = async () => {
-      if (typeof window === "undefined") return;
+    if (typeof window === "undefined") return;
 
-      const params = new URLSearchParams(window.location.search);
-      const urlError = params.get("error");
-      const urlStatus = params.get("status");
+    const params = new URLSearchParams(window.location.search);
+    const urlError = params.get("error");
+    const urlStatus = params.get("status");
 
-      if (urlError === "subscription_required") {
-        if (urlStatus === "Pendente" || urlStatus === "pending") {
-          setSubscriptionAlert({
-            type: "pending",
-            title: "Subscrição Pendente de Aprovação",
-            description:
-              "O seu pedido de subscrição para o módulo KIMA Facturação ainda está a aguardar aprovação pelo administrador.",
-            ctaText: "Acompanhar no Kima Hub",
-            ctaUrl: `${hubUrl}/dashboard`,
-          });
-        } else if (urlStatus === "Expirado" || urlStatus === "expired") {
-          setSubscriptionAlert({
-            type: "expired",
-            title: "Subscrição Expirada",
-            description:
-              "A subscrição do módulo KIMA Facturação da sua empresa expirou. Renove o plano para restabelecer o acesso.",
-            ctaText: "Renovar no Kima Hub",
-            ctaUrl: `${hubUrl}/marketplace`,
-          });
-        } else {
-          setSubscriptionAlert({
-            type: "no_subscription",
-            title: "Subscrição do Módulo Necessária",
-            description:
-              "Para aceder ao KIMA Facturação, a sua empresa precisa de ter uma subscrição aprovada e ativa.",
-            ctaText: "Ver Planos no Kima Hub",
-            ctaUrl: `${hubUrl}/marketplace`,
-          });
-        }
+    if (urlError === "subscription_required") {
+      const cleanHubUrl = hubUrl.replace(/\/+$/, "");
+      if (urlStatus === "Pendente" || urlStatus === "pending") {
+        setSubscriptionAlert({
+          type: "pending",
+          title: "Subscrição Pendente de Aprovação",
+          description:
+            "O seu pedido de subscrição para o módulo KIMA Facturação ainda está a aguardar aprovação pelo administrador.",
+          ctaText: "Acompanhar no Kima Hub",
+          ctaUrl: `${cleanHubUrl}/dashboard`,
+        });
+      } else if (urlStatus === "Expirado" || urlStatus === "expired") {
+        setSubscriptionAlert({
+          type: "expired",
+          title: "Subscrição Expirada",
+          description:
+            "A subscrição do módulo KIMA Facturação da sua empresa expirou. Renove o plano para restabelecer o acesso.",
+          ctaText: "Renovar no Kima Hub",
+          ctaUrl: `${cleanHubUrl}/marketplace`,
+        });
+      } else {
+        setSubscriptionAlert({
+          type: "no_subscription",
+          title: "Subscrição do Módulo Necessária",
+          description:
+            "Para aceder ao KIMA Facturação, a sua empresa precisa de ter uma subscrição aprovada e ativa.",
+          ctaText: "Ver Planos no Kima Hub",
+          ctaUrl: `${cleanHubUrl}/marketplace`,
+        });
       }
-
-      try {
-        const supabase = createBrowserClient(
-          process.env.NEXT_PUBLIC_SUPABASE_URL!,
-          process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-        );
-
-        const { data: { user } } = await supabase.auth.getUser();
-
-        if (user) {
-          // Verificar se a sessão existente tem subscrição ativa
-          const subResult = await checkUserSubscription(supabase, user.id);
-
-          if (subResult.hasAccess && subResult.companyId) {
-            document.cookie = `kima-company-id=${encodeURIComponent(subResult.companyId)}; path=/; max-age=2592000; SameSite=Lax`;
-            router.replace(redirectTo);
-            return;
-          } else if (!subResult.hasAccess) {
-            // Sessão existe mas não tem plano aprovado/ativo
-            await supabase.auth.signOut();
-            handleSubscriptionError(subResult);
-          }
-        }
-      } catch (err) {
-        console.warn("Aviso ao verificar sessão inicial:", err);
-      } finally {
-        setIsCheckingSession(false);
-      }
-    };
-
-    checkInitialState();
-  }, [hubUrl, redirectTo, router]);
+    }
+  }, [hubUrl]);
 
   const handleSubscriptionError = (subResult: {
     status: SubscriptionStatusType;
@@ -140,17 +109,19 @@ export default function LoginPage() {
     companyName?: string | null;
     planName?: string | null;
   }) => {
+    const cleanHubUrl = hubUrl.replace(/\/+$/, "");
+
     switch (subResult.status) {
       case "pending":
         setSubscriptionAlert({
           type: "pending",
           title: "Subscrição Pendente de Aprovação",
           description:
-            "O seu plano para o módulo KIMA Facturação foi subscrito com sucesso, mas ainda está a aguardar aprovação pelo administrador. Assim que for aprovado, poderá entrar imediatamente.",
+            "O seu plano para o módulo KIMA Facturação foi subscrito com sucesso, mas ainda está a aguardar aprovação pelo administrador. Assim que for aprovado, poderá entrar imediatamente com as suas credenciais.",
           companyName: subResult.companyName,
           planName: subResult.planName,
           ctaText: "Acompanhar Estado no Kima Hub",
-          ctaUrl: `${hubUrl}/dashboard`,
+          ctaUrl: `${cleanHubUrl}/dashboard`,
         });
         break;
 
@@ -163,7 +134,7 @@ export default function LoginPage() {
           companyName: subResult.companyName,
           planName: subResult.planName,
           ctaText: "Renovar Subscrição no Kima Hub",
-          ctaUrl: `${hubUrl}/marketplace`,
+          ctaUrl: `${cleanHubUrl}/marketplace`,
         });
         break;
 
@@ -172,10 +143,10 @@ export default function LoginPage() {
           type: "no_subscription",
           title: "Sem Subscrição no Módulo",
           description:
-            "A sua conta ainda não possui uma subscrição registada para o módulo KIMA Facturação. Escolha um plano no Kima Hub para começar.",
+            "A sua conta ainda não possui uma subscrição registada para o módulo KIMA Facturação. Escolha e subscreva um plano no Kima Hub para começar.",
           companyName: subResult.companyName,
           ctaText: "Escolher Plano no Kima Hub",
-          ctaUrl: `${hubUrl}/marketplace`,
+          ctaUrl: `${cleanHubUrl}/marketplace`,
         });
         break;
 
@@ -184,21 +155,23 @@ export default function LoginPage() {
           type: "no_company",
           title: "Empresa Não Encontrada",
           description:
-            "A sua conta não tem nenhuma empresa vinculada. Conclua a configuração da sua empresa no Kima Hub.",
+            "A sua conta de utilizador ainda não tem nenhuma organização ou empresa associada no sistema. Conclua o registo da sua empresa no Kima Hub.",
           ctaText: "Configurar Empresa no Kima Hub",
-          ctaUrl: `${hubUrl}/onboarding`,
+          ctaUrl: `${cleanHubUrl}/onboarding`,
         });
         break;
 
       default:
         setSubscriptionAlert({
           type: "inactive",
-          title: "Acesso Não Permitido",
-          description: subResult.message || "A sua subscrição para este módulo encontra-se inativa ou cancelada.",
+          title: "Subscrição Inativa ou Cancelada",
+          description:
+            subResult.message ||
+            "A sua subscrição para este módulo encontra-se inativa ou foi cancelada pelo administrador.",
           companyName: subResult.companyName,
           planName: subResult.planName,
           ctaText: "Gerir Subscrições no Kima Hub",
-          ctaUrl: `${hubUrl}/dashboard`,
+          ctaUrl: `${cleanHubUrl}/dashboard`,
         });
         break;
     }
