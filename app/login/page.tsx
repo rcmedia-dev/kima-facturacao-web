@@ -36,7 +36,7 @@ interface SubscriptionAlertState {
 
 export default function LoginPage() {
   const router = useRouter();
-  const { error, success } = useToastContext();
+  const { toast, error, success } = useToastContext();
 
   const redirectTo =
     typeof window !== "undefined"
@@ -237,7 +237,12 @@ export default function LoginPage() {
         // Se não tiver subscrição ativa/aprovada, desliga a sessão do sub-app
         await supabase.auth.signOut();
         handleSubscriptionError(subResult);
-        error("Subscrição necessária", subResult.message);
+        toast({
+          title: "Subscrição Necessária",
+          description: subResult.message,
+          type: "warning",
+          duration: 12000,
+        });
         return;
       }
 

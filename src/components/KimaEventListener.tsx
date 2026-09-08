@@ -17,7 +17,12 @@ export function KimaEventListener() {
 
     const { data: authListener } = supabase.auth.onAuthStateChange((event) => {
       if (event === 'SIGNED_OUT') {
-        window.location.href = '/login';
+        if (typeof window !== 'undefined') {
+          const path = window.location.pathname;
+          if (path !== '/login' && path !== '/signup' && !path.startsWith('/auth')) {
+            window.location.href = '/login';
+          }
+        }
       }
     });
 
@@ -25,7 +30,12 @@ export function KimaEventListener() {
       .channel('kima-events')
       .on('broadcast', { event: 'LOGOUT' }, () => {
         supabase.auth.signOut();
-        window.location.href = '/login';
+        if (typeof window !== 'undefined') {
+          const path = window.location.pathname;
+          if (path !== '/login' && path !== '/signup' && !path.startsWith('/auth')) {
+            window.location.href = '/login';
+          }
+        }
       })
       .on('broadcast', { event: 'COMPANY_SWITCHED' }, () => {
         // Troca de empresa: limpar dados da empresa anterior ANTES de
