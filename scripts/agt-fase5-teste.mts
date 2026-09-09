@@ -227,7 +227,7 @@ async function carregarDadosReais(companyId: string): Promise<ContextoAuditoriaA
       qrPayload: d.qr_payload,
       assinadoPor: d.assinado_por,
       certAgtNumero: d.cert_agt_numero,
-      clienteNif: (d as { cliente?: { nif?: string | null } }).cliente?.nif,
+      clienteNif: (d as { cliente?: { nif?: string | null } }).cliente?.nif ?? undefined,
       linhas: (linhas || []).map((l: { descricao: string; quantidade?: number | string; preco?: number | string; taxa_iva?: number | string; total?: number | string }) => ({
         descricao: l.descricao,
         quantidade: Number(l.quantidade),
@@ -354,9 +354,7 @@ async function main() {
   console.log(`\n📄 Relatório guardado em: ${fich}`);
 
   // Exit code: 0 se todas as suítes de integridade passarem
-  const sucesso = Object.values(resultado).every(
-    (r: { integridade?: { testesFalharam: number } }) => r?.integridade?.testesFalharam === 0
-  );
+  const sucesso = Object.values(resultado).every((r: any) => r?.integridade?.testesFalharam === 0);
   process.exit(sucesso ? 0 : 1);
 }
 

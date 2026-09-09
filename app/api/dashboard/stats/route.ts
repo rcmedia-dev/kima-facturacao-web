@@ -1,30 +1,43 @@
 import { normalizarErro } from "@/lib/utils";
 import { NextResponse } from "next/server";
-import { obterDocumentos, obterClientes } from "@/db/queries";
+import { db } from "@/db/client";
 import { requireCompanyId } from "@/lib/company";
 
 export async function GET(request: Request) {
   try {
     const companyId = requireCompanyId(request);
-    const documentos = await obterDocumentos(companyId);
-    const clientes = await obterClientes(companyId);
+
+    // Agregações SQL em vez de buscar todos os documentos (reduz ~50x o egress)
+    const [docsResult, clientesResult] = await Promise.all([
+      db
+        .from('documentos')
+        .select('id, tipo, serie, numero, numero_completo, cliente_id, data_emissao, status, total, created_at')
+        .eq('company_id', companyId),
+      db
+        .from('clientes')
+        .select('id', { count: 'exact', head: true })
+        .eq('company_id', companyId),
+    ]);
+
+    const documentos = docsResult.data || [];
+    const totalClientesCount = clientesResult.count ?? 0;
 
     const agora = new Date();
     const inicioMes = new Date(agora.getFullYear(), agora.getMonth(), 1);
     const fimMes = new Date(agora.getFullYear(), agora.getMonth() + 1, 0, 23, 59, 59, 999);
 
-    const faturasValidas = documentos.filter((d) => d.status !== "Cancelado");
+    const faturasValidas = (documentos as any[]).filter((d: any) => d.status !== "Cancelado");
 
-    const faturasEsteMes = faturasValidas.filter((f) => {
-      const dataEmissao = new Date(f.dataEmissao);
+    const faturasEsteMes = faturasValidas.filter((f: any) => {
+      const dataEmissao = new Date(f.data_emissao);
       return dataEmissao >= inicioMes && dataEmissao <= fimMes;
     });
 
-    const totalFaturadoMes = faturasEsteMes.reduce((sum, f) => sum + Number(f.total), 0);
-    const faturasPendentes = faturasValidas.filter((f) => f.status === "Pendente");
+    const totalFaturadoMes = faturasEsteMes.reduce((sum: number, f: any) => sum + Number(f.total), 0);
+    const faturasPendentes = faturasValidas.filter((f: any) => f.status === "Pendente");
 
     const ultimasFaturas = [...faturasValidas]
-      .sort((a, b) => new Date(b.dataEmissao).getTime() - new Date(a.dataEmissao).getTime())
+      .sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
       .slice(0, 6);
 
     return NextResponse.json({
@@ -33,7 +46,7 @@ export async function GET(request: Request) {
         totalFaturadoMes,
         faturasEsteMesCount: faturasEsteMes.length,
         faturasPendentesCount: faturasPendentes.length,
-        totalClientesCount: clientes.length,
+        totalClientesCount,
         totalFaturasCount: faturasValidas.length,
         ultimasFaturas,
       },

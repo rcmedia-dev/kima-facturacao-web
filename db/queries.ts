@@ -197,7 +197,7 @@ async function registarAuditoria(
 export async function obterClientes(companyId: string) {
   const { data, error } = await db
     .from('clientes')
-    .select('*')
+    .select('id, nome, tipo, nif, morada, telefone, email, responsavel, inscricao_social, ativo, created_at, updated_at')
     .eq('company_id', companyId)
     .order('created_at', { ascending: false });
   if (error) throw new Error(error.message);
@@ -207,7 +207,7 @@ export async function obterClientes(companyId: string) {
 export async function obterClientePorId(companyId: string, id: string) {
   const { data, error } = await db
     .from('clientes')
-    .select('*')
+    .select('id, nome, tipo, nif, morada, telefone, email, responsavel, inscricao_social, ativo, created_at, updated_at')
     .eq('company_id', companyId)
     .eq('id', id)
     .maybeSingle();
@@ -287,7 +287,7 @@ export async function deletarCliente(companyId: string, id: string) {
 export async function obterFornecedores(companyId: string) {
   const { data, error } = await db
     .from('fornecedores')
-    .select('*')
+    .select('id, nome, nif, morada, telefone, email, bancaria, ativo, created_at, updated_at')
     .eq('company_id', companyId)
     .order('created_at', { ascending: false });
   if (error) throw new Error(error.message);
@@ -297,7 +297,7 @@ export async function obterFornecedores(companyId: string) {
 export async function obterFornecedorPorId(companyId: string, id: string) {
   const { data, error } = await db
     .from('fornecedores')
-    .select('*')
+    .select('id, nome, nif, morada, telefone, email, bancaria, ativo, created_at, updated_at')
     .eq('company_id', companyId)
     .eq('id', id)
     .maybeSingle();
@@ -373,7 +373,7 @@ export async function deletarFornecedor(companyId: string, id: string) {
 export async function obterDespesas(companyId: string) {
   const { data, error } = await db
     .from('despesas')
-    .select('*')
+    .select('id, descricao, fornecedor_id, categoria, valor, taxa_iva, total, data, forma_pagamento, estado, observacoes, created_at, updated_at')
     .eq('company_id', companyId)
     .order('data', { ascending: false });
   if (error) throw new Error(error.message);
@@ -383,7 +383,7 @@ export async function obterDespesas(companyId: string) {
 export async function obterDespesaPorId(companyId: string, id: string) {
   const { data, error } = await db
     .from('despesas')
-    .select('*')
+    .select('id, descricao, fornecedor_id, categoria, valor, taxa_iva, total, data, forma_pagamento, estado, observacoes, created_at, updated_at')
     .eq('company_id', companyId)
     .eq('id', id)
     .maybeSingle();
@@ -470,7 +470,7 @@ export async function deletarDespesa(companyId: string, id: string) {
 export async function obterArtigos(companyId: string) {
   const { data, error } = await db
     .from('artigos')
-    .select('*')
+    .select('id, codigo, descricao, categoria, tipo, unidade_medida, preco, taxa_iva, stock, stock_minimo, fornecedor_id, ativo, created_at, updated_at')
     .eq('company_id', companyId)
     .order('created_at', { ascending: false });
   if (error) throw new Error(error.message);
@@ -480,7 +480,7 @@ export async function obterArtigos(companyId: string) {
 export async function obterArtigoPorId(companyId: string, id: string) {
   const { data, error } = await db
     .from('artigos')
-    .select('*')
+    .select('id, codigo, descricao, categoria, tipo, unidade_medida, preco, taxa_iva, stock, stock_minimo, fornecedor_id, ativo, created_at, updated_at')
     .eq('company_id', companyId)
     .eq('id', id)
     .maybeSingle();
@@ -588,10 +588,49 @@ export async function deletarArtigo(companyId: string, id: string) {
 
 // ─── DOCUMENTOS ──────────────────────────────────────────────────────────────
 
+const COLUNAS_DOCUMENTO_LISTA =
+  'id, tipo, serie, numero, numero_completo, cliente_id, fornecedor_id, data_emissao, data_vencimento, ' +
+  'forma_pagamento, status, subtotal, total_iva, total, data_pagamento, created_at, updated_at, ' +
+  'motivo_isencao_iva, data_operacao, created_by, updated_by, documento_referenciado, motivo, ' +
+  'status_agt, erro_agt, tentativas_agt, data_transmissao_agt';
+
+const COLUNAS_DOCUMENTO_DETALHE =
+  '*, cliente:clientes(id, nome, tipo, nif, morada, telefone, email, responsavel, inscricao_social, ativo, created_at, updated_at), ' +
+  'fornecedor:fornecedores(id, nome, nif, morada, telefone, email, bancaria, ativo, created_at, updated_at), ' +
+  'linhas:documento_linhas(*)';
+
+/**
+ * Listagem leve de documentos — sem JOINs, sem colunas pesadas (hash, assinatura_jws, qr_payload).
+ * Usa paginação real no banco de dados.
+ */
+export async function listarDocumentosLeve(
+  companyId: string,
+  opts?: { tipo?: string; limit?: number; offset?: number }
+) {
+  const limit = opts?.limit ?? 100;
+  const offset = opts?.offset ?? 0;
+
+  let query = db
+    .from('documentos')
+    .select(COLUNAS_DOCUMENTO_LISTA, { count: 'exact' })
+    .eq('company_id', companyId);
+  if (opts?.tipo) query = query.eq('tipo', opts.tipo);
+
+  const { data, error, count } = await query
+    .order('created_at', { ascending: false })
+    .range(offset, offset + limit - 1);
+
+  if (error) throw new Error(error.message);
+  return {
+    documentos: (data || []).map(mapearDocumento),
+    total: count ?? 0,
+  };
+}
+
 export async function obterDocumentos(companyId: string, tipo?: string) {
   let query = db
     .from('documentos')
-    .select('*, linhas:documento_linhas(*)')
+    .select('id, tipo, serie, numero, numero_completo, cliente_id, fornecedor_id, data_emissao, data_vencimento, forma_pagamento, status, subtotal, total_iva, total, data_pagamento, created_at, updated_at, motivo_isencao_iva, data_operacao, created_by, updated_by, documento_referenciado, motivo, status_agt, erro_agt, tentativas_agt, data_transmissao_agt')
     .eq('company_id', companyId);
   if (tipo) query = query.eq('tipo', tipo);
   const { data, error } = await query.order('created_at', { ascending: false });
@@ -602,7 +641,7 @@ export async function obterDocumentos(companyId: string, tipo?: string) {
 export async function obterDocumentoPorId(companyId: string, id: string) {
   const { data, error } = await db
     .from('documentos')
-    .select('*, cliente:clientes(*), fornecedor:fornecedores(*), linhas:documento_linhas(*)')
+    .select(COLUNAS_DOCUMENTO_DETALHE)
     .eq('company_id', companyId)
     .eq('id', id)
     .maybeSingle();
@@ -624,7 +663,7 @@ export async function obterDocumentosPorPeriodo(
 ) {
   const { data, error } = await db
     .from('documentos')
-    .select('*, linhas:documento_linhas(*)')
+    .select(COLUNAS_DOCUMENTO_LISTA)
     .eq('company_id', companyId)
     .gte('data_emissao', dataInicio.toISOString())
     .lte('data_emissao', dataFim.toISOString())
@@ -853,7 +892,7 @@ export async function registrarPagamento(
 export async function obterSeries(companyId: string): Promise<SerieNumeracao[]> {
   const { data, error } = await db
     .from('series_numeracao')
-    .select('*')
+    .select('id, serie, tipo_documento, proximo_numero, ultimo_numero_utilizado, ano, predefinida')
     .eq('company_id', companyId)
     .order('tipo_documento', { ascending: true })
     .order('serie', { ascending: true });
@@ -1113,7 +1152,7 @@ export async function obterLogsAuditoria(
 ) {
   let query = db
     .from('logs_auditoria')
-    .select('*')
+    .select('id, company_id, user_id, acao, entidade, entidade_id, alteracoes_anteriores, alteracoes_novas, created_at, endereco')
     .eq('company_id', companyId);
   if (filtros?.entidade) query = query.eq('entidade', filtros.entidade);
   if (filtros?.dataInicio) query = query.gte('created_at', filtros.dataInicio.toISOString());
@@ -1137,17 +1176,30 @@ export async function obterLogsAuditoria(
 // ─── KPIs / RELATÓRIOS ───────────────────────────────────────────────────────
 
 export async function obterKPIsEmpresa(companyId: string) {
-  const documentos = await obterDocumentos(companyId);
-  const clientes = await obterClientes(companyId);
+  // Agregações SQL em vez de buscar todos os registros (reduz ~50x o egress)
+  const [docsResult, clientesResult] = await Promise.all([
+    db
+      .from('documentos')
+      .select('status, total')
+      .eq('company_id', companyId),
+    db
+      .from('clientes')
+      .select('id', { count: 'exact', head: true })
+      .eq('company_id', companyId)
+      .eq('ativo', true),
+  ]);
 
-  const faturas = documentos.filter((d) => d.status === 'Pago');
-  const faturasNaoPagas = documentos.filter((d) => d.status === 'Pendente');
+  const documentos = (docsResult.data || []) as any[];
+  const totalClientes = clientesResult.count ?? 0;
+
+  const faturasPagas = documentos.filter((d: any) => d.status === 'Pago');
+  const faturasPendentes = documentos.filter((d: any) => d.status === 'Pendente');
 
   return {
-    totalFaturado: faturas.reduce((sum, f) => sum + Number(f.total), 0),
-    faturasNaoPagasCount: faturasNaoPagas.length,
-    valorNaoPago: faturasNaoPagas.reduce((sum, f) => sum + Number(f.total), 0),
-    totalClientes: clientes.filter((c) => c.ativo).length,
+    totalFaturado: faturasPagas.reduce((sum: number, f: any) => sum + Number(f.total), 0),
+    faturasNaoPagasCount: faturasPendentes.length,
+    valorNaoPago: faturasPendentes.reduce((sum: number, f: any) => sum + Number(f.total), 0),
+    totalClientes,
   };
 }
 
@@ -1156,27 +1208,16 @@ export async function obterKPIsEmpresa(companyId: string) {
 export async function obterEmpresa(
   companyId: string
 ): Promise<ConfiguracaoEmpresa | null> {
+  // Query única com JOINs (reduz 3 queries para 1)
   const { data: company, error } = await publicDb
     .from('companies')
-    .select('*')
+    .select('id, name, nif, created_at, settings:company_settings(morada, telefone, email, website, logo_url, modelo_documento, cor_primaria, conta_bancaria, banco, inscricao_social, nif_regional, software_nome, software_certificacao_numero, dias_vencimento_padrao, updated_at), series:series_numeracao(id, serie, tipo_documento, proximo_numero, ultimo_numero_utilizado, ano, predefinida)')
     .eq('id', companyId)
     .maybeSingle();
   if (error) throw new Error(error.message);
   if (!company) return null;
 
-  const { data: settings } = await db
-    .from('company_settings')
-    .select('*')
-    .eq('company_id', companyId)
-    .maybeSingle();
-
-  const { data: series } = await db
-    .from('series_numeracao')
-    .select('*')
-    .eq('company_id', companyId)
-    .order('created_at', { ascending: false });
-
-  const s = settings?.settings || {};
+  const s = (company.settings as any)?.settings || company.settings || {};
 
   return {
     id: company.id,
@@ -1187,6 +1228,8 @@ export async function obterEmpresa(
     email: s.email || '',
     website: s.website || undefined,
     logoUrl: s.logo_url || undefined,
+    modeloDocumento: s.modelo_documento || "classico",
+    corPrimaria: s.cor_primaria || "#2563EB",
     contaBancaria: s.conta_bancaria || undefined,
     banco: s.banco || undefined,
     inscricaoSocial: s.inscricao_social || undefined,
@@ -1194,7 +1237,7 @@ export async function obterEmpresa(
     softwareNome: s.software_nome || undefined,
     softwareCertificacaoNumero: s.software_certificacao_numero || undefined,
     diasVencimentoPadrao: s.dias_vencimento_padrao || 30,
-    seriesPorTipo: (series || []).map((sr: any): SerieNumeracao => ({
+    seriesPorTipo: ((company as any).series || []).map((sr: any): SerieNumeracao => ({
       id: sr.id,
       serie: sr.serie,
       tipoDocumento: sr.tipo_documento,
@@ -1245,6 +1288,8 @@ export async function atualizarEmpresa(
     email: dados.email !== undefined ? dados.email : empresa?.email,
     website: dados.website !== undefined ? dados.website : empresa?.website,
     logo_url: dados.logoUrl !== undefined ? dados.logoUrl : empresa?.logoUrl,
+    modelo_documento: dados.modeloDocumento !== undefined ? dados.modeloDocumento : empresa?.modeloDocumento || "classico",
+    cor_primaria: dados.corPrimaria !== undefined ? dados.corPrimaria : empresa?.corPrimaria || "#2563EB",
     conta_bancaria: dados.contaBancaria !== undefined ? dados.contaBancaria : empresa?.contaBancaria || base,
     banco: dados.banco !== undefined ? dados.banco : empresa?.banco,
     inscricao_social: dados.inscricaoSocial !== undefined ? dados.inscricaoSocial : empresa?.inscricaoSocial,

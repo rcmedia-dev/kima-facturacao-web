@@ -82,6 +82,18 @@ export const empresaSchema = z.object({
   telefone: z.string().min(1, "Telefone é obrigatório"),
   email: z.string().email("Email inválido"),
   logoUrl: z.string().max(3_000_000, "Logotipo demasiado grande — use uma imagem até 1024px (≤1MB base64).").optional().nullable(),
+  modeloDocumento: z.enum([
+    "classico",
+    "moderno",
+    "executivo",
+    "compacto",
+    "studio",
+    "nordic",
+    "bold",
+    "grid",
+  ]).optional().nullable(),
+  corPrimaria: z.string().optional().nullable(),
+  contaBancaria: z.string().optional().nullable(),
   softwareNome: z.string().optional().nullable(),
   softwareCertificacaoNumero: z.string().optional().nullable(),
 });

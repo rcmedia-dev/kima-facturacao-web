@@ -111,7 +111,6 @@ export function SeriesManager() {
       success("Sucesso", `Série ${letra} criada para ${TIPO_LABELS[novoTipo] || novoTipo}`);
       setNovaSerie("");
       await carregar();
-      await store.loadAll();
     } catch (err: unknown) {
       error("Erro", mensagemErro(err));
     } finally {
@@ -127,7 +126,6 @@ export function SeriesManager() {
         body: JSON.stringify({ id, predefinida: true }),
       });
       await carregar();
-      await store.loadAll();
     } catch (err: unknown) {
       error("Erro", mensagemErro(err));
     }
@@ -141,7 +139,6 @@ export function SeriesManager() {
         body: JSON.stringify({ id, proximoNumero }),
       });
       await carregar();
-      await store.loadAll();
     } catch (err: unknown) {
       error("Erro", mensagemErro(err));
     }
@@ -153,7 +150,6 @@ export function SeriesManager() {
       await fetch(`/api/series?id=${s.id}`, { method: "DELETE" });
       success("Sucesso", "Série eliminada");
       await carregar();
-      await store.loadAll();
     } catch (err: unknown) {
       error("Erro", mensagemErro(err));
     }

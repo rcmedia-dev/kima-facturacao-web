@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useState, useSyncExternalStore } from "react";
+import { Suspense, useState, useSyncExternalStore } from "react";
 import { useSearchParams } from "next/navigation";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAppStore } from "@/lib/store";
@@ -51,9 +51,7 @@ function NovaFaturaContent() {
     addDays(new Date(), DIAS_VENCIMENTO_DEFAULT)
   );
 
-  useEffect(() => {
-    store.loadAll();
-  }, []);
+  // loadAll() já é chamado pelo useStoreInit no layout
 
   if (!mounted) {
     return (

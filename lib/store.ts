@@ -189,6 +189,7 @@ interface AppStore {
 
   // Gestão de dados (remoto via API)
   loadFromStorage: () => Promise<void>;
+  loadArtigos: () => Promise<void>;
   loadAll: () => Promise<void>;
   seedMockData: () => void;
   clearAllData: () => void;
@@ -483,6 +484,15 @@ export const useAppStore = create<AppStore>((set, get) => ({
   },
 
   loadFromStorage: () => get().loadAll(),
+
+  loadArtigos: async () => {
+    try {
+      const artigos = await apiFetch<ArtigoRaw[]>('/api/products');
+      set({ artigos: (artigos || []).map(normalizarArtigo) });
+    } catch (error) {
+      console.error('Erro ao carregar artigos da API:', error);
+    }
+  },
 
   loadAll: async () => {
     try {

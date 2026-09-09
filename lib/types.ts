@@ -100,6 +100,18 @@ export interface Documento {
   numero: string; // Número sequencial dentro da série
   numeroCompleto: string; // Serie + Numero (ex: A/000001)
   clienteId?: string;
+  cliente?: {
+    id: string;
+    nome: string;
+    nif: string;
+    tipo?: TipoCliente;
+    morada?: string;
+    telefone?: string;
+    email?: string;
+    ativo?: boolean;
+    dataCriacao?: Date | string;
+    ultimaAtualizacao?: Date | string;
+  };
   fornecedorId?: string;
   dataEmissao: Date;
   dataVencimento: Date;
@@ -153,6 +165,16 @@ export interface SerieNumeracao {
   predefinida?: boolean; // Série predefinida para o tipo de documento
 }
 
+export type ModeloDocumento =
+  | "classico"
+  | "moderno"
+  | "executivo"
+  | "compacto"
+  | "studio"
+  | "nordic"
+  | "bold"
+  | "grid";
+
 export interface ConfiguracaoEmpresa {
   id: string;
   nomeEmpresa: string;
@@ -162,6 +184,10 @@ export interface ConfiguracaoEmpresa {
   email: string;
   website?: string;
   logoUrl?: string;
+  
+  // Design & Identidade visual
+  modeloDocumento?: ModeloDocumento; // Modelo visual padrão dos documentos
+  corPrimaria?: string; // Cor primária da marca (ex: #2563EB)
   
   // Dados bancários
   contaBancaria?: string;

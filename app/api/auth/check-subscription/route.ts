@@ -21,14 +21,21 @@ export async function POST(request: Request) {
       );
     }
 
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-    const supabaseKey =
-      process.env.SUPABASE_SERVICE_ROLE_KEY ||
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+    const useMock = process.env.NEXT_PUBLIC_USE_MOCK_DB === 'true';
 
-    const admin = createClient(supabaseUrl, supabaseKey, {
-      auth: { persistSession: false },
-    });
+    let admin: any;
+    if (useMock) {
+      const { createMockClient } = await import('@/db/mocks/mock-client');
+      admin = createMockClient();
+    } else {
+      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+      const supabaseKey =
+        process.env.SUPABASE_SERVICE_ROLE_KEY ||
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+      admin = createClient(supabaseUrl, supabaseKey, {
+        auth: { persistSession: false },
+      });
+    }
 
     // 1. Procurar a empresa do utilizador em `memberships`
     let companyId: string | null = null;

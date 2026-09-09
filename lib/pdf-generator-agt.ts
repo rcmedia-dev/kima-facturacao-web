@@ -32,14 +32,23 @@ const PAGE_WIDTH = 210;
 const PAGE_HEIGHT = 297;
 const MARGIN = 14;
 
-function corBanda(tipo: string): [number, number, number] {
+function corBanda(tipo: string, corPrimariaHex?: string): [number, number, number] {
+  if (tipo === 'NotaCredito') return [225, 29, 72];
+  if (tipo === 'NotaDebito') return [234, 88, 12];
+
+  if (corPrimariaHex) {
+    const clean = corPrimariaHex.replace('#', '').trim();
+    if (clean.length === 6) {
+      const r = parseInt(clean.substring(0, 2), 16);
+      const g = parseInt(clean.substring(2, 4), 16);
+      const b = parseInt(clean.substring(4, 6), 16);
+      if (!isNaN(r) && !isNaN(g) && !isNaN(b)) return [r, g, b];
+    }
+  }
+
   switch (tipo) {
     case 'FaturaRecibo':
       return [16, 185, 129];
-    case 'NotaCredito':
-      return [225, 29, 72];
-    case 'NotaDebito':
-      return [234, 88, 12];
     case 'Orcamento':
       return [124, 58, 237];
     default:
@@ -136,7 +145,7 @@ export async function gerarPDFFaturaAGT(
   let y = 0;
 
   // 1. Faixa colorida por tipo de documento
-  const [rBand, gBand, bBand] = corBanda(fatura.tipo);
+  const [rBand, gBand, bBand] = corBanda(fatura.tipo, empresa?.corPrimaria);
   doc.setFillColor(rBand, gBand, bBand);
   doc.rect(0, 0, PAGE_WIDTH, 8, 'F');
 
@@ -177,6 +186,10 @@ export async function gerarPDFFaturaAGT(
   const contacto = [empresa?.telefone, empresa?.email].filter(Boolean).join(' · ');
   if (contacto) {
     doc.text(contacto, MARGIN, y);
+    y += 4;
+  }
+  if (empresa?.contaBancaria) {
+    doc.text(`IBAN: ${empresa.contaBancaria}`, MARGIN, y);
     y += 4;
   }
   y += 3;

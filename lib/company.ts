@@ -4,6 +4,8 @@
  * cada empresa/pessoa só acessa os próprios dados.
  */
 
+import { db } from '@/db/client';
+
 export function getCompanyId(request: Request): string | null {
   try {
     const nextReq = request as unknown as {
@@ -44,12 +46,7 @@ export async function assertMembership(companyId: string): Promise<void> {
   if (!user) {
     throw Object.assign(new Error('Não autenticado. Faça login no Kima Hub.'), { status: 401 });
   }
-  const { createClient } = await import('@supabase/supabase-js');
-  const admin = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  );
-  const { data, error } = await admin
+  const { data, error } = await db
     .from('memberships')
     .select('company_id')
     .eq('user_id', user.id)
@@ -73,17 +70,11 @@ export async function requireCompanyMembership(request: Request): Promise<string
     throw Object.assign(new Error('Não autenticado. Faça login no Kima Hub.'), { status: 401 });
   }
 
-  const { createClient } = await import('@supabase/supabase-js');
-  const admin = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  );
-
   const cookieCompanyId = getCompanyId(request);
 
   // 1. Se veio um company_id no cookie, verificar se o utilizador autenticado é membro
   if (cookieCompanyId) {
-    const { data: memberData } = await admin
+    const { data: memberData } = await db
       .from('memberships')
       .select('company_id')
       .eq('user_id', user.id)
@@ -98,7 +89,7 @@ export async function requireCompanyMembership(request: Request): Promise<string
   }
 
   // 2. Se o cookie não veio ou não pertence ao utilizador, resolve a empresa ativa do utilizador
-  const { data: userMemberships, error } = await admin
+  const { data: userMemberships, error } = await db
     .from('memberships')
     .select('company_id')
     .eq('user_id', user.id)

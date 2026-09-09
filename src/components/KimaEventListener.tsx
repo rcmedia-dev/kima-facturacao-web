@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
-import { createBrowserClient } from '@supabase/ssr';
+import { createBrowserClient } from '@/lib/supabase-ssr';
 import { useRouter } from 'next/navigation';
 
 const MODULE_KEY = process.env.NEXT_PUBLIC_KIMA_MODULE_KEY || 'faturas';
@@ -26,8 +26,9 @@ export function KimaEventListener() {
       }
     });
 
-    const channel = supabase
-      .channel('kima-events')
+    const channel = supabase.channel('kima-events') as any;
+
+    channel
       .on('broadcast', { event: 'LOGOUT' }, () => {
         supabase.auth.signOut();
         if (typeof window !== 'undefined') {
@@ -38,8 +39,6 @@ export function KimaEventListener() {
         }
       })
       .on('broadcast', { event: 'COMPANY_SWITCHED' }, () => {
-        // Troca de empresa: limpar dados da empresa anterior ANTES de
-        // recarregar, senão /clientes e /artigos exibem dados alheios.
         void (async () => {
           const { useAppStore } = await import('@/lib/store');
           useAppStore.getState().clearAllData();

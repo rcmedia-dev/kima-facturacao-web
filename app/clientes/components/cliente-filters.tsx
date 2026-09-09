@@ -79,13 +79,13 @@ export function ClienteFilters({
               <SelectItem value="PJ">
                 <span className="inline-flex items-center gap-2">
                   <Building2 size={14} />
-                  Pessoa Jurídica
+                  Cliente Empresa
                 </span>
               </SelectItem>
               <SelectItem value="PF">
                 <span className="inline-flex items-center gap-2">
                   <UserCircle2 size={14} />
-                  Pessoa Física
+                  Cliente Individual
                 </span>
               </SelectItem>
             </SelectContent>

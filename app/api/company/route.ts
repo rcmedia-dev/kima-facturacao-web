@@ -33,6 +33,9 @@ export async function PUT(request: Request) {
       telefone: validatedData.telefone,
       email: validatedData.email,
       logoUrl: validatedData.logoUrl || undefined,
+      modeloDocumento: (validatedData.modeloDocumento as any) || undefined,
+      corPrimaria: validatedData.corPrimaria || undefined,
+      contaBancaria: validatedData.contaBancaria || undefined,
       softwareNome: validatedData.softwareNome || undefined,
       softwareCertificacaoNumero: validatedData.softwareCertificacaoNumero || undefined,
     });

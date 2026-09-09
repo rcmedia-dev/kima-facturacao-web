@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from 'next/server';
-import { createServerClient } from '@supabase/ssr';
+import { createServerClient } from '@/lib/supabase-ssr';
 
 const MODULE_KEY = process.env.NEXT_PUBLIC_KIMA_MODULE_KEY || 'faturas';
 
@@ -30,7 +30,7 @@ export async function proxy(request: NextRequest) {
         getAll() {
           return request.cookies.getAll();
         },
-        setAll(cookiesToSet) {
+        setAll(cookiesToSet: { name: string; value: string; options?: any }[]) {
           cookiesToSet.forEach(({ name, value, options }) =>
             response.cookies.set(name, value, {
               ...options,
@@ -72,6 +72,7 @@ export async function proxy(request: NextRequest) {
   }
 
   // 1. Resolver a empresa ativa e validar o membership do utilizador.
+  // Combina membership + module check em queries mínimas.
   const cookieCompanyId = request.cookies.get('kima-company-id')?.value;
   let activeCompanyId: string | null = null;
 
@@ -119,16 +120,10 @@ export async function proxy(request: NextRequest) {
 
   const companyId = activeCompanyId;
 
-  // 2. Verificar se a empresa ativa possui este módulo contratado e ativo
-  const adminClient = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    { cookies: { getAll: () => [], setAll: () => {} } }
-  );
-
+  // 2. Verificar módulo — reutiliza o client anon (evita criar adminClient)
   const MODULE_KEYS = [MODULE_KEY, 'faturas', 'facturas', 'facturacao'];
 
-  const { data: moduleData } = await adminClient
+  const { data: moduleData } = await supabase
     .from('company_modules')
     .select('id, module_key, status, expires_at')
     .eq('company_id', companyId)
@@ -152,6 +147,11 @@ export async function proxy(request: NextRequest) {
     // Em ambiente de desenvolvimento local e sem registo de módulo prévio
     if (isDev && !moduleData) {
       try {
+        const adminClient = createServerClient(
+          process.env.NEXT_PUBLIC_SUPABASE_URL!,
+          process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+          { cookies: { getAll: () => [], setAll: () => {} } }
+        );
         await adminClient.from('company_modules').upsert({
           company_id: companyId,
           module_key: MODULE_KEY,

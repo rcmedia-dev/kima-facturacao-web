@@ -64,7 +64,7 @@ export function DespesaDrawer({ despesa, onClose, onEdit }: DespesaDrawerProps) 
           {d && (
             <div className="flex h-full w-full">
               {/* ── Resumo fixo (sidebar escura) ── */}
-              <aside className="hidden md:flex w-[220px] shrink-0 flex-col justify-between bg-gradient-to-br from-slate-900 via-slate-900 to-slate-800 p-5 text-white">
+              <aside className="hidden md:flex w-[220px] shrink-0 flex-col justify-between bg-gradient-to-br from-blue-600 via-blue-600 to-blue-700 p-5 text-white">
                 <div>
                   <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-white/20 bg-white/10 text-xl font-extrabold">
                     {getInitials(d.descricao) || "?"}
@@ -76,23 +76,15 @@ export function DespesaDrawer({ despesa, onClose, onEdit }: DespesaDrawerProps) 
                     </Badge>
                   </div>
 
-                  <p className="mt-5 text-[10.5px] font-bold uppercase tracking-[0.1em] text-slate-400">Valor</p>
+                  <p className="mt-5 text-[10.5px] font-bold uppercase tracking-[0.1em] text-blue-200">Registo</p>
                   <div className="mt-2 space-y-1.5 text-xs">
                     <div className="flex items-center justify-between gap-3">
-                      <span className="text-slate-400">Total</span>
-                      <span className="font-mono font-bold text-teal-300">{formatAOA(d.total)}</span>
-                    </div>
-                  </div>
-
-                  <p className="mt-5 text-[10.5px] font-bold uppercase tracking-[0.1em] text-slate-400">Registo</p>
-                  <div className="mt-2 space-y-1.5 text-xs">
-                    <div className="flex items-center justify-between gap-3">
-                      <span className="text-slate-400">Criado</span>
-                      <span className="font-semibold text-slate-200">{formatDataCompleta(d.dataCriacao)}</span>
+                      <span className="text-blue-200">Criado</span>
+                      <span className="font-semibold text-white">{formatDataCompleta(d.dataCriacao)}</span>
                     </div>
                     <div className="flex items-center justify-between gap-3">
-                      <span className="text-slate-400">Atualizado</span>
-                      <span className="text-right font-semibold text-slate-200">{formatDataCompleta(d.ultimaAtualizacao)}</span>
+                      <span className="text-blue-200">Atualizado</span>
+                      <span className="text-right font-semibold text-white">{formatDataCompleta(d.ultimaAtualizacao)}</span>
                     </div>
                   </div>
                 </div>
@@ -100,7 +92,7 @@ export function DespesaDrawer({ despesa, onClose, onEdit }: DespesaDrawerProps) 
                 <Button
                   variant="ghost"
                   onClick={onClose}
-                  className="w-full bg-slate-800 text-slate-200 hover:bg-slate-700 hover:text-white"
+                  className="w-full bg-blue-700/50 text-white hover:bg-blue-700 hover:text-white"
                 >
                   Fechar
                 </Button>
@@ -168,10 +160,9 @@ export function DespesaDrawer({ despesa, onClose, onEdit }: DespesaDrawerProps) 
                   {/* Pagamento */}
                   <section className="rounded-xl border border-slate-200 p-4 dark:border-slate-800">
                     <h3 className="mb-3 text-xs font-bold uppercase tracking-wider text-slate-400">Pagamento</h3>
-                    <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-3">
+                    <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
                       <InfoCell label="Data" value={formatDataCompleta(d.data)} />
                       <InfoCell label="Forma de Pagamento" value={d.formaPagamento} />
-                      <InfoCell label="Estado" value={d.estado} />
                     </div>
                   </section>
 
@@ -183,11 +174,6 @@ export function DespesaDrawer({ despesa, onClose, onEdit }: DespesaDrawerProps) 
                     </p>
                   </section>
 
-                  {/* Registo */}
-                  <section className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
-                    <InfoCell label="Data de criação" value={formatDataCompleta(d.dataCriacao)} />
-                    <InfoCell label="Última atualização" value={formatDataCompleta(d.ultimaAtualizacao)} />
-                  </section>
                 </div>
               </div>
             </div>

@@ -1,7 +1,7 @@
 import { normalizarErro } from "@/lib/utils";
 import { NextResponse } from "next/server";
 import { db } from "@/db/client";
-import { obterDocumentos, criarDocumento, obterSeriePredefinida, obterEmpresa } from "@/db/queries";
+import { obterDocumentos, criarDocumento, obterSeriePredefinida, obterEmpresa, listarDocumentosLeve } from "@/db/queries";
 import { faturaLinhaSchema } from "@/lib/schemas";
 import { gerarHashEncadeado, construirPayloadQR, assinarDocumentoJWS } from "@/lib/crypto-engine";
 import {
@@ -69,33 +69,33 @@ export async function GET(request: Request) {
     const page = parseInt(searchParams.get("page") || "1", 10);
     const limit = searchParams.has("limit") ? parseInt(searchParams.get("limit")!, 10) : 5000;
 
-    let documentos = await obterDocumentos(companyId, tipo);
+    // Paginação real no banco (em vez de buscar tudo e paginar em memória)
+    const offset = (page - 1) * limit;
+    let { documentos, total } = await listarDocumentosLeve(companyId, { tipo, limit, offset });
 
     if (status && status !== "Todos") {
-      documentos = documentos.filter((d) => d.status.toLowerCase() === status.toLowerCase());
+      documentos = documentos.filter((d: any) => d.status.toLowerCase() === status.toLowerCase());
     }
     if (dataInicioStr) {
       const dataInicio = new Date(dataInicioStr);
-      documentos = documentos.filter((d) => new Date(d.dataEmissao) >= dataInicio);
+      documentos = documentos.filter((d: any) => new Date(d.dataEmissao) >= dataInicio);
     }
     if (dataFimStr) {
       const dataFim = new Date(dataFimStr);
       dataFim.setHours(23, 59, 59, 999);
-      documentos = documentos.filter((d) => new Date(d.dataEmissao) <= dataFim);
+      documentos = documentos.filter((d: any) => new Date(d.dataEmissao) <= dataFim);
     }
 
     documentos.sort(
-      (a, b) => new Date(b.dataEmissao).getTime() - new Date(a.dataEmissao).getTime()
+      (a: any, b: any) => new Date(b.dataEmissao).getTime() - new Date(a.dataEmissao).getTime()
     );
 
-    const totalItems = documentos.length;
+    const totalItems = total;
     const totalPages = Math.ceil(totalItems / limit) || 1;
-    const startIndex = (page - 1) * limit;
-    const paginated = documentos.slice(startIndex, startIndex + limit);
 
     return NextResponse.json({
       success: true,
-      data: paginated,
+      data: documentos,
       pagination: { totalItems, totalPages, currentPage: page, itemsPerPage: limit },
     });
   } catch (error: unknown) {

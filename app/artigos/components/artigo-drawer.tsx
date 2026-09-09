@@ -89,10 +89,10 @@ export function ArtigoDrawer({ artigo, onClose, onEdit }: ArtigoDrawerProps) {
           {a && (
             <div className="flex h-full w-full">
               {/* ── Resumo fixo (sidebar escura) ── */}
-              <aside className="hidden md:flex w-[220px] shrink-0 flex-col justify-between bg-gradient-to-br from-slate-900 via-slate-900 to-slate-800 p-5 text-white">
+              <aside className="hidden md:flex w-[220px] shrink-0 flex-col justify-between bg-gradient-to-br from-blue-600 via-blue-600 to-blue-700 p-5 text-white">
                 <div>
                   <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-white/20 bg-white/10">
-                    <Package size={24} className="text-teal-300" />
+                    <Package size={24} className="text-blue-200" />
                   </div>
                   <p className="mt-3.5 text-[15px] font-extrabold leading-snug">{a.descricao}</p>
                   <div className="mt-2.5 flex flex-wrap gap-1.5">
@@ -106,36 +106,15 @@ export function ArtigoDrawer({ artigo, onClose, onEdit }: ArtigoDrawerProps) {
                     )}
                   </div>
 
-                  <p className="mt-5 text-[10.5px] font-bold uppercase tracking-[0.1em] text-slate-400">Preço</p>
-                  <p className="mt-1 font-mono text-2xl font-bold text-blue-400">{formatMoedaAOA(a.preco)}</p>
-                  {a.taxaIVA === 0 && <p className="mt-1 text-xs text-slate-400">Isento de IVA</p>}
-
-                  <p className="mt-5 text-[10.5px] font-bold uppercase tracking-[0.1em] text-slate-400">Stock</p>
+                  <p className="mt-5 text-[10.5px] font-bold uppercase tracking-[0.1em] text-blue-200">Registo</p>
                   <div className="mt-2 space-y-1.5 text-xs">
                     <div className="flex items-center justify-between gap-3">
-                      <span className="text-slate-400">Atual</span>
-                      <span className="font-mono font-semibold text-slate-200">{a.stock}</span>
+                      <span className="text-blue-200">Criado</span>
+                      <span className="font-semibold text-white">{formatDataCompleta(a.dataCriacao)}</span>
                     </div>
                     <div className="flex items-center justify-between gap-3">
-                      <span className="text-slate-400">Mínimo</span>
-                      <span className="font-mono font-semibold text-slate-200">{a.stockMinimo}</span>
-                    </div>
-                    {stockBaixo && (
-                      <p className="rounded-lg bg-red-500/15 px-2 py-1 text-[11px] font-bold text-red-300 ring-1 ring-red-400/30">
-                        ⚠ Stock baixo
-                      </p>
-                    )}
-                  </div>
-
-                  <p className="mt-5 text-[10.5px] font-bold uppercase tracking-[0.1em] text-slate-400">Identificação</p>
-                  <div className="mt-2 space-y-1.5 text-xs">
-                    <div className="flex items-center justify-between gap-3">
-                      <span className="text-slate-400">Tipo</span>
-                      <span className="text-right font-semibold text-slate-200">{a.tipo || "Produto"}</span>
-                    </div>
-                    <div className="flex items-center justify-between gap-3">
-                      <span className="text-slate-400">Unidade</span>
-                      <span className="text-right font-semibold text-slate-200">{UNIDADE_MEDIDA_LABEL[a.unidadeMedida] || a.unidadeMedida}</span>
+                      <span className="text-blue-200">Atualizado</span>
+                      <span className="text-right font-semibold text-white">{formatDataCompleta(a.ultimaAtualizacao)}</span>
                     </div>
                   </div>
                 </div>
@@ -143,7 +122,7 @@ export function ArtigoDrawer({ artigo, onClose, onEdit }: ArtigoDrawerProps) {
                 <Button
                   variant="ghost"
                   onClick={onClose}
-                  className="w-full bg-slate-800 text-slate-200 hover:bg-slate-700 hover:text-white"
+                  className="w-full bg-blue-700/50 text-white hover:bg-blue-700 hover:text-white"
                 >
                   Fechar
                 </Button>
@@ -223,11 +202,6 @@ export function ArtigoDrawer({ artigo, onClose, onEdit }: ArtigoDrawerProps) {
                     </div>
                   </section>
 
-                  {/* Registo */}
-                  <section className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
-                    <InfoCell label="Data de criação" value={formatDataCompleta(a.dataCriacao)} />
-                    <InfoCell label="Última atualização" value={formatDataCompleta(a.ultimaAtualizacao)} />
-                  </section>
                 </div>
               </div>
             </div>
