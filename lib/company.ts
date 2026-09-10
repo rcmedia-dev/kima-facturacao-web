@@ -2,12 +2,25 @@
  * Helper para extrair o contexto da empresa ativa do cookie global do Kima Hub.
  * O cookie `kima-company-id` é definido pela rota de callback SSO e garante que
  * cada empresa/pessoa só acessa os próprios dados.
+ *
+ * Agora também suporta sessão própria via cookie `kima-session`.
  */
 
 import { db } from '@/db/client';
+import { obterSessaoDoRequest, buscarPermissoes } from '@/lib/auth';
+import { can } from '@/lib/permissions';
+import type { Permission, Sessao } from '@/lib/types';
 
+/**
+ * Lê o company_id do cookie `kima-session` (nossa sessão) ou `kima-company-id` (legado).
+ */
 export function getCompanyId(request: Request): string | null {
   try {
+    // 1. Tentar sessão própria (kima-session)
+    const sessao = obterSessaoDoRequest(request);
+    if (sessao?.companyId) return sessao.companyId;
+
+    // 2. Tentar cookie legado (kima-company-id)
     const nextReq = request as unknown as {
       cookies?: { get?: (name: string) => { value?: string } | undefined };
     };
@@ -18,40 +31,46 @@ export function getCompanyId(request: Request): string | null {
     const match = /(?:^|;\s*)kima-company-id=([^;]+)/i.exec(cookieHeader);
     if (match) return decodeURIComponent(match[1]);
 
-    // Fallback dev/standalone: usado quando o app roda isolado do Kima Hub
-    // (sem cookie de SSO). Definido apenas em .env.local — não usar em produção.
+    // Fallback dev/standalone
     return process.env.NEXT_PUBLIC_KIMA_FALLBACK_COMPANY_ID || null;
   } catch {
     return process.env.NEXT_PUBLIC_KIMA_FALLBACK_COMPANY_ID || null;
   }
 }
 
+/**
+ * Lê a sessão completa a partir do request (kima-session).
+ */
+export function getSessaoDoRequest(request: Request): Sessao | null {
+  return obterSessaoDoRequest(request);
+}
+
 export function requireCompanyId(request: Request): string {
   const companyId = getCompanyId(request);
   if (!companyId) {
-    throw new Error('Sem empresa ativa no contexto. Faça login no Kima Hub.');
+    throw Object.assign(new Error('Sem empresa ativa no contexto. Faça login.'), { status: 401 });
   }
   return companyId;
 }
 
 /**
  * Valida que o utilizador autenticado é membro da empresa ativa.
- * Sem isto, bastaria forjar o cookie `kima-company-id` para ler os
- * clientes/artigos de outra empresa (IDOR). Usar nas rotas de API
- * antes de qualquer query.
  */
-export async function assertMembership(companyId: string): Promise<void> {
-  const { usuarioAtual } = await import('@/lib/session');
-  const user = await usuarioAtual();
-  if (!user) {
-    throw Object.assign(new Error('Não autenticado. Faça login no Kima Hub.'), { status: 401 });
+export async function assertMembership(companyId: string, request?: Request): Promise<void> {
+  const sessao = request ? obterSessaoDoRequest(request) : null;
+  const userId = sessao?.userId;
+
+  if (!userId) {
+    throw Object.assign(new Error('Não autenticado. Faça login.'), { status: 401 });
   }
+
   const { data, error } = await db
-    .from('memberships')
-    .select('company_id')
-    .eq('user_id', user.id)
+    .from('users')
+    .select('id')
+    .eq('id', userId)
     .eq('company_id', companyId)
     .maybeSingle();
+
   if (error) throw new Error(error.message);
   if (!data) {
     throw Object.assign(new Error('Sem acesso a esta empresa.'), { status: 403 });
@@ -59,51 +78,39 @@ export async function assertMembership(companyId: string): Promise<void> {
 }
 
 /**
- * Extrai o company_id do cookie ou resolve automaticamente pela membership real
- * do utilizador autenticado. Garante isolamento multiempresa e evita bloqueios
- * causados por cookies obsoletos ou ausentes.
+ * Verifica se o utilizador é Admin (owner) da empresa.
  */
-export async function requireCompanyMembership(request: Request): Promise<string> {
-  const { usuarioAtual } = await import('@/lib/session');
-  const user = await usuarioAtual();
-  if (!user) {
-    throw Object.assign(new Error('Não autenticado. Faça login no Kima Hub.'), { status: 401 });
+export function isAdmin(sessao: Sessao | null): boolean {
+  return sessao?.isOwner === true;
+}
+
+/**
+ * Verifica se o utilizador tem uma permissão específica.
+ * Admin (isOwner) tem sempre acesso.
+ */
+export async function requirePermission(
+  request: Request,
+  permission: Permission
+): Promise<{ sessao: Sessao; hasPermission: boolean }> {
+  const sessao = obterSessaoDoRequest(request);
+  if (!sessao) {
+    throw Object.assign(new Error('Não autenticado.'), { status: 401 });
   }
 
-  const cookieCompanyId = getCompanyId(request);
-
-  // 1. Se veio um company_id no cookie, verificar se o utilizador autenticado é membro
-  if (cookieCompanyId) {
-    const { data: memberData } = await db
-      .from('memberships')
-      .select('company_id')
-      .eq('user_id', user.id)
-      .eq('company_id', cookieCompanyId)
-      .maybeSingle();
-
-    if (memberData?.company_id) {
-      return memberData.company_id;
-    }
-    // Se o cookie apontava para outra empresa (ex: resíduo de sessão anterior),
-    // prossegue para resolver a empresa correta do utilizador abaixo.
-  }
-
-  // 2. Se o cookie não veio ou não pertence ao utilizador, resolve a empresa ativa do utilizador
-  const { data: userMemberships, error } = await db
-    .from('memberships')
-    .select('company_id')
-    .eq('user_id', user.id)
-    .limit(1);
-
-  if (error) throw new Error(error.message);
-
-  if (userMemberships && userMemberships.length > 0) {
-    return userMemberships[0].company_id;
-  }
-
-  // 3. Utilizador não possui vínculo com nenhuma empresa
-  throw Object.assign(
-    new Error('Sem empresa associada a este utilizador. Configure a sua empresa no Kima Hub.'),
-    { status: 403 }
+  const permissoes = await buscarPermissoes(
+    sessao.userId,
+    sessao.companyId,
+    sessao.isOwner
   );
+
+  const hasPermission = can(permissoes, permission);
+
+  if (!hasPermission) {
+    throw Object.assign(
+      new Error(`Sem permissão: ${permission}`),
+      { status: 403 }
+    );
+  }
+
+  return { sessao, hasPermission };
 }

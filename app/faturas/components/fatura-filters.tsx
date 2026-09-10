@@ -35,7 +35,7 @@ export function FaturaFilters({
   };
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
         {/* Pesquisa Geral */}
         <div className="space-y-1.5">
@@ -49,7 +49,7 @@ export function FaturaFilters({
               value={searchTerm}
               onChange={(e) => onSearchTermChange(e.target.value)}
               placeholder="Nº do documento ou cliente..."
-              className="pl-10 pr-8 h-10 text-xs"
+              className="pl-10 pr-8 h-11 text-xs"
             />
             {searchTerm && (
               <button
@@ -76,7 +76,7 @@ export function FaturaFilters({
               onChange={(e) =>
                 onDataInicioChange(e.target.value ? new Date(e.target.value) : null)
               }
-              className="pl-10 h-10 text-xs [color-scheme:light] dark:[color-scheme:dark]"
+              className="pl-10 h-11 text-xs [color-scheme:light] dark:[color-scheme:dark]"
             />
           </div>
         </div>
@@ -95,7 +95,7 @@ export function FaturaFilters({
                 onChange={(e) =>
                   onDataFimChange(e.target.value ? new Date(e.target.value) : null)
                 }
-                className="pl-10 h-10 text-xs [color-scheme:light] dark:[color-scheme:dark]"
+                className="pl-10 h-11 text-xs [color-scheme:light] dark:[color-scheme:dark]"
               />
             </div>
 
@@ -103,7 +103,7 @@ export function FaturaFilters({
               <button
                 type="button"
                 onClick={handleClear}
-                className="px-3 h-10 text-xs font-semibold rounded-xl border border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors shrink-0 flex items-center gap-1.5"
+                className="px-3 h-11 text-xs font-semibold rounded-xl border border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors shrink-0 flex items-center gap-1.5"
                 title="Limpar filtros"
               >
                 <FilterX size={13} />

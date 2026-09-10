@@ -1,12 +1,14 @@
 "use client";
 
-import { useMemo, useState, useSyncExternalStore } from "react";
+import { useMemo, useState, useEffect, useSyncExternalStore } from "react";
+import { useRouter } from "next/navigation";
 import { useAppStore } from "@/lib/store";
 import { useToastContext } from "@/components/ui/toast";
+import { usePermissions } from "@/hooks/use-permissions";
 import { formatMoedaAOA, formatData } from "@/lib/formatters";
 import { gerarResumoSAFT, exportarSAFTXML, validarDocumentoSAFT, validarEsquemaSAFT, gerarRelatorioDPIVA } from "@/lib/saft-generator";
 import { validarXMLSAFT } from "@/lib/xsd-validator";
-import { FileDown, FileJson, FileSpreadsheet, AlertTriangle, ShieldCheck, CheckCircle2 } from "lucide-react";
+import { FileDown, FileJson, FileSpreadsheet, AlertTriangle, ShieldCheck, CheckCircle2, Loader2 } from "lucide-react";
 import { Documento } from "@/lib/types";
 
 const MESES = [
@@ -25,9 +27,18 @@ function downloadFicheiro(conteudo: string, nome: string, tipo: string) {
 }
 
 export default function RelatoriosPage() {
+  const router = useRouter();
+  const { can, loaded: permsLoaded } = usePermissions();
   const store = useAppStore();
   const { success, error } = useToastContext();
   const mounted = useSyncExternalStore(() => () => {}, () => true, () => false);
+
+  // Verificar permissão
+  useEffect(() => {
+    if (permsLoaded && !can("reports.view")) {
+      router.replace("/acesso-negado");
+    }
+  }, [permsLoaded, can, router]);
 
   const hoje = new Date();
   const mesAtual = hoje.getMonth() + 1;
@@ -91,6 +102,14 @@ export default function RelatoriosPage() {
     downloadFicheiro(csv, `DP-IVA_${ano}-${String(mes).padStart(2, "0")}.csv`, "text/csv");
     success("DP-IVA exportado", "Dados para a Declaração Periódica gerados em CSV.");
   };
+
+  if (!permsLoaded || !can("reports.view")) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Loader2 size={24} className="animate-spin text-blue-600" />
+      </div>
+    );
+  }
 
   if (!mounted || !resumo) {
     return (
@@ -223,26 +242,28 @@ export default function RelatoriosPage() {
           <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-800 font-bold text-slate-900 dark:text-white text-sm">
             Documentos por tipo
           </div>
-          <table className="w-full text-xs">
-            <thead className="bg-slate-50 dark:bg-slate-800/50">
-              <tr className="text-slate-500 dark:text-slate-400 text-[11px]">
-                <th className="text-left px-5 py-2.5 font-semibold">Tipo</th>
-                <th className="text-left px-5 py-2.5 font-semibold">Série</th>
-                <th className="text-center px-5 py-2.5 font-semibold">Quantidade</th>
-                <th className="text-right px-5 py-2.5 font-semibold">Total</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-              {resumo.documentos.map((d, i) => (
-                <tr key={i}>
-                  <td className="px-5 py-2.5 font-medium text-slate-900 dark:text-white">{d.tipo}</td>
-                  <td className="px-5 py-2.5 font-mono">{d.serie}</td>
-                  <td className="px-5 py-2.5 text-center font-mono">{d.quantidade}</td>
-                  <td className="px-5 py-2.5 text-right font-mono">{formatMoedaAOA(d.total)}</td>
+          <div className="overflow-x-auto pb-2">
+            <table className="w-full text-xs min-w-[500px] sm:min-w-full">
+              <thead className="bg-slate-50 dark:bg-slate-800/50">
+                <tr className="text-slate-500 dark:text-slate-400 text-[11px]">
+                  <th className="text-left px-5 py-2.5 font-semibold">Tipo</th>
+                  <th className="text-left px-5 py-2.5 font-semibold">Série</th>
+                  <th className="text-center px-5 py-2.5 font-semibold">Quantidade</th>
+                  <th className="text-right px-5 py-2.5 font-semibold">Total</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                {resumo.documentos.map((d, i) => (
+                  <tr key={i}>
+                    <td className="px-5 py-2.5 font-medium text-slate-900 dark:text-white">{d.tipo}</td>
+                    <td className="px-5 py-2.5 font-mono">{d.serie}</td>
+                    <td className="px-5 py-2.5 text-center font-mono">{d.quantidade}</td>
+                    <td className="px-5 py-2.5 text-right font-mono">{formatMoedaAOA(d.total)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 
@@ -262,8 +283,8 @@ export default function RelatoriosPage() {
             <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">
               Dados para a Declaração Periódica de IVA · {MESES[mes - 1]} {ano} · Imposto cobrado (14%, 7% e isento)
             </p>
-            <div className="overflow-x-auto">
-              <table className="w-full text-xs">
+            <div className="overflow-x-auto pb-2">
+              <table className="w-full text-xs min-w-[500px] sm:min-w-full">
                 <thead className="bg-slate-50 dark:bg-slate-800/50">
                   <tr className="text-slate-500 dark:text-slate-400 text-[11px]">
                     <th className="text-left px-4 py-2.5 font-semibold">Taxa</th>

@@ -89,7 +89,7 @@ export default function DashboardPage() {
     .slice(0, 6);
 
   return (
-    <div className="max-w-7xl mx-auto px-2 py-2 space-y-6 animate-slide-up">
+    <div className="max-w-7xl mx-auto space-y-6 animate-slide-up">
 
       {/* ── MÉTRICAS ─────────────────────────────────── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -186,17 +186,17 @@ export default function DashboardPage() {
           </Link>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5">
           {QUICK_TIPOS.map(({ tipo, label, Icon, btn, icon }) => (
             <Link
               key={tipo}
               href={`/faturas/nova?tipo=${tipo}`}
-              className={`flex flex-col items-start gap-2 p-3 rounded-xl border transition-all duration-150 ${btn}`}
+              className={`flex flex-col items-start gap-2 p-2.5 sm:p-3 rounded-xl border transition-all duration-150 ${btn}`}
             >
-              <span className={`w-8 h-8 rounded-lg ${icon} text-white flex items-center justify-center shadow-sm`}>
-                <Icon size={16} />
+              <span className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg ${icon} text-white flex items-center justify-center shadow-sm`}>
+                <Icon size={15} />
               </span>
-              <span className="text-xs font-bold leading-tight">{label}</span>
+              <span className="text-[11px] sm:text-xs font-bold leading-tight">{label}</span>
             </Link>
           ))}
         </div>
@@ -205,7 +205,7 @@ export default function DashboardPage() {
       {/* ── ÚLTIMAS FATURAS ──────────────────────────── */}
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm overflow-hidden">
         {/* Card Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800">
+        <div className="flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 border-b border-slate-100 dark:border-slate-800">
           <div>
             <h3 className="font-bold text-slate-900 dark:text-white text-base">
               Últimas Faturas

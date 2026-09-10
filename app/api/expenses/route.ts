@@ -7,8 +7,11 @@ import { requireCompanyId } from "@/lib/company";
 export async function GET(request: Request) {
   try {
     const companyId = requireCompanyId(request);
-    const despesas = await obterDespesas(companyId);
-    return NextResponse.json({ success: true, data: despesas });
+    const { searchParams } = new URL(request.url);
+    const limit = Math.min(parseInt(searchParams.get("limit") || "100"), 200);
+    const offset = parseInt(searchParams.get("offset") || "0", 10);
+    const result = await obterDespesas(companyId, { limit, offset });
+    return NextResponse.json({ success: true, data: result.data, total: result.total });
   } catch (error: unknown) {
     return NextResponse.json(
       { success: false, error: normalizarErro(error).mensagem || "Erro ao obter despesas" },

@@ -99,8 +99,9 @@ export const empresaSchema = z.object({
 });
 
 export const loginSchema = z.object({
+  companyCode: z.string().min(1, "Código da empresa é obrigatório"),
   email: z.string().min(1, "Email é obrigatório").email("Email inválido"),
-  password: z.string().min(6, "A palavra-passe deve ter pelo menos 6 caracteres"),
+  password: z.string().min(1, "A palavra-passe é obrigatória"),
 });
 
 export const signupSchema = z

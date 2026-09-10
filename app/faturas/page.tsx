@@ -86,7 +86,7 @@ export default function FaturasPage() {
   const documentosCancelados = documentosBase.filter((f) => f.status === "Cancelado");
 
   return (
-    <div className="max-w-7xl mx-auto px-2 py-2 space-y-5 animate-slide-up">
+    <div className="max-w-7xl mx-auto space-y-5 animate-slide-up">
 
       {/* ── HEADER ──────────────────────────────────── */}
       <div className="flex items-center justify-between">

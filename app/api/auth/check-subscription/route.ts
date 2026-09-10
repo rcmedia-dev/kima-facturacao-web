@@ -1,5 +1,13 @@
+/**
+ * POST /api/auth/check-subscription
+ *
+ * Verifica se a empresa do utilizador tem subscrição ativa no módulo Facturação.
+ * Usa nossa tabela `users` (não mais `memberships` do Supabase Auth).
+ */
+
 import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { obterSessaoDoRequest } from '@/lib/auth';
+import { db } from '@/db/client';
 
 const MODULE_KEYS = [
   process.env.NEXT_PUBLIC_KIMA_MODULE_KEY || 'faturas',
@@ -12,93 +20,35 @@ const MODULE_KEYS = [
 
 export async function POST(request: Request) {
   try {
-    const { userId, email } = await request.json();
-
-    if (!userId) {
+    // 1. Ler sessão do cookie
+    const sessao = obterSessaoDoRequest(request);
+    if (!sessao) {
       return NextResponse.json(
-        { success: false, error: 'ID do utilizador é obrigatório.' },
-        { status: 400 }
+        { success: false, error: 'Não autenticado.', hasAccess: false, status: 'error' },
+        { status: 401 }
       );
     }
 
-    const useMock = process.env.NEXT_PUBLIC_USE_MOCK_DB === 'true';
-
-    let admin: any;
-    if (useMock) {
-      const { createMockClient } = await import('@/db/mocks/mock-client');
-      admin = createMockClient();
-    } else {
-      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-      const supabaseKey =
-        process.env.SUPABASE_SERVICE_ROLE_KEY ||
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-      admin = createClient(supabaseUrl, supabaseKey, {
-        auth: { persistSession: false },
-      });
-    }
-
-    // 1. Procurar a empresa do utilizador em `memberships`
-    let companyId: string | null = null;
-    let role: string | null = null;
-
-    const { data: memberships, error: memberErr } = await admin
-      .from('memberships')
-      .select('company_id, role, status')
-      .eq('user_id', userId);
-
-    if (memberErr) {
-      console.warn('Aviso ao consultar memberships no backend:', memberErr.message);
-    }
-
-    if (memberships && memberships.length > 0) {
-      companyId = memberships[0].company_id;
-      role = memberships[0].role || null;
-    }
-
-    // Se não encontrou por membership, tentar buscar empresas criadas pelo utilizador
-    if (!companyId) {
-      const { data: ownedCompanies } = await admin
-        .from('companies')
-        .select('id')
-        .or(`owner_id.eq.${userId},created_by.eq.${userId}`)
-        .limit(1);
-
-      if (ownedCompanies && ownedCompanies.length > 0) {
-        companyId = ownedCompanies[0].id;
-      }
-    }
-
-    // Se ainda não tem empresa vinculada
-    if (!companyId) {
-      return NextResponse.json({
-        success: true,
-        hasAccess: false,
-        status: 'no_company',
-        companyId: null,
-        companyName: null,
-        planName: null,
-        message: 'A sua conta não tem nenhuma empresa vinculada. Conclua a configuração da sua empresa no Kima Hub.',
-      });
-    }
+    const companyId = sessao.companyId;
 
     // 2. Obter nome da empresa
     let companyName: string | null = null;
     try {
-      const { data: companyData } = await admin
+      const { data: companyData } = await db
         .from('companies')
-        .select('name, trade_name')
+        .select('name')
         .eq('id', companyId)
         .maybeSingle();
 
       if (companyData) {
-        companyName = companyData.trade_name || companyData.name || null;
+        companyName = companyData.name || null;
       }
     } catch {
       // Ignore company name lookup failure
     }
 
     // 3. Consultar o módulo na tabela `company_modules`
-    const { data: moduleData, error: modErr } = await admin
+    const { data: moduleData, error: modErr } = await db
       .from('company_modules')
       .select('id, module_key, status, plan, expires_at, created_at')
       .eq('company_id', companyId)
@@ -109,10 +59,10 @@ export async function POST(request: Request) {
       console.warn('Aviso ao consultar company_modules:', modErr.message);
     }
 
-    // Se não tem registo em `company_modules`, verificar se existe pedido em `subscription_requests`
+    // Se não tem registo em `company_modules`, verificar pedido em `subscription_requests`
     if (!moduleData) {
       try {
-        const { data: requestData } = await admin
+        const { data: requestData } = await db
           .from('subscription_requests')
           .select('id, status, plan, created_at')
           .eq('company_id', companyId)

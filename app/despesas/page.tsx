@@ -35,7 +35,7 @@ export default function DespesasPage() {
 
   if (!mounted) {
     return (
-      <div className="max-w-7xl mx-auto px-2 py-6 space-y-5 animate-pulse">
+      <div className="max-w-7xl mx-auto px-4 py-6 space-y-5 animate-pulse">
         <div className="h-8 w-40 bg-slate-200 dark:bg-slate-800 rounded-xl" />
         <div className="h-14 bg-slate-200 dark:bg-slate-800 rounded-2xl" />
         <div className="h-64 bg-slate-200 dark:bg-slate-800 rounded-2xl" />
@@ -75,7 +75,7 @@ export default function DespesasPage() {
   const valorPendente = despesasPendentes.reduce((sum, d) => sum + Number(d.total), 0);
 
   return (
-    <div className="max-w-7xl mx-auto px-2 py-2 space-y-5 animate-slide-up">
+    <div className="max-w-7xl mx-auto space-y-5 animate-slide-up">
       {/* ── HEADER ──────────────────────────────────── */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">

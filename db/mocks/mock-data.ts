@@ -34,6 +34,11 @@ export const MOCK_IDS = {
   filaAgt1: '550e8400-e29b-41d4-a716-446655440100',
   chaveAgt1: '550e8400-e29b-41d4-a716-446655440110',
   movimento1: '550e8400-e29b-41d4-a716-446655440120',
+  // Usuários do Kima Facturação (login próprio)
+  userAdmin: '550e8400-e29b-41d4-a716-446655440010', // mesmo ID do user (owner)
+  userFunc1: '550e8400-e29b-41d4-a716-446655440130',
+  userFunc2: '550e8400-e29b-41d4-a716-446655440131',
+  userFunc3: '550e8400-e29b-41d4-a716-446655440132',
 } as const;
 
 const now = new Date().toISOString();
@@ -46,6 +51,7 @@ export const MOCK_COMPANIES = [
     id: MOCK_IDS.empresa,
     name: 'Kima Tecnologias, Lda',
     nif: '5417283901',
+    company_code: 'KIMA',
     owner_id: MOCK_IDS.user,
     created_by: MOCK_IDS.user,
     created_at: lastWeek,
@@ -602,7 +608,7 @@ export const MOCK_MOVIMENTOS_STOCK = [
   },
 ];
 
-// ─── Auth mock user ─────────────────────────────────────────────────────────
+// ─── Auth mock user (Supabase Auth — manter para compatibilidade) ─────────────
 export const MOCK_USER = {
   id: MOCK_IDS.user,
   email: 'admin@kima.ao',
@@ -611,6 +617,103 @@ export const MOCK_USER = {
   },
   created_at: lastWeek,
 };
+
+// ══════════════════════════════════════════════════════════════════════════════
+// SISTEMA DE PERMISSÕES — Kima Facturação
+// Login próprio: código da empresa + email + senha
+// ══════════════════════════════════════════════════════════════════════════════
+
+// ─── Tabela: users (login próprio) ──────────────────────────────────────────
+// Formato mock: password_hash = "mock:${senha}"
+// Para login use: senha = email do utilizador
+export const MOCK_USERS = [
+  // Admin (owner da empresa) — senha: admin@kima.ao
+  {
+    id: MOCK_IDS.userAdmin,
+    company_id: MOCK_IDS.empresa,
+    email: 'admin@kima.ao',
+    full_name: 'Administrador Kima',
+    password_hash: 'mock:admin@kima.ao',
+    is_owner: true,
+    status: 'ativo',
+    created_at: lastWeek,
+    updated_at: now,
+  },
+  // Funcionário 1 — Bruno (com permissões) — senha: bruno@kima.ao
+  {
+    id: MOCK_IDS.userFunc1,
+    company_id: MOCK_IDS.empresa,
+    email: 'bruno@kima.ao',
+    full_name: 'Bruno Silva',
+    password_hash: 'mock:bruno@kima.ao',
+    is_owner: false,
+    status: 'ativo',
+    created_at: yesterday,
+    updated_at: now,
+  },
+  // Funcionário 2 — Maria (com permissões) — senha: maria@kima.ao
+  {
+    id: MOCK_IDS.userFunc2,
+    company_id: MOCK_IDS.empresa,
+    email: 'maria@kima.ao',
+    full_name: 'Maria Santos',
+    password_hash: 'mock:maria@kima.ao',
+    is_owner: false,
+    status: 'ativo',
+    created_at: yesterday,
+    updated_at: now,
+  },
+  // Funcionário 3 — Rita (sem senha — primeiro acesso)
+  {
+    id: MOCK_IDS.userFunc3,
+    company_id: MOCK_IDS.empresa,
+    email: 'rita@kima.ao',
+    full_name: 'Rita Costa',
+    password_hash: null, // NULL = precisa definir senha no primeiro acesso
+    is_owner: false,
+    status: 'pendente',
+    created_at: now,
+    updated_at: now,
+  },
+];
+
+// ─── Tabela: permissions (catálogo fixo — 18 permissões) ────────────────────
+export const MOCK_PERMISSIONS = [
+  { code: 'dashboard.view', description: 'Ver dashboard' },
+  { code: 'invoices.view', description: 'Ver facturas' },
+  { code: 'invoices.create', description: 'Criar facturas' },
+  { code: 'invoices.update', description: 'Editar facturas' },
+  { code: 'invoices.delete', description: 'Apagar facturas' },
+  { code: 'customers.view', description: 'Ver clientes' },
+  { code: 'customers.manage', description: 'Criar/editar clientes' },
+  { code: 'customers.delete', description: 'Apagar clientes' },
+  { code: 'suppliers.view', description: 'Ver fornecedores' },
+  { code: 'suppliers.manage', description: 'Gerir fornecedores' },
+  { code: 'articles.view', description: 'Ver artigos' },
+  { code: 'articles.manage', description: 'Gerir artigos' },
+  { code: 'expenses.view', description: 'Ver despesas' },
+  { code: 'expenses.manage', description: 'Gerir despesas' },
+  { code: 'reports.view', description: 'Ver relatórios' },
+  { code: 'settings.manage', description: 'Gerir configurações' },
+  { code: 'agt.manage', description: 'Gerir AGT' },
+  { code: 'users.manage', description: 'Gerir utilizadores' },
+];
+
+// ─── Tabela: user_permissions (permissões atribuídas) ────────────────────────
+// Admin NÃO precisa de registos (tem todas automaticamente)
+// Apenas funcionários têm permissões atribuídas
+export const MOCK_USER_PERMISSIONS = [
+  // Bruno: facturas + clientes
+  { user_id: MOCK_IDS.userFunc1, company_id: MOCK_IDS.empresa, permission_code: 'dashboard.view' },
+  { user_id: MOCK_IDS.userFunc1, company_id: MOCK_IDS.empresa, permission_code: 'invoices.view' },
+  { user_id: MOCK_IDS.userFunc1, company_id: MOCK_IDS.empresa, permission_code: 'invoices.create' },
+  { user_id: MOCK_IDS.userFunc1, company_id: MOCK_IDS.empresa, permission_code: 'customers.view' },
+  // Maria: facturas + relatórios
+  { user_id: MOCK_IDS.userFunc2, company_id: MOCK_IDS.empresa, permission_code: 'dashboard.view' },
+  { user_id: MOCK_IDS.userFunc2, company_id: MOCK_IDS.empresa, permission_code: 'invoices.view' },
+  { user_id: MOCK_IDS.userFunc2, company_id: MOCK_IDS.empresa, permission_code: 'reports.view' },
+  // Rita: sem permissões (pendente)
+];
 
 // ─── Índice rápido por company_id ──────────────────────────────────────────
 export function filterByCompany<T extends { company_id?: string }>(

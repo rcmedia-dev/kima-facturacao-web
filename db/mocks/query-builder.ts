@@ -515,6 +515,9 @@ export class MockDB {
       MOCK_CHAVES_ASSINATURA,
       MOCK_FILA_ENVIO_AGT,
       MOCK_MOVIMENTOS_STOCK,
+      MOCK_USERS,
+      MOCK_PERMISSIONS,
+      MOCK_USER_PERMISSIONS,
     } = require('./mock-data');
 
     MockDB._tables.set('companies', [...MOCK_COMPANIES]);
@@ -533,6 +536,9 @@ export class MockDB {
     MockDB._tables.set('chaves_assinatura_agt', [...MOCK_CHAVES_ASSINATURA]);
     MockDB._tables.set('fila_envio_agt', [...MOCK_FILA_ENVIO_AGT]);
     MockDB._tables.set('movimentos_stock', [...MOCK_MOVIMENTOS_STOCK]);
+    MockDB._tables.set('users', [...MOCK_USERS]);
+    MockDB._tables.set('permissions', [...MOCK_PERMISSIONS]);
+    MockDB._tables.set('user_permissions', [...MOCK_USER_PERMISSIONS]);
   }
 
   static getTable(name: string, create = false): MockRow[] | null {

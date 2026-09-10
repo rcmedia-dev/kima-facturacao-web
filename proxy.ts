@@ -1,186 +1,67 @@
+/**
+ * Proxy — Kima Facturação (Next.js 16.3.0)
+ *
+ * Edge Runtime: apenas verifica existência do cookie kima-session.
+ * Nunca consulta BD. A validação real da sessão é feita no servidor.
+ */
+
 import { NextResponse, type NextRequest } from 'next/server';
-import { createServerClient } from '@/lib/supabase-ssr';
 
-const MODULE_KEY = process.env.NEXT_PUBLIC_KIMA_MODULE_KEY || 'faturas';
+const SESSION_COOKIE = 'kima-session';
 
-function getCookieDomain(request: NextRequest): string | undefined {
-  const host = request.headers.get('host') || '';
-  const rootDomain = process.env.NEXT_PUBLIC_KIMA_ROOT_DOMAIN || 'kima.ao';
-  if (host.includes(rootDomain)) {
-    return `.${rootDomain}`;
-  }
-  return undefined;
-}
+const PUBLIC_PATHS = [
+  '/login',
+  '/primeiro-acesso',
+  '/acesso-negado',
+  '/api/auth/login',
+  '/api/auth/primeiro-acesso',
+  '/api/auth/permissions',
+  '/api/auth/check-subscription',
+];
 
 export async function proxy(request: NextRequest) {
-  const COOKIE_DOMAIN = getCookieDomain(request);
-  const requestHeaders = new Headers(request.headers);
+  const pathname = request.nextUrl.pathname;
 
-  let response = NextResponse.next({
-    request: {
-      headers: requestHeaders,
-    },
-  });
-
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return request.cookies.getAll();
-        },
-        setAll(cookiesToSet: { name: string; value: string; options?: any }[]) {
-          cookiesToSet.forEach(({ name, value, options }) =>
-            response.cookies.set(name, value, {
-              ...options,
-              domain: COOKIE_DOMAIN,
-              path: '/',
-            })
-          );
-        },
-      },
-    }
-  );
-
-  const { data: { user } } = await supabase.auth.getUser();
-
-  const isAuthCallback = request.nextUrl.pathname.startsWith('/auth/callback');
-  const isAuthPage =
-    request.nextUrl.pathname === '/login' ||
-    request.nextUrl.pathname === '/signup' ||
-    request.nextUrl.pathname === '/auth';
-  const isStaticAsset =
-    request.nextUrl.pathname.startsWith('/_next/') ||
-    request.nextUrl.pathname.startsWith('/favicon.ico');
-  const isApiRoute = request.nextUrl.pathname.startsWith('/api/');
-
-  if (isStaticAsset || isAuthCallback || isAuthPage) {
-    return response;
+  // Rotas públicas → sempre permite
+  if (PUBLIC_PATHS.some((p) => pathname.startsWith(p))) {
+    return NextResponse.next();
   }
 
-  if (!user) {
-    if (isApiRoute) {
+  // Rotas estáticas → permite
+  if (
+    pathname.startsWith('/_next/') ||
+    pathname.startsWith('/favicon.ico') ||
+    pathname.match(/\.(svg|png|jpg|jpeg|gif|webp)$/)
+  ) {
+    return NextResponse.next();
+  }
+
+  // Verificar se existe cookie de sessão
+  const session = request.cookies.get(SESSION_COOKIE);
+  if (!session) {
+    // API routes → 401 JSON
+    if (pathname.startsWith('/api/')) {
       return NextResponse.json(
-        { success: false, error: 'Não autenticado. Faça login no Kima Hub.' },
+        { success: false, error: 'Não autenticado.' },
         { status: 401 }
       );
     }
+    // Pages → redirect para login
     const loginUrl = new URL('/login', request.url);
-    loginUrl.searchParams.set('redirect', request.url);
+    loginUrl.searchParams.set('redirect', pathname);
     return NextResponse.redirect(loginUrl);
   }
 
-  // 1. Resolver a empresa ativa e validar o membership do utilizador.
-  // Combina membership + module check em queries mínimas.
-  const cookieCompanyId = request.cookies.get('kima-company-id')?.value;
-  let activeCompanyId: string | null = null;
-
-  if (cookieCompanyId) {
-    const { data: membership } = await supabase
-      .from('memberships')
-      .select('company_id')
-      .eq('user_id', user.id)
-      .eq('company_id', cookieCompanyId)
-      .maybeSingle();
-
-    if (membership?.company_id) {
-      activeCompanyId = membership.company_id;
-    }
-  }
-
-  if (!activeCompanyId) {
-    const { data: membership } = await supabase
-      .from('memberships')
-      .select('company_id')
-      .eq('user_id', user.id)
-      .maybeSingle();
-
-    if (!membership?.company_id) {
-      if (isApiRoute) {
-        return NextResponse.json(
-          { success: false, error: 'Sem empresa associada a este utilizador. Configure a empresa no Kima Hub.' },
-          { status: 403 }
-        );
-      }
-      const onboardingUrl = new URL('/onboarding', process.env.NEXT_PUBLIC_KIMA_HUB_URL || 'https://kima-hub.vercel.app');
-      return NextResponse.redirect(onboardingUrl);
-    }
-
-    activeCompanyId = membership.company_id;
-    response.cookies.set('kima-company-id', membership.company_id, {
-      domain: COOKIE_DOMAIN,
-      path: '/',
-      httpOnly: false,
-      sameSite: 'lax',
-      secure: process.env.NODE_ENV === 'production' && request.nextUrl.protocol === 'https:',
-      maxAge: 60 * 60 * 24 * 30,
-    });
-  }
-
-  const companyId = activeCompanyId;
-
-  // 2. Verificar módulo — reutiliza o client anon (evita criar adminClient)
-  const MODULE_KEYS = [MODULE_KEY, 'faturas', 'facturas', 'facturacao'];
-
-  const { data: moduleData } = await supabase
-    .from('company_modules')
-    .select('id, module_key, status, expires_at')
-    .eq('company_id', companyId)
-    .in('module_key', MODULE_KEYS)
-    .maybeSingle();
-
-  const rawStatus = (moduleData?.status || '').toString().trim().toLowerCase();
-  const isActive = ['ativo', 'active', 'approved', 'aprovado'].includes(rawStatus);
-
-  let isExpired = false;
-  if (moduleData?.expires_at) {
-    const expDate = new Date(moduleData.expires_at);
-    if (!isNaN(expDate.getTime()) && expDate < new Date()) {
-      isExpired = true;
-    }
-  }
-
-  if (!moduleData || !isActive || isExpired) {
-    const isDev = process.env.NODE_ENV !== 'production' && request.headers.get('host')?.includes('localhost');
-
-    // Em ambiente de desenvolvimento local e sem registo de módulo prévio
-    if (isDev && !moduleData) {
-      try {
-        const adminClient = createServerClient(
-          process.env.NEXT_PUBLIC_SUPABASE_URL!,
-          process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-          { cookies: { getAll: () => [], setAll: () => {} } }
-        );
-        await adminClient.from('company_modules').upsert({
-          company_id: companyId,
-          module_key: MODULE_KEY,
-          status: 'Ativo',
-        }, { onConflict: 'company_id,module_key' });
-        return response;
-      } catch {
-        return response;
-      }
-    }
-
-    if (isApiRoute) {
-      return NextResponse.json(
-        { success: false, error: 'Módulo de facturação não contratado ou subscrição pendente/inativa para esta empresa.' },
-        { status: 403 }
-      );
-    }
-
-    const currentStatus = isExpired ? 'Expirado' : (moduleData?.status || 'none');
-    const loginUrl = new URL('/login', request.url);
-    loginUrl.searchParams.set('error', 'subscription_required');
-    loginUrl.searchParams.set('status', currentStatus);
-    loginUrl.searchParams.set('redirect', request.url);
-    return NextResponse.redirect(loginUrl);
-  }
-
-  return response;
+  return NextResponse.next();
 }
 
 export const config = {
-  matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'],
+  matcher: [
+    /*
+     * Match all request paths except:
+     * - _next/static, _next/image, favicon.ico
+     * - public files (images, etc)
+     */
+    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+  ],
 };

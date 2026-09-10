@@ -194,14 +194,17 @@ async function registarAuditoria(
 
 // ─── CLIENTES ────────────────────────────────────────────────────────────────
 
-export async function obterClientes(companyId: string) {
-  const { data, error } = await db
+export async function obterClientes(companyId: string, opts?: { limit?: number; offset?: number }) {
+  const limit = opts?.limit ?? 100;
+  const offset = opts?.offset ?? 0;
+  const { data, error, count } = await db
     .from('clientes')
-    .select('id, nome, tipo, nif, morada, telefone, email, responsavel, inscricao_social, ativo, created_at, updated_at')
+    .select('id, nome, tipo, nif, morada, telefone, email, responsavel, inscricao_social, ativo, created_at, updated_at', { count: 'exact' })
     .eq('company_id', companyId)
-    .order('created_at', { ascending: false });
+    .order('created_at', { ascending: false })
+    .range(offset, offset + limit - 1);
   if (error) throw new Error(error.message);
-  return (data || []).map(mapearCliente);
+  return { data: (data || []).map(mapearCliente), total: count ?? 0 };
 }
 
 export async function obterClientePorId(companyId: string, id: string) {
@@ -284,14 +287,17 @@ export async function deletarCliente(companyId: string, id: string) {
 
 // ─── FORNECEDORES ────────────────────────────────────────────────────────────
 
-export async function obterFornecedores(companyId: string) {
-  const { data, error } = await db
+export async function obterFornecedores(companyId: string, opts?: { limit?: number; offset?: number }) {
+  const limit = opts?.limit ?? 100;
+  const offset = opts?.offset ?? 0;
+  const { data, error, count } = await db
     .from('fornecedores')
-    .select('id, nome, nif, morada, telefone, email, bancaria, ativo, created_at, updated_at')
+    .select('id, nome, nif, morada, telefone, email, bancaria, ativo, created_at, updated_at', { count: 'exact' })
     .eq('company_id', companyId)
-    .order('created_at', { ascending: false });
+    .order('created_at', { ascending: false })
+    .range(offset, offset + limit - 1);
   if (error) throw new Error(error.message);
-  return (data || []).map(mapearFornecedor);
+  return { data: (data || []).map(mapearFornecedor), total: count ?? 0 };
 }
 
 export async function obterFornecedorPorId(companyId: string, id: string) {
@@ -370,14 +376,17 @@ export async function deletarFornecedor(companyId: string, id: string) {
 
 // ─── DESPESAS ────────────────────────────────────────────────────────────────
 
-export async function obterDespesas(companyId: string) {
-  const { data, error } = await db
+export async function obterDespesas(companyId: string, opts?: { limit?: number; offset?: number }) {
+  const limit = opts?.limit ?? 100;
+  const offset = opts?.offset ?? 0;
+  const { data, error, count } = await db
     .from('despesas')
-    .select('id, descricao, fornecedor_id, categoria, valor, taxa_iva, total, data, forma_pagamento, estado, observacoes, created_at, updated_at')
+    .select('id, descricao, fornecedor_id, categoria, valor, taxa_iva, total, data, forma_pagamento, estado, observacoes, created_at, updated_at', { count: 'exact' })
     .eq('company_id', companyId)
-    .order('data', { ascending: false });
+    .order('data', { ascending: false })
+    .range(offset, offset + limit - 1);
   if (error) throw new Error(error.message);
-  return (data || []).map(mapearDespesa);
+  return { data: (data || []).map(mapearDespesa), total: count ?? 0 };
 }
 
 export async function obterDespesaPorId(companyId: string, id: string) {
@@ -467,14 +476,17 @@ export async function deletarDespesa(companyId: string, id: string) {
 
 // ─── ARTIGOS ─────────────────────────────────────────────────────────────────
 
-export async function obterArtigos(companyId: string) {
-  const { data, error } = await db
+export async function obterArtigos(companyId: string, opts?: { limit?: number; offset?: number }) {
+  const limit = opts?.limit ?? 100;
+  const offset = opts?.offset ?? 0;
+  const { data, error, count } = await db
     .from('artigos')
-    .select('id, codigo, descricao, categoria, tipo, unidade_medida, preco, taxa_iva, stock, stock_minimo, fornecedor_id, ativo, created_at, updated_at')
+    .select('id, codigo, descricao, categoria, tipo, unidade_medida, preco, taxa_iva, stock, stock_minimo, fornecedor_id, ativo, created_at, updated_at', { count: 'exact' })
     .eq('company_id', companyId)
-    .order('created_at', { ascending: false });
+    .order('created_at', { ascending: false })
+    .range(offset, offset + limit - 1);
   if (error) throw new Error(error.message);
-  return (data || []).map(mapearArtigo);
+  return { data: (data || []).map(mapearArtigo), total: count ?? 0 };
 }
 
 export async function obterArtigoPorId(companyId: string, id: string) {
@@ -589,10 +601,8 @@ export async function deletarArtigo(companyId: string, id: string) {
 // ─── DOCUMENTOS ──────────────────────────────────────────────────────────────
 
 const COLUNAS_DOCUMENTO_LISTA =
-  'id, tipo, serie, numero, numero_completo, cliente_id, fornecedor_id, data_emissao, data_vencimento, ' +
-  'forma_pagamento, status, subtotal, total_iva, total, data_pagamento, created_at, updated_at, ' +
-  'motivo_isencao_iva, data_operacao, created_by, updated_by, documento_referenciado, motivo, ' +
-  'status_agt, erro_agt, tentativas_agt, data_transmissao_agt';
+  'id, tipo, serie, numero, numero_completo, cliente_id, data_emissao, ' +
+  'status, total, created_at';
 
 const COLUNAS_DOCUMENTO_DETALHE =
   '*, cliente:clientes(id, nome, tipo, nif, morada, telefone, email, responsavel, inscricao_social, ativo, created_at, updated_at), ' +
@@ -630,10 +640,10 @@ export async function listarDocumentosLeve(
 export async function obterDocumentos(companyId: string, tipo?: string) {
   let query = db
     .from('documentos')
-    .select('id, tipo, serie, numero, numero_completo, cliente_id, fornecedor_id, data_emissao, data_vencimento, forma_pagamento, status, subtotal, total_iva, total, data_pagamento, created_at, updated_at, motivo_isencao_iva, data_operacao, created_by, updated_by, documento_referenciado, motivo, status_agt, erro_agt, tentativas_agt, data_transmissao_agt')
+    .select('id, tipo, serie, numero, numero_completo, data_emissao, data_vencimento, forma_pagamento, status, subtotal, total_iva, total, created_at')
     .eq('company_id', companyId);
   if (tipo) query = query.eq('tipo', tipo);
-  const { data, error } = await query.order('created_at', { ascending: false });
+  const { data, error } = await query.order('created_at', { ascending: false }).limit(100);
   if (error) throw new Error(error.message);
   return (data || []).map(mapearDocumento);
 }
@@ -1176,12 +1186,13 @@ export async function obterLogsAuditoria(
 // ─── KPIs / RELATÓRIOS ───────────────────────────────────────────────────────
 
 export async function obterKPIsEmpresa(companyId: string) {
-  // Agregações SQL em vez de buscar todos os registros (reduz ~50x o egress)
   const [docsResult, clientesResult] = await Promise.all([
     db
       .from('documentos')
       .select('status, total')
-      .eq('company_id', companyId),
+      .eq('company_id', companyId)
+      .order('created_at', { ascending: false })
+      .limit(200),
     db
       .from('clientes')
       .select('id', { count: 'exact', head: true })

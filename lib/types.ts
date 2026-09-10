@@ -219,3 +219,57 @@ export interface LogAuditoria {
   timestamp: Date;
   endereco?: string;
 }
+
+// ══════════════════════════════════════════════════════════════════════════════
+// SISTEMA DE PERMISSÕES — Kima Facturação
+// ══════════════════════════════════════════════════════════════════════════════
+
+/** Permissão individual (código da tabela permissions) */
+export type Permission =
+  | 'dashboard.view'
+  | 'invoices.view'
+  | 'invoices.create'
+  | 'invoices.update'
+  | 'invoices.delete'
+  | 'customers.view'
+  | 'customers.manage'
+  | 'customers.delete'
+  | 'suppliers.view'
+  | 'suppliers.manage'
+  | 'articles.view'
+  | 'articles.manage'
+  | 'expenses.view'
+  | 'expenses.manage'
+  | 'reports.view'
+  | 'settings.manage'
+  | 'agt.manage'
+  | 'users.manage';
+
+/** Utilizador do Kima Facturação (tabela public.users) */
+export interface Utilizador {
+  id: string;
+  companyId: string;
+  email: string;
+  fullName: string | null;
+  passwordHash: string | null; // NULL = precisa definir senha
+  isOwner: boolean;
+  status: 'ativo' | 'inativo' | 'pendente';
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+/** Sessão codificada no cookie kima-session */
+export interface Sessao {
+  userId: string;
+  companyId: string;
+  isOwner: boolean;
+  email: string;
+}
+
+/** Permissões finais de um utilizador */
+export interface UserPermissions {
+  userId: string;
+  companyId: string;
+  isOwner: boolean;
+  permissions: Permission[];
+}

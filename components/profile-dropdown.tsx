@@ -1,23 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { createBrowserClient } from "@/lib/supabase-ssr";
+import Link from "next/link";
 import { Menu as MenuPrimitive } from "@base-ui/react/menu";
-import { User as UserIcon, Settings, LogOut, ChevronDown } from "lucide-react";
+import { User as UserIcon, Settings, LogOut, ChevronDown, Shield } from "lucide-react";
 import { cn } from "@/lib/utils";
-
-interface Profile {
-  name: string;
-  email: string;
-  initials: string;
-}
+import { usePermissions } from "@/hooks/use-permissions";
 
 interface ProfileDropdownProps {
-  /** Quando true (sidebar colapsada), mostra apenas o avatar. */
   collapsed?: boolean;
-  /** Quando 'sidebar', adapta as cores para o fundo azul primário. */
   variant?: "default" | "sidebar";
 }
 
@@ -32,47 +23,26 @@ function getInitials(name: string, email: string) {
 
 export function ProfileDropdown({ collapsed = false, variant = "default" }: ProfileDropdownProps) {
   const router = useRouter();
-  const [profile, setProfile] = useState<Profile | null>(null);
+  const { email, isOwner, loaded } = usePermissions();
 
-  useEffect(() => {
-    const supabase = createBrowserClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    );
-
-    supabase.auth.getUser().then(({ data }) => {
-      const user = data.user;
-      if (user) {
-        const name = (user.user_metadata?.full_name as string) || "";
-        const email = user.email || "";
-        setProfile({
-          name,
-          email,
-          initials: getInitials(name, email),
-        });
-      }
-    });
-  }, []);
+  const displayName = email?.split("@")[0] || "Utilizador";
+  const initials = getInitials(displayName, email || "");
 
   const handleLogout = async () => {
-    const supabase = createBrowserClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    );
-    await supabase.auth.signOut();
-    // Limpar cookie da empresa ativa e dados em memória
-    document.cookie = "kima-company-id=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax";
+    // Limpar cookie kima-session
+    document.cookie = "kima-session=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax";
+
+    // Limpar store se existir
     try {
       const { useAppStore } = await import("@/lib/store");
       useAppStore.getState().clearAllData();
     } catch {
       // Ignora se o store não estiver montado
     }
+
     router.push("/login");
     router.refresh();
   };
-
-  const displayName = profile?.name || profile?.email?.split("@")[0] || "Utilizador";
 
   return (
     <MenuPrimitive.Root>
@@ -92,12 +62,11 @@ export function ProfileDropdown({ collapsed = false, variant = "default" }: Prof
           "flex items-center justify-center w-9 h-9 rounded-full text-sm font-bold shadow-md shrink-0",
           variant === "sidebar" ? "bg-white text-blue-600" : "bg-gradient-to-tr from-blue-600 to-indigo-500 text-white"
         )}>
-          {profile?.initials || <UserIcon size={16} />}
+          {loaded ? initials : <UserIcon size={16} />}
         </div>
 
         {!collapsed && (
           <>
-            {/* Nome */}
             <span className="hidden sm:flex flex-col items-start text-left leading-tight min-w-0">
               <span className={cn(
                 "text-sm font-semibold max-w-[140px] truncate",
@@ -109,7 +78,7 @@ export function ProfileDropdown({ collapsed = false, variant = "default" }: Prof
                 "text-[11px] max-w-[140px] truncate",
                 variant === "sidebar" ? "text-blue-100/80" : "text-slate-400 dark:text-slate-500"
               )}>
-                {profile?.email || "Conta KIMA"}
+                {isOwner ? "Administrador" : "Funcionário"}
               </span>
             </span>
 
@@ -127,15 +96,24 @@ export function ProfileDropdown({ collapsed = false, variant = "default" }: Prof
             {/* Cabeçalho do perfil */}
             <div className="flex items-center gap-3 px-3 py-3 border-b border-slate-100 dark:border-slate-800 mb-1">
               <div className="flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-500 text-white text-sm font-bold shadow-md shrink-0">
-                {profile?.initials || <UserIcon size={16} />}
+                {initials || <UserIcon size={16} />}
               </div>
               <div className="min-w-0">
                 <p className="text-sm font-bold text-slate-900 dark:text-white truncate">
                   {displayName}
                 </p>
                 <p className="text-xs text-slate-400 dark:text-slate-500 truncate">
-                  {profile?.email || "Conta KIMA"}
+                  {email || "Conta KIMA"}
                 </p>
+                <div className="flex items-center gap-1 mt-0.5">
+                  <Shield size={10} className={isOwner ? "text-amber-500" : "text-blue-500"} />
+                  <span className={cn(
+                    "text-[10px] font-semibold",
+                    isOwner ? "text-amber-600 dark:text-amber-400" : "text-blue-600 dark:text-blue-400"
+                  )}>
+                    {isOwner ? "Administrador" : "Funcionário"}
+                  </span>
+                </div>
               </div>
             </div>
 
@@ -148,7 +126,6 @@ export function ProfileDropdown({ collapsed = false, variant = "default" }: Prof
               Configurações
             </MenuPrimitive.Item>
 
-            {/* Separador */}
             <MenuPrimitive.Separator className="my-1 h-px bg-slate-100 dark:bg-slate-800" />
 
             {/* Logout */}
@@ -160,7 +137,7 @@ export function ProfileDropdown({ collapsed = false, variant = "default" }: Prof
               )}
             >
               <LogOut size={16} className="shrink-0" />
-              Logout
+              Terminar Sessão
             </MenuPrimitive.Item>
           </MenuPrimitive.Popup>
         </MenuPrimitive.Positioner>

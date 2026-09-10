@@ -1,9 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { usePermissions } from "@/hooks/use-permissions";
 import { formatMoedaAOA, formatDataCompleta } from "@/lib/formatters";
 import {
   Table,
@@ -39,11 +41,20 @@ interface ItemFila {
 }
 
 export default function AGTPainel() {
+  const router = useRouter();
+  const { can, loaded: permsLoaded } = usePermissions();
   const [fila, setFila] = useState<ItemFila[]>([]);
   const [simulacao, setSimulacao] = useState(true);
   const [carregando, setCarregando] = useState(true);
   const [processando, setProcessando] = useState(false);
   const [resumo, setResumo] = useState({ total: 0, pendentes: 0, transmitidos: 0, erros: 0 });
+
+  // Verificar permissão
+  useEffect(() => {
+    if (permsLoaded && !can("agt.manage")) {
+      router.replace("/acesso-negado");
+    }
+  }, [permsLoaded, can, router]);
 
   const carregar = async () => {
     setCarregando(true);
@@ -94,7 +105,15 @@ export default function AGTPainel() {
     };
     const c = config[estado];
     if (!c) return <Badge variant="outline">{estado}</Badge>;
+  if (!permsLoaded || !can("agt.manage")) {
     return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Loader2 size={24} className="animate-spin text-blue-600" />
+      </div>
+    );
+  }
+
+  return (
       <Badge variant="outline" className={`gap-1 ${c.cls}`}>
         <c.Icon className="w-3 h-3" /> {c.label}
       </Badge>

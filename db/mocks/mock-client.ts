@@ -13,6 +13,9 @@ const PUBLIC_TABLES = new Set([
   'memberships',
   'company_modules',
   'subscription_requests',
+  'users',
+  'permissions',
+  'user_permissions',
 ]);
 
 // Tabelas que pertencem ao schema "kima_facturas"

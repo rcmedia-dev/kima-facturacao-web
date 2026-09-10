@@ -1,8 +1,10 @@
 "use client";
 
 import { useState, useRef, useEffect, useSyncExternalStore, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { useAppStore } from "@/lib/store";
 import { useToastContext } from "@/components/ui/toast";
+import { usePermissions } from "@/hooks/use-permissions";
 import { ConfiguracaoEmpresa, ModeloDocumento, Documento } from "@/lib/types";
 import { validarNIFAngolano, mensagemErro } from "@/lib/utils";
 import { gerarPDFFatura } from "@/lib/pdf-generator";
@@ -2061,6 +2063,8 @@ function ConfiguracoesInner({
 }
 
 export default function ConfiguracoesPage() {
+  const router = useRouter();
+  const { can, loaded: permsLoaded } = usePermissions();
   const store = useAppStore();
   const { success, error } = useToastContext();
   const mounted = useSyncExternalStore(() => () => {}, () => true, () => false);
@@ -2069,6 +2073,13 @@ export default function ConfiguracoesPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [falhaCarregar, setFalhaCarregar] = useState(false);
+
+  // Verificar permissão
+  useEffect(() => {
+    if (permsLoaded && !can("settings.manage")) {
+      router.replace("/acesso-negado");
+    }
+  }, [permsLoaded, can, router]);
 
   useEffect(() => {
     let ativo = true;
@@ -2111,6 +2122,14 @@ export default function ConfiguracoesPage() {
       ativo = false;
     };
   }, []);
+
+  if (!permsLoaded || !can("settings.manage")) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Loader2 size={24} className="animate-spin text-blue-600" />
+      </div>
+    );
+  }
 
   if (!mounted) {
     return (
