@@ -7,7 +7,7 @@ import { Artigo } from "@/lib/types";
 import { formatMoedaAOA } from "@/lib/formatters";
 import { cn } from "@/lib/utils";
 import { Menu as MenuPrimitive } from "@base-ui/react/menu";
-import { Package, MoreVertical, Pencil, Trash2, ChevronLeft, ChevronRight } from "lucide-react";
+import { Package, MoreVertical, Pencil, Trash2, ChevronLeft, ChevronRight, ChevronRight as ChevronRightIcon } from "lucide-react";
 import { ArtigoDrawer } from "./artigo-drawer";
 
 interface ArtigoTableProps {
@@ -96,8 +96,126 @@ export function ArtigoTable({
 
   return (
     <>
-      <div className="overflow-x-auto">
-        <Table>
+      {/* ── MOBILE CARD LIST ────────────────────────────── */}
+      <div className="sm:hidden">
+        {currentArtigos.map((artigo, index) => {
+          const isServico = artigo.tipo === "Serviço";
+          const stockBaixo = artigo.stockMinimo > 0 && artigo.stock <= artigo.stockMinimo;
+          const stockPct = artigo.stockMinimo > 0 ? Math.min((artigo.stock / artigo.stockMinimo) * 100, 100) : 100;
+          const stockStatus = isServico ? "sem-stock" : stockBaixo ? "baixo" : "bom";
+
+          return (
+            <div
+              key={artigo.id}
+              onClick={() => setSelectedArtigo(artigo)}
+              className={cn(
+                "mx-4 mb-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-3.5 shadow-sm cursor-pointer transition-all active:scale-[0.98] border-l-[3px]",
+                stockStatus === "baixo" ? "border-l-rose-500" : stockStatus === "sem-stock" ? "border-l-emerald-500" : "border-l-emerald-500"
+              )}
+              style={{ animationDelay: `${index * 30}ms`, animationFillMode: "both" }}
+            >
+              <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 6 }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 2 }}>
+                    <span className="font-mono text-[11px] font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 px-1.5 py-0.5 rounded">
+                      {artigo.codigo}
+                    </span>
+                    <span className={cn(
+                      "px-1.5 py-0.5 rounded text-[9px] font-bold",
+                      isServico
+                        ? "bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400"
+                        : "bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400"
+                    )}>
+                      {isServico ? "Serviço" : "Produto"}
+                    </span>
+                    <span className={cn(
+                      "px-1.5 py-0.5 rounded text-[9px] font-bold",
+                      artigo.taxaIVA === 0
+                        ? "bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400"
+                        : artigo.taxaIVA === 7
+                          ? "bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400"
+                          : "bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400"
+                    )}>
+                      IVA {artigo.taxaIVA}%
+                    </span>
+                  </div>
+                  <p className="text-[14px] font-semibold text-slate-900 dark:text-white truncate">
+                    {artigo.descricao}
+                  </p>
+                  <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">
+                    {artigo.categoria} · {artigo.unidadeMedida}
+                  </p>
+                </div>
+                <div style={{ textAlign: "right", flexShrink: 0, marginLeft: 8 }}>
+                  <p className="text-[16px] font-extrabold text-slate-900 dark:text-white">
+                    {artigo.preco.toLocaleString("pt-PT")}
+                  </p>
+                  <p className="text-[9px] text-slate-400 dark:text-slate-500">AOA</p>
+                </div>
+              </div>
+
+              {/* Stock bar */}
+              {!isServico ? (
+                <div style={{ marginTop: 6 }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
+                    <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-400">
+                      Stock: {artigo.stock} / Mín: {artigo.stockMinimo}
+                    </span>
+                    <span className={cn(
+                      "text-[10px] font-bold",
+                      stockBaixo ? "text-rose-500" : "text-emerald-500"
+                    )}>
+                      {stockBaixo ? "⚠ Baixo" : "Bom"}
+                    </span>
+                  </div>
+                  <div className="h-1 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                    <div
+                      className={cn("h-full rounded-full transition-all", stockBaixo ? "bg-rose-500" : "bg-emerald-500")}
+                      style={{ width: `${stockPct}%` }}
+                    />
+                  </div>
+                </div>
+              ) : (
+                <div style={{ marginTop: 6 }}>
+                  <span className="text-[10px] font-semibold text-emerald-500">Sem controlo de stock</span>
+                </div>
+              )}
+            </div>
+          );
+        })}
+
+        {/* Mobile pagination */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between px-4 py-3 border-t border-slate-100 dark:border-slate-800">
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              Página {safePage} de {totalPages}
+            </p>
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+                disabled={safePage === 1}
+                className="px-3 h-8 rounded-lg border border-slate-200 dark:border-slate-700 text-xs font-medium text-slate-600 dark:text-slate-300 disabled:opacity-40"
+              >
+                Anterior
+              </button>
+              <button
+                type="button"
+                onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+                disabled={safePage === totalPages}
+                className="px-3 h-8 rounded-lg border border-slate-200 dark:border-slate-700 text-xs font-medium text-slate-600 dark:text-slate-300 disabled:opacity-40"
+              >
+                Próxima
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* ── DESKTOP TABLE ───────────────────────────────── */}
+      <div className="hidden sm:block">
+        <div className="overflow-x-auto">
+          <Table>
 <TableHeader className="bg-blue-600 text-white">
         <TableRow className="border-b border-blue-700">
           <TableHead className="font-semibold text-xs text-white uppercase tracking-wider">Código</TableHead>
@@ -184,54 +302,55 @@ export function ArtigoTable({
           ))}
         </TableBody>
         </Table>
-      </div>
+        </div>
 
-      {/* Controles de Paginação (20 itens por página) */}
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-6 py-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
-        <p className="text-xs text-slate-500 dark:text-slate-400">
-          A exibir <strong className="font-semibold text-slate-800 dark:text-slate-200">{startIndex + 1}</strong> a{" "}
-          <strong className="font-semibold text-slate-800 dark:text-slate-200">{endIndex}</strong> de{" "}
-          <strong className="font-semibold text-slate-800 dark:text-slate-200">{artigos.length}</strong> artigos
-        </p>
+        {/* Controles de Paginação (20 itens por página) */}
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-6 py-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
+          <p className="text-xs text-slate-500 dark:text-slate-400">
+            A exibir <strong className="font-semibold text-slate-800 dark:text-slate-200">{startIndex + 1}</strong> a{" "}
+            <strong className="font-semibold text-slate-800 dark:text-slate-200">{endIndex}</strong> de{" "}
+            <strong className="font-semibold text-slate-800 dark:text-slate-200">{artigos.length}</strong> artigos
+          </p>
 
-        {totalPages > 1 && (
-          <div className="flex items-center gap-1.5">
-            <button
-              type="button"
-              onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
-              disabled={safePage === 1}
-              className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-              title="Página Anterior"
-            >
-              <ChevronLeft size={16} />
-            </button>
-
-            {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => (
+          {totalPages > 1 && (
+            <div className="flex items-center gap-1.5">
               <button
-                key={pageNum}
                 type="button"
-                onClick={() => setCurrentPage(pageNum)}
-                className={`w-8 h-8 rounded-lg text-xs font-semibold transition-all ${
-                  pageNum === safePage
-                    ? "bg-blue-600 text-white shadow-sm"
-                    : "border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
-                }`}
+                onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+                disabled={safePage === 1}
+                className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                title="Página Anterior"
               >
-                {pageNum}
+                <ChevronLeft size={16} />
               </button>
-            ))}
 
-            <button
-              type="button"
-              onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
-              disabled={safePage === totalPages}
-              className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-              title="Próxima Página"
-            >
-              <ChevronRight size={16} />
-            </button>
-          </div>
-        )}
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => (
+                <button
+                  key={pageNum}
+                  type="button"
+                  onClick={() => setCurrentPage(pageNum)}
+                  className={`w-8 h-8 rounded-lg text-xs font-semibold transition-all ${
+                    pageNum === safePage
+                      ? "bg-blue-600 text-white shadow-sm"
+                      : "border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
+                  }`}
+                >
+                  {pageNum}
+                </button>
+              ))}
+
+              <button
+                type="button"
+                onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+                disabled={safePage === totalPages}
+                className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                title="Próxima Página"
+              >
+                <ChevronRight size={16} />
+              </button>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Drawer de detalhes do artigo */}
