@@ -3,8 +3,6 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
 import {
   Loader2,
   Eye,
@@ -13,10 +11,12 @@ import {
   Building2,
   Lock,
   KeyRound,
+  ArrowLeft,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { loginSchema, LoginFormData } from "@/lib/schemas";
+
+type Step = "credentials" | "password";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -26,26 +26,66 @@ export default function LoginPage() {
       ? new URLSearchParams(window.location.search).get("redirect") || "/dashboard"
       : "/dashboard";
 
+  const [step, setStep] = useState<Step>("credentials");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
+  // Campos
+  const [companyCode, setCompanyCode] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [companyName, setCompanyName] = useState("");
+
   const hubUrl = process.env.NEXT_PUBLIC_KIMA_HUB_URL || "https://kima-hub.vercel.app";
 
-  const {
-    register,
-    handleSubmit,
-    formState: { errors },
-  } = useForm<LoginFormData>({
-    resolver: zodResolver(loginSchema) as any,
-    defaultValues: {
-      companyCode: "",
-      email: "",
-      password: "",
-    },
-  });
+  // ── Passo 1: Validar código + email ──────────────────────────────────────
+  const handleCheckUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    setErrorMsg(null);
 
-  const onSubmit = async (data: LoginFormData) => {
+    try {
+      const response = await fetch("/api/auth/check-user", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          companyCode: companyCode.trim(),
+          email: email.trim(),
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        setErrorMsg(result.error || "Erro ao verificar dados.");
+        return;
+      }
+
+      // Primeiro acesso: redirecionar para definir senha
+      if (result.needsPassword) {
+        const params = new URLSearchParams({
+          companyCode: companyCode.trim(),
+          email: result.email || email.trim(),
+          companyName: result.companyName || "",
+        });
+        router.push(`/primeiro-acesso?${params.toString()}`);
+        return;
+      }
+
+      // Utilizador tem senha: avançar para passo 2
+      setCompanyName(result.companyName || "");
+      setStep("password");
+    } catch {
+      setErrorMsg("Não foi possível conectar ao servidor. Tente novamente.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // ── Passo 2: Login com senha ────────────────────────────────────────────
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
     setIsLoading(true);
     setErrorMsg(null);
 
@@ -54,9 +94,9 @@ export default function LoginPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          companyCode: data.companyCode.trim(),
-          email: data.email.trim(),
-          password: data.password,
+          companyCode: companyCode.trim(),
+          email: email.trim(),
+          password,
         }),
       });
 
@@ -67,21 +107,10 @@ export default function LoginPage() {
         return;
       }
 
-      // Primeiro acesso: precisa definir senha
-      if (result.needsPassword) {
-        const params = new URLSearchParams({
-          companyCode: data.companyCode.trim(),
-          email: result.email,
-          companyName: result.companyName || "",
-        });
-        router.push(`/primeiro-acesso?${params.toString()}`);
-        return;
-      }
-
       // Login bem-sucedido
       router.push(redirectTo);
       router.refresh();
-    } catch (e: any) {
+    } catch {
       setErrorMsg("Não foi possível conectar ao servidor. Tente novamente.");
     } finally {
       setIsLoading(false);
@@ -216,10 +245,22 @@ export default function LoginPage() {
 
             <div className="mb-6">
               <h2 className="text-2xl sm:text-[28px] font-bold tracking-tight text-slate-900 dark:text-white">
-                Entrar na sua conta
+                {step === "credentials" ? "Entrar na sua conta" : "Bem-vindo(a)"}
               </h2>
               <p className="text-sm text-slate-400 dark:text-slate-500 mt-1.5">
-                Introduza o código da empresa, email e senha para aceder ao sistema.
+                {step === "credentials"
+                  ? "Introduza o código da empresa e o email para começar."
+                  : (
+                    <>
+                      Introduza a sua senha para aceder ao sistema.
+                      {companyName && (
+                        <span className="block mt-1 text-xs text-slate-500 dark:text-slate-400">
+                          {companyName} · {email}
+                        </span>
+                      )}
+                    </>
+                  )
+                }
               </p>
             </div>
 
@@ -230,112 +271,136 @@ export default function LoginPage() {
               </div>
             )}
 
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-5" noValidate>
-              {/* Código da Empresa */}
-              <div className="relative">
-                <input
-                  id="companyCode"
-                  type="text"
-                  autoComplete="organization"
-                  placeholder=" "
-                  className={`peer w-full h-[52px] rounded-xl border bg-white dark:bg-slate-900 px-4 pt-5 pb-1.5 text-sm text-slate-900 dark:text-white outline-none transition-all duration-200 focus:border-blue-600 focus:ring-2 focus:ring-blue-500/30 uppercase tracking-widest font-mono ${
-                    errors.companyCode ? "border-red-500" : "border-slate-300 dark:border-slate-700"
-                  }`}
-                  {...register("companyCode")}
-                />
-                <label
-                  htmlFor="companyCode"
-                  className={`absolute left-4 top-1/2 -translate-y-1/2 text-sm text-slate-400 dark:text-slate-500 transition-all duration-200 pointer-events-none peer-focus:top-3.5 peer-focus:text-xs peer-focus:text-blue-600 peer-focus:font-semibold peer-[:not(:placeholder-shown)]:top-3.5 peer-[:not(:placeholder-shown)]:text-xs peer-[:not(:placeholder-shown)]:text-slate-500`}
-                >
-                  Código da Empresa*
-                </label>
-                {errors.companyCode && (
-                  <p className="text-red-500 text-xs mt-1.5">{errors.companyCode.message}</p>
-                )}
-              </div>
+            {/* ── PASSO 1: Código + Email ─────────────────────────── */}
+            {step === "credentials" && (
+              <form onSubmit={handleCheckUser} className="space-y-5" noValidate>
+                {/* Código da Empresa */}
+                <div className="relative">
+                  <input
+                    id="companyCode"
+                    type="text"
+                    autoComplete="organization"
+                    placeholder=" "
+                    value={companyCode}
+                    onChange={(e) => setCompanyCode(e.target.value)}
+                    className="peer w-full h-[52px] rounded-xl border bg-white dark:bg-slate-900 px-4 pt-5 pb-1.5 text-sm text-slate-900 dark:text-white outline-none transition-all duration-200 focus:border-blue-600 focus:ring-2 focus:ring-blue-500/30 uppercase tracking-widest font-mono border-slate-300 dark:border-slate-700"
+                  />
+                  <label
+                    htmlFor="companyCode"
+                    className="absolute left-4 top-1/2 -translate-y-1/2 text-sm text-slate-400 dark:text-slate-500 transition-all duration-200 pointer-events-none peer-focus:top-3.5 peer-focus:text-xs peer-focus:text-blue-600 peer-focus:font-semibold peer-[:not(:placeholder-shown)]:top-3.5 peer-[:not(:placeholder-shown)]:text-xs peer-[:not(:placeholder-shown)]:text-slate-500"
+                  >
+                    Código da Empresa*
+                  </label>
+                </div>
 
-              {/* Email */}
-              <div className="relative">
-                <input
-                  id="email"
-                  type="email"
-                  autoComplete="email"
-                  placeholder=" "
-                  className={`peer w-full h-[52px] rounded-xl border bg-white dark:bg-slate-900 px-4 pt-5 pb-1.5 text-sm text-slate-900 dark:text-white outline-none transition-all duration-200 focus:border-blue-600 focus:ring-2 focus:ring-blue-500/30 ${
-                    errors.email ? "border-red-500" : "border-slate-300 dark:border-slate-700"
-                  }`}
-                  {...register("email")}
-                />
-                <label
-                  htmlFor="email"
-                  className={`absolute left-4 top-1/2 -translate-y-1/2 text-sm text-slate-400 dark:text-slate-500 transition-all duration-200 pointer-events-none peer-focus:top-3.5 peer-focus:text-xs peer-focus:text-blue-600 peer-focus:font-semibold peer-[:not(:placeholder-shown)]:top-3.5 peer-[:not(:placeholder-shown)]:text-xs peer-[:not(:placeholder-shown)]:text-slate-500`}
-                >
-                  Email*
-                </label>
-                {errors.email && (
-                  <p className="text-red-500 text-xs mt-1.5">{errors.email.message}</p>
-                )}
-              </div>
+                {/* Email */}
+                <div className="relative">
+                  <input
+                    id="email"
+                    type="email"
+                    autoComplete="email"
+                    placeholder=" "
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="peer w-full h-[52px] rounded-xl border bg-white dark:bg-slate-900 px-4 pt-5 pb-1.5 text-sm text-slate-900 dark:text-white outline-none transition-all duration-200 focus:border-blue-600 focus:ring-2 focus:ring-blue-500/30 border-slate-300 dark:border-slate-700"
+                  />
+                  <label
+                    htmlFor="email"
+                    className="absolute left-4 top-1/2 -translate-y-1/2 text-sm text-slate-400 dark:text-slate-500 transition-all duration-200 pointer-events-none peer-focus:top-3.5 peer-focus:text-xs peer-focus:text-blue-600 peer-focus:font-semibold peer-[:not(:placeholder-shown)]:top-3.5 peer-[:not(:placeholder-shown)]:text-xs peer-[:not(:placeholder-shown)]:text-slate-500"
+                  >
+                    Email*
+                  </label>
+                </div>
 
-              {/* Password */}
-              <div className="relative">
-                <input
-                  id="password"
-                  type={showPassword ? "text" : "password"}
-                  autoComplete="current-password"
-                  placeholder=" "
-                  className={`peer w-full h-[52px] rounded-xl border bg-white dark:bg-slate-900 px-4 pt-5 pb-1.5 pr-11 text-sm text-slate-900 dark:text-white outline-none transition-all duration-200 focus:border-blue-600 focus:ring-2 focus:ring-blue-500/30 ${
-                    errors.password ? "border-red-500" : "border-slate-300 dark:border-slate-700"
-                  }`}
-                  {...register("password")}
-                />
-                <label
-                  htmlFor="password"
-                  className={`absolute left-4 top-1/2 -translate-y-1/2 text-sm text-slate-400 dark:text-slate-500 transition-all duration-200 pointer-events-none peer-focus:top-3.5 peer-focus:text-xs peer-focus:text-blue-600 peer-focus:font-semibold peer-[:not(:placeholder-shown)]:top-3.5 peer-[:not(:placeholder-shown)]:text-xs peer-[:not(:placeholder-shown)]:text-slate-500`}
+                <Button
+                  disabled={isLoading || !companyCode.trim() || !email.trim()}
+                  type="submit"
+                  className="w-full h-[52px] text-base font-semibold rounded-xl bg-none bg-blue-600 hover:bg-blue-700"
                 >
-                  Palavra-passe*
-                </label>
-                <button
-                  type="button"
-                  onClick={() => setShowPassword((v) => !v)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
-                  aria-label={showPassword ? "Ocultar palavra-passe" : "Mostrar palavra-passe"}
-                >
-                  {showPassword ? <EyeOff size={17} /> : <Eye size={17} />}
-                </button>
-                {errors.password && (
-                  <p className="text-red-500 text-xs mt-1.5">{errors.password.message}</p>
-                )}
-              </div>
+                  {isLoading ? (
+                    <>
+                      <Loader2 size={18} className="animate-spin" />
+                      A verificar...
+                    </>
+                  ) : (
+                    "Continuar"
+                  )}
+                </Button>
+              </form>
+            )}
 
-              {/* Link: esqueceu senha */}
-              <div className="flex items-center justify-end pt-1">
-                <a
-                  href={`${hubUrl}/forgot-password`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-sm text-blue-600 dark:text-blue-400 font-medium hover:underline"
-                >
-                  Esqueceu a palavra-passe?
-                </a>
-              </div>
+            {/* ── PASSO 2: Senha ─────────────────────────────────── */}
+            {step === "password" && (
+              <form onSubmit={handleLogin} className="space-y-5" noValidate>
+                {/* Password */}
+                <div className="relative">
+                  <input
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    autoComplete="current-password"
+                    placeholder=" "
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="peer w-full h-[52px] rounded-xl border bg-white dark:bg-slate-900 px-4 pt-5 pb-1.5 pr-11 text-sm text-slate-900 dark:text-white outline-none transition-all duration-200 focus:border-blue-600 focus:ring-2 focus:ring-blue-500/30 border-slate-300 dark:border-slate-700"
+                  />
+                  <label
+                    htmlFor="password"
+                    className="absolute left-4 top-1/2 -translate-y-1/2 text-sm text-slate-400 dark:text-slate-500 transition-all duration-200 pointer-events-none peer-focus:top-3.5 peer-focus:text-xs peer-focus:text-blue-600 peer-focus:font-semibold peer-[:not(:placeholder-shown)]:top-3.5 peer-[:not(:placeholder-shown)]:text-xs peer-[:not(:placeholder-shown)]:text-slate-500"
+                  >
+                    Palavra-passe*
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((v) => !v)}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
+                    aria-label={showPassword ? "Ocultar palavra-passe" : "Mostrar palavra-passe"}
+                  >
+                    {showPassword ? <EyeOff size={17} /> : <Eye size={17} />}
+                  </button>
+                </div>
 
-              {/* Botão Entrar */}
-              <Button
-                disabled={isLoading}
-                type="submit"
-                className="w-full h-[52px] text-base font-semibold rounded-xl bg-none bg-blue-600 hover:bg-blue-700"
-              >
-                {isLoading ? (
-                  <>
-                    <Loader2 size={18} className="animate-spin" />
-                    A entrar...
-                  </>
-                ) : (
-                  "Entrar"
-                )}
-              </Button>
-            </form>
+                {/* Link: esqueceu senha */}
+                <div className="flex items-center justify-end pt-1">
+                  <a
+                    href={`${hubUrl}/forgot-password`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm text-blue-600 dark:text-blue-400 font-medium hover:underline"
+                  >
+                    Esqueceu a palavra-passe?
+                  </a>
+                </div>
+
+                <div className="flex gap-3">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      setStep("credentials");
+                      setPassword("");
+                      setErrorMsg(null);
+                    }}
+                    className="h-[52px] px-4 rounded-xl"
+                  >
+                    <ArrowLeft size={18} />
+                  </Button>
+                  <Button
+                    disabled={isLoading || !password.trim()}
+                    type="submit"
+                    className="flex-1 h-[52px] text-base font-semibold rounded-xl bg-none bg-blue-600 hover:bg-blue-700"
+                  >
+                    {isLoading ? (
+                      <>
+                        <Loader2 size={18} className="animate-spin" />
+                        A entrar...
+                      </>
+                    ) : (
+                      "Entrar"
+                    )}
+                  </Button>
+                </div>
+              </form>
+            )}
           </div>
         </div>
       </div>

@@ -47,7 +47,7 @@ export function DashboardGraficoFaturacao() {
       <div className="relative z-10">
         <div className="flex items-center justify-between mb-3">
           <div>
-            <h3 className="font-bold text-white text-sm">
+            <h3 className="font-bold text-white text-sm sm:text-[15px]">
               Evolução de Facturação
             </h3>
             <p className="text-[11px] text-blue-100 mt-0.5">

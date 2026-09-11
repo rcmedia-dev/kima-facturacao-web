@@ -22,6 +22,8 @@ interface UsePermissionsReturn {
   companyId: string | null;
   /** Email da sessão */
   email: string | null;
+  /** Código da empresa (apenas Admin) */
+  companyCode: string | null;
   /** true se terminou de carregar */
   loaded: boolean;
   /** true se não tem sessão */
@@ -85,6 +87,7 @@ export function usePermissions(): UsePermissionsReturn {
     userId: data?.userId ?? null,
     companyId: data?.companyId ?? null,
     email: data?.email ?? null,
+    companyCode: data?.companyCode ?? null,
     loaded,
     unauthenticated,
     can: canCheck,

@@ -3,9 +3,10 @@
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Menu as MenuPrimitive } from "@base-ui/react/menu";
-import { User as UserIcon, Settings, LogOut, ChevronDown, Shield } from "lucide-react";
+import { User as UserIcon, Settings, LogOut, ChevronDown, Shield, Copy, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { usePermissions } from "@/hooks/use-permissions";
+import { useState } from "react";
 
 interface ProfileDropdownProps {
   collapsed?: boolean;
@@ -23,10 +24,30 @@ function getInitials(name: string, email: string) {
 
 export function ProfileDropdown({ collapsed = false, variant = "default" }: ProfileDropdownProps) {
   const router = useRouter();
-  const { email, isOwner, loaded } = usePermissions();
+  const { email, isOwner, companyCode, loaded } = usePermissions();
+  const [copied, setCopied] = useState(false);
 
   const displayName = email?.split("@")[0] || "Utilizador";
   const initials = getInitials(displayName, email || "");
+
+  const handleCopyCode = async () => {
+    if (!companyCode) return;
+    try {
+      await navigator.clipboard.writeText(companyCode);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // Fallback
+      const input = document.createElement("input");
+      input.value = companyCode;
+      document.body.appendChild(input);
+      input.select();
+      document.execCommand("copy");
+      document.body.removeChild(input);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
 
   const handleLogout = async () => {
     // Limpar cookie kima-session
@@ -114,6 +135,26 @@ export function ProfileDropdown({ collapsed = false, variant = "default" }: Prof
                     {isOwner ? "Administrador" : "Funcionário"}
                   </span>
                 </div>
+                {/* Badge do código da empresa — apenas Admin */}
+                {isOwner && companyCode && (
+                  <button
+                    onClick={handleCopyCode}
+                    className="flex items-center gap-1.5 mt-1.5 px-2 py-1 rounded-md bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/40 hover:bg-amber-100 dark:hover:bg-amber-900/30 transition-colors group"
+                    title="Clique para copiar"
+                  >
+                    <span className="text-[10px] text-amber-600/80 dark:text-amber-400/70 font-medium">
+                      Código da Empresa:
+                    </span>
+                    <span className="text-[11px] font-bold text-amber-700 dark:text-amber-400 tracking-widest">
+                      {companyCode}
+                    </span>
+                    {copied ? (
+                      <Check size={10} className="text-emerald-500 shrink-0" />
+                    ) : (
+                      <Copy size={10} className="text-amber-400 dark:text-amber-500 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
+                    )}
+                  </button>
+                )}
               </div>
             </div>
 

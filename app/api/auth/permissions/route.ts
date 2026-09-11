@@ -4,13 +4,14 @@
  * Devolve as permissões finais do utilizador autenticado.
  *
  * Respostas:
- *   200 { userId, companyId, isOwner, permissions: Permission[] }
+ *   200 { userId, companyId, isOwner, email, companyCode, permissions: Permission[] }
  *   401 { error: "Não autenticado" }
  */
 
 import { NextResponse } from 'next/server';
 import { obterSessaoDoRequest } from '@/lib/auth';
 import { buscarPermissoes } from '@/lib/auth';
+import { db } from '@/db/client';
 
 export async function GET(request: Request) {
   try {
@@ -30,12 +31,30 @@ export async function GET(request: Request) {
       sessao.isOwner
     );
 
-    // ── 3. Resposta ──────────────────────────────────────────────────────
+    // ── 3. Buscar company_code (apenas para Admin) ────────────────────────
+    let companyCode: string | null = null;
+    if (sessao.isOwner) {
+      try {
+        const { data: company } = await db
+          .from('companies')
+          .select('company_code')
+          .eq('id', sessao.companyId)
+          .maybeSingle();
+        if (company) {
+          companyCode = company.company_code || null;
+        }
+      } catch {
+        // Ignore
+      }
+    }
+
+    // ── 4. Resposta ──────────────────────────────────────────────────────
     return NextResponse.json({
       userId: sessao.userId,
       companyId: sessao.companyId,
       isOwner: sessao.isOwner,
       email: sessao.email,
+      companyCode,
       permissions: permissoes,
     });
   } catch (error: any) {
