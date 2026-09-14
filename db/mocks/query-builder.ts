@@ -86,8 +86,12 @@ export class MockQueryBuilder {
   }
 
   // ─── SELECT ──────────────────────────────────────────────────────────────
+  // Nota: após insert()/update()/upsert(), o .select() significa "returning"
+  // (semântica Supabase) — não deve trocar a operação pendente por 'select'.
   select(columns?: string, opts?: { count?: 'exact' | 'planned' | 'estimated'; head?: boolean }): MockQueryBuilder {
-    this._operation = 'select';
+    if (this._operation !== 'insert' && this._operation !== 'update' && this._operation !== 'upsert') {
+      this._operation = 'select';
+    }
     this._selectColumns = columns || '*';
     if (opts?.count) {
       this._countOptions = { count: opts.count, head: opts.head };

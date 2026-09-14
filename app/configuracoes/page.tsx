@@ -20,6 +20,7 @@ import {
   Layout,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
   Eye,
   X,
 } from "lucide-react";
@@ -34,6 +35,7 @@ const MODELOS_INFO: {
   tag: string;
   descricao: string;
   destaque: string;
+  cor: string;
   iconeTipo: "studio" | "executivo" | "nordic" | "bold" | "grid" | "moderno" | "classico" | "compacto";
 }[] = [
   {
@@ -42,6 +44,7 @@ const MODELOS_INFO: {
     tag: "Design & Agências",
     descricao: "Linha vertical contínua na borda lateral, tipografia marcante e espaçamentos nobres inspirados em estúdios internacionais.",
     destaque: "Ultra-Clean & Criativo",
+    cor: "#7C3AED",
     iconeTipo: "studio",
   },
   {
@@ -50,6 +53,7 @@ const MODELOS_INFO: {
     tag: "Consultoria & Finanças",
     descricao: "Banner superior suave com a cor da marca, cartões de cliente com borda lateral e total em caixa destacada.",
     destaque: "Premium & Elegante",
+    cor: "#1E293B",
     iconeTipo: "executivo",
   },
   {
@@ -58,6 +62,7 @@ const MODELOS_INFO: {
     tag: "Boutiques & Estética",
     descricao: "Estética escandinava editorial com linhas duplas delicadas, tons neutros suaves e acabamento sofisticado.",
     destaque: "Editorial & Refinado",
+    cor: "#0D9488",
     iconeTipo: "nordic",
   },
   {
@@ -66,6 +71,7 @@ const MODELOS_INFO: {
     tag: "Indústria & Logística",
     descricao: "Cabeçalho escuro sólido de alto impacto com texto branco, presença corporativa forte e alto contraste.",
     destaque: "Forte & Imponente",
+    cor: "#DC2626",
     iconeTipo: "bold",
   },
   {
@@ -74,6 +80,7 @@ const MODELOS_INFO: {
     tag: "Startups & SaaS",
     descricao: "Estrutura modular em cartões geométricos limpos, separação clara de blocos e acabamento contemporâneo.",
     destaque: "Geométrico & Modular",
+    cor: "#0284C7",
     iconeTipo: "grid",
   },
   {
@@ -82,6 +89,7 @@ const MODELOS_INFO: {
     tag: "Serviços & PMEs",
     descricao: "Linha divisória de acento, tipografia leve sem caixas pesadas, tabela com linhas suaves e rodapé discreto.",
     destaque: "Leve & Arejado",
+    cor: "#059669",
     iconeTipo: "moderno",
   },
   {
@@ -90,6 +98,7 @@ const MODELOS_INFO: {
     tag: "Padrão Corporativo",
     descricao: "Faixa superior colorida, caixas estruturadas de emissor e cliente, e cabeçalho de tabela sólido.",
     destaque: "Equilibrado & Tradicional",
+    cor: "#2563EB",
     iconeTipo: "classico",
   },
   {
@@ -98,6 +107,7 @@ const MODELOS_INFO: {
     tag: "Comércio & POS",
     descricao: "Cabeçalho compacto e linhas condensadas de 5.8mm, ideal para documentos com longas listas de artigos.",
     destaque: "Económico & Eficiente",
+    cor: "#D97706",
     iconeTipo: "compacto",
   },
 ];
@@ -1135,6 +1145,16 @@ function ConfiguracoesInner({
   });
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [previewOpen, setPreviewOpen] = useState(false);
+  const [accordionOpen, setAccordionOpen] = useState({ template: true, color: true });
+  const [eyeBump, setEyeBump] = useState(false);
+
+  useEffect(() => {
+    if (activeIndex !== undefined) {
+      setEyeBump(true);
+      const t = setTimeout(() => setEyeBump(false), 600);
+      return () => clearTimeout(t);
+    }
+  }, [activeIndex]);
   const sheetRef = useRef<HTMLDivElement>(null);
   const startYRef = useRef<number | null>(null);
   const currentYRef = useRef<number | null>(null);
@@ -1448,7 +1468,8 @@ function ConfiguracoesInner({
 
   return (
     <div className="w-full px-3 sm:px-6 lg:px-8 py-3 sm:py-4 flex flex-col gap-4 sm:gap-6 animate-slide-up max-w-7xl mx-auto">
-      <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 border-b border-slate-200 dark:border-slate-800 pb-5">
+      {/* ═══ DESKTOP HEADER + TABS ═══ */}
+      <div className="hidden sm:flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 border-b border-slate-200 dark:border-slate-800 pb-5">
         <div>
           <h1 className="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2.5">
             <div className="flex items-center justify-center w-9 h-9 rounded-xl bg-blue-50 dark:bg-blue-900/30">
@@ -1490,6 +1511,57 @@ function ConfiguracoesInner({
         </div>
       </div>
 
+      {/* ═══ MOBILE HEADER + 3-SEGMENT TABS ═══ */}
+      <div className="sm:hidden space-y-3">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-lg font-extrabold text-slate-900 dark:text-white">Configurações</h1>
+            <p className="text-[11px] text-slate-500 dark:text-slate-400">Dados e personalização</p>
+          </div>
+          {activeTab === "design" && (
+            <button
+              type="button"
+              onClick={() => setPreviewOpen(true)}
+              title="Ver Pré-visualização A4"
+              aria-label="Ver Pré-visualização A4"
+              className={`w-9 h-9 rounded-xl flex items-center justify-center border-none cursor-pointer transition-all duration-300 ${
+                eyeBump
+                  ? "bg-blue-600 shadow-lg shadow-blue-500/30 scale-110 animate-bounce-once"
+                  : "bg-blue-50 dark:bg-blue-950/40 active:scale-95"
+              }`}
+            >
+              <Eye size={16} className={`transition-colors duration-300 ${eyeBump ? "text-white" : "text-blue-600 dark:text-blue-400"}`} />
+            </button>
+          )}
+        </div>
+        <div className="flex gap-1.5">
+          <button
+            type="button"
+            onClick={() => setActiveTab("dados")}
+            className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 px-2 rounded-[10px] text-[11px] font-[700] border-[1.5px] transition-all text-center ${
+              activeTab === "dados"
+                ? "bg-blue-600 text-white border-blue-600 shadow-[0_2px_8px_rgba(59,130,246,0.25)]"
+                : "bg-white dark:bg-slate-900 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700"
+            }`}
+          >
+            <Building2 size={11} />
+            Empresa
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab("design")}
+            className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 px-2 rounded-[10px] text-[11px] font-[700] border-[1.5px] transition-all text-center ${
+              activeTab === "design"
+                ? "bg-blue-600 text-white border-blue-600 shadow-[0_2px_8px_rgba(59,130,246,0.25)]"
+                : "bg-white dark:bg-slate-900 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700"
+            }`}
+          >
+            <Palette size={11} />
+            Design
+          </button>
+        </div>
+      </div>
+
       {errorMsg && (
         <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 animate-fade-in">
           <AlertCircle size={16} className="shrink-0" />
@@ -1510,7 +1582,9 @@ function ConfiguracoesInner({
       )}
 
       {activeTab === "dados" && (
-        <div className="card-kima p-6 space-y-6">
+        <>
+        {/* ═══ DESKTOP DADOS ═══ */}
+        <div className="hidden sm:block card-kima p-6 space-y-6">
           <div className="flex items-center justify-between">
             <div>
               <h3 className="text-base font-bold text-slate-900 dark:text-white">Dados Cadastrais</h3>
@@ -1693,10 +1767,258 @@ function ConfiguracoesInner({
             </div>
           </form>
         </div>
+
+        {/* ═══ MOBILE DADOS (iOS-style full-width fields) ═══ */}
+        <div className="sm:hidden space-y-3">
+          {/* Logo Section */}
+          <div className="bg-white dark:bg-slate-900 rounded-2xl p-4 shadow-sm text-center">
+            <div className="w-[72px] h-[52px] rounded-xl bg-gradient-to-br from-blue-600 to-indigo-500 flex items-center justify-center text-white font-extrabold text-[22px] mx-auto shadow-lg shadow-blue-500/25">
+              {formData.nomeEmpresa?.charAt(0) || "K"}
+            </div>
+            <p className="text-[13px] font-bold text-slate-900 dark:text-white mt-2.5">{formData.nomeEmpresa || "KIMA SOLUÇÕES, LDA"}</p>
+            <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">NIF: {formData.nif || "5417082910"}</p>
+            <div className="flex gap-2 justify-center mt-3">
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/png, image/jpeg, image/svg+xml, image/webp"
+                onChange={handleLogoUpload}
+                className="hidden"
+              />
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="px-3.5 py-1.5 rounded-lg border-[1.5px] border-blue-600 bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 text-[10px] font-bold"
+              >
+                Alterar Logo
+              </button>
+              {formData.logoUrl && (
+                <button
+                  type="button"
+                  onClick={handleRemoveLogo}
+                  className="px-3.5 py-1.5 rounded-lg border-[1.5px] border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-500 dark:text-slate-400 text-[10px] font-bold"
+                >
+                  Remover
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Full-Width iOS-style Fields */}
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm overflow-hidden divide-y divide-slate-100 dark:divide-slate-800">
+            <div className="px-4 py-3">
+              <label className="block text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1">Nome da Empresa *</label>
+              <input
+                name="nomeEmpresa"
+                value={formData.nomeEmpresa}
+                onChange={handleChange}
+                className="w-full border-none outline-none text-[13px] font-semibold text-slate-900 dark:text-white bg-transparent"
+                required
+              />
+            </div>
+            <div className="px-4 py-3">
+              <label className="block text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1">NIF *</label>
+              <input
+                name="nif"
+                value={formData.nif}
+                onChange={handleChange}
+                className={`w-full border-none outline-none text-[13px] font-semibold bg-transparent ${nifError ? "text-red-500" : "text-slate-900 dark:text-white"}`}
+                required
+              />
+              {nifError && <p className="text-[9px] text-red-500 mt-1">{nifError}</p>}
+            </div>
+            <div className="px-4 py-3">
+              <label className="block text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1">Morada *</label>
+              <input
+                name="morada"
+                value={formData.morada}
+                onChange={handleChange}
+                className="w-full border-none outline-none text-[13px] font-semibold text-slate-900 dark:text-white bg-transparent"
+                required
+              />
+            </div>
+            <div className="px-4 py-3">
+              <label className="block text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1">Telefone *</label>
+              <input
+                name="telefone"
+                value={formData.telefone}
+                onChange={handleChange}
+                className="w-full border-none outline-none text-[13px] font-semibold text-slate-900 dark:text-white bg-transparent"
+                required
+              />
+            </div>
+            <div className="px-4 py-3">
+              <label className="block text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1">Email *</label>
+              <input
+                name="email"
+                type="email"
+                value={formData.email}
+                onChange={handleChange}
+                className="w-full border-none outline-none text-[13px] font-semibold text-slate-900 dark:text-white bg-transparent"
+                required
+              />
+            </div>
+            <div className="px-4 py-3">
+              <label className="block text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1">IBAN</label>
+              <input
+                name="contaBancaria"
+                value={formData.contaBancaria}
+                onChange={handleChange}
+                className="w-full border-none outline-none text-[13px] font-semibold text-slate-900 dark:text-white bg-transparent"
+              />
+            </div>
+          </div>
+        </div>
+        </>
       )}
 
       {activeTab === "design" && (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-8 items-start">
+        <>
+        {/* ═══ MOBILE: V3 ACCORDION LAYOUT ═══ */}
+        <div className="sm:hidden space-y-3">
+          {/* Accordion 1: Modelo do Documento */}
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm overflow-hidden">
+            <button
+              type="button"
+              onClick={() => setAccordionOpen((p) => ({ ...p, template: !p.template }))}
+              className="w-full flex items-center justify-between p-4"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-950/40 flex items-center justify-center flex-shrink-0">
+                  <Layout size={16} className="text-blue-600 dark:text-blue-400" />
+                </div>
+                <div className="text-left">
+                  <p className="text-[12px] font-bold text-slate-900 dark:text-white">Modelo do Documento</p>
+                  <p className="text-[10px] text-slate-500 dark:text-slate-400">{MODELOS_INFO[activeIndex]?.nome} · {MODELOS_INFO.length} estilos</p>
+                </div>
+              </div>
+              <ChevronDown
+                size={16}
+                className={`text-slate-400 transition-transform duration-300 ${accordionOpen.template ? "rotate-180" : ""}`}
+              />
+            </button>
+            {accordionOpen.template && (
+              <div className="px-4 pb-4">
+                <div className="grid grid-cols-3 gap-2">
+                  {MODELOS_INFO.map((mod, idx) => {
+                    const isActive = idx === activeIndex;
+                    return (
+                      <button
+                        key={mod.id}
+                        type="button"
+                        onClick={() => goToCard(idx)}
+                        className={`relative rounded-xl overflow-hidden border-[1.5px] transition-all text-left ${
+                          isActive
+                            ? "border-blue-500 shadow-md ring-1 ring-blue-500/20"
+                            : "border-slate-200 dark:border-slate-700 shadow-sm active:scale-[0.97]"
+                        }`}
+                      >
+                        <div className="aspect-[0.72] bg-white dark:bg-slate-900 overflow-hidden">
+                          <MiniDocumentPreview
+                            templateId={mod.id}
+                            brandColor={isActive ? formData.corPrimaria : mod.cor}
+                            isSelected={isActive}
+                            compact
+                          />
+                        </div>
+                        <div className="px-1.5 py-1">
+                          <span className="text-[7px] font-bold uppercase tracking-wider block" style={{ color: mod.cor }}>
+                            {mod.tag}
+                          </span>
+                          <h4 className="text-[9px] font-bold text-slate-900 dark:text-white leading-tight">
+                            {mod.nome}
+                          </h4>
+                        </div>
+                        {isActive && (
+                          <div className="absolute top-1 right-1 w-3.5 h-3.5 rounded-full bg-blue-600 text-white flex items-center justify-center shadow">
+                            <Check size={8} strokeWidth={3} />
+                          </div>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Accordion 2: Cor da Marca */}
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm overflow-hidden">
+            <button
+              type="button"
+              onClick={() => setAccordionOpen((p) => ({ ...p, color: !p.color }))}
+              className="w-full flex items-center justify-between p-4"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-950/40 flex items-center justify-center flex-shrink-0">
+                  <Palette size={16} className="text-blue-600 dark:text-blue-400" />
+                </div>
+                <div className="text-left">
+                  <p className="text-[12px] font-bold text-slate-900 dark:text-white">Cor da Marca</p>
+                  <p className="text-[10px] text-slate-500 dark:text-slate-400">Títulos e destaques</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <div
+                  className="w-5 h-5 rounded-full border-2 border-white shadow-sm ring-1 ring-slate-200 dark:ring-slate-700"
+                  style={{ backgroundColor: formData.corPrimaria }}
+                />
+                <ChevronDown
+                  size={16}
+                  className={`text-slate-400 transition-transform duration-300 ${accordionOpen.color ? "rotate-180" : ""}`}
+                />
+              </div>
+            </button>
+            {accordionOpen.color && (
+              <div className="px-4 pb-4 space-y-3">
+                <div className="grid grid-cols-4 gap-2">
+                  {PRESET_CORES.map((preset) => {
+                    const isSelected = formData.corPrimaria.toLowerCase() === preset.hex.toLowerCase();
+                    return (
+                      <button
+                        key={preset.hex}
+                        type="button"
+                        onClick={() => setFormData((prev) => ({ ...prev, corPrimaria: preset.hex }))}
+                        className={`aspect-square rounded-full border-[2.5px] transition-all relative ${
+                          isSelected
+                            ? "border-blue-500 shadow-md ring-2 ring-blue-500/20 scale-105"
+                            : "border-transparent hover:scale-105"
+                        }`}
+                        style={{ backgroundColor: preset.hex }}
+                        title={preset.nome}
+                      >
+                        {isSelected && (
+                          <span className="absolute inset-0 flex items-center justify-center text-white text-xs font-bold drop-shadow">
+                            ✓
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+                <div className="flex items-center gap-2 p-2 bg-slate-50 dark:bg-slate-800/80 rounded-xl border border-slate-200 dark:border-slate-700">
+                  <input
+                    type="color"
+                    value={formData.corPrimaria}
+                    onChange={(e) => setFormData((prev) => ({ ...prev, corPrimaria: e.target.value }))}
+                    className="w-8 h-8 rounded-lg cursor-pointer border-0 p-0 bg-transparent shrink-0"
+                    title="Escolher cor"
+                  />
+                  <input
+                    type="text"
+                    value={formData.corPrimaria}
+                    onChange={(e) => setFormData((prev) => ({ ...prev, corPrimaria: e.target.value }))}
+                    placeholder="#2563EB"
+                    className="flex-1 text-xs font-mono font-bold bg-transparent outline-none uppercase text-slate-900 dark:text-white"
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* ═══ DESKTOP: EXISTING GRID ═══ */}
+        <div className="hidden sm:grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-8 items-start">
           <div className="lg:col-span-7 space-y-4 sm:space-y-5">
             <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-3 sm:p-4 shadow-sm space-y-3">
               <div className="flex items-center justify-between">
@@ -1721,8 +2043,8 @@ function ConfiguracoesInner({
                 </button>
               </div>
 
-              {/* ── MOBILE: FLAT SCROLL-SNAP CAROUSEL ───────────── */}
-              <div className="block sm:hidden">
+              {/* ── MOBILE: FLAT SCROLL-SNAP CAROUSEL (hidden – replaced by accordion) ── */}
+              <div className="hidden sm:hidden">
                 <div
                   ref={scrollContainerRef}
                   className="flex gap-3 overflow-x-auto snap-x snap-mandatory scroll-smooth pb-2 px-1 -mx-1"
@@ -1746,13 +2068,13 @@ function ConfiguracoesInner({
                           <div className="h-[130px] bg-white dark:bg-slate-900 rounded-t-[10px] overflow-hidden">
                             <MiniDocumentPreview
                               templateId={mod.id}
-                              brandColor={formData.corPrimaria}
+                              brandColor={isActive ? formData.corPrimaria : mod.cor}
                               isSelected={isActive}
                               compact
                             />
                           </div>
-                          <div className="bg-slate-50 dark:bg-slate-800/80 px-2 py-1.5 border-t border-slate-100 dark:border-slate-700/50">
-                            <span className="text-[8px] font-bold uppercase tracking-wider block" style={{ color: cor }}>
+                           <div className="bg-slate-50 dark:bg-slate-800/80 px-2 py-1.5 border-t border-slate-100 dark:border-slate-700/50">
+                            <span className="text-[8px] font-bold uppercase tracking-wider block" style={{ color: mod.cor }}>
                               {mod.tag}
                             </span>
                             <h4 className="text-[10px] font-bold text-slate-900 dark:text-white leading-tight mt-px">
@@ -1816,12 +2138,12 @@ function ConfiguracoesInner({
                           <div className="flex-1 bg-white dark:bg-slate-900 rounded-t-[14px] overflow-hidden">
                             <MiniDocumentPreview
                               templateId={mod.id}
-                              brandColor={formData.corPrimaria}
+                              brandColor={isActive ? formData.corPrimaria : mod.cor}
                               isSelected={isActive}
                             />
                           </div>
-                          <div className="bg-slate-50 dark:bg-slate-800/80 px-3 py-2 border-t border-slate-100 dark:border-slate-700/50">
-                            <span className="text-[9px] font-bold uppercase tracking-wider block" style={{ color: cor }}>
+                           <div className="bg-slate-50 dark:bg-slate-800/80 px-3 py-2 border-t border-slate-100 dark:border-slate-700/50">
+                            <span className="text-[9px] font-bold uppercase tracking-wider block" style={{ color: mod.cor }}>
                               {mod.tag}
                             </span>
                             <h4 className="text-[11px] font-bold text-slate-900 dark:text-white leading-tight mt-0.5">
@@ -1996,6 +2318,7 @@ function ConfiguracoesInner({
             <A4Preview tmpl={tmpl} cor={cor} formData={formData} />
           </div>
         </div>
+        </>
       )}
 
       {/* ── BOTTOM SHEET PREVIEW (mobile) ───────────── */}
@@ -2046,7 +2369,7 @@ function ConfiguracoesInner({
                 Baixar Modelo PDF
               </button>
             </div>
-          </div>
+        </div>
         </>
       )}
 

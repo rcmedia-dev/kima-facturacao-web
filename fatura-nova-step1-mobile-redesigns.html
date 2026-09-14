@@ -1,0 +1,854 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Nova Factura — Step 1 Cliente — 5 Variações Mobile</title>
+<style>
+  :root {
+    --blue: #3b82f6;
+    --blue-dark: #2563eb;
+    --emerald: #10b981;
+    --rose: #f43f5e;
+    --orange: #f97316;
+    --violet: #8b5cf6;
+    --slate-50: #f8fafc;
+    --slate-100: #f1f5f9;
+    --slate-200: #e2e8f0;
+    --slate-300: #cbd5e1;
+    --slate-400: #94a3b8;
+    --slate-500: #64748b;
+    --slate-600: #475569;
+    --slate-700: #334155;
+    --slate-800: #1e293b;
+    --slate-900: #0f172a;
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, sans-serif;
+    background: #f0f2f5;
+    color: var(--slate-800);
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+
+  /* ── Navigation tabs ── */
+  .variant-nav {
+    position: sticky; top: 0; z-index: 100;
+    background: var(--slate-900);
+    padding: 12px 16px;
+    display: flex; gap: 8px; overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .variant-nav::-webkit-scrollbar { display: none; }
+  .variant-nav button {
+    flex-shrink: 0;
+    padding: 8px 16px;
+    border-radius: 20px;
+    border: 1.5px solid var(--slate-600);
+    background: transparent;
+    color: var(--slate-400);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+  }
+  .variant-nav button.active {
+    background: var(--blue);
+    border-color: var(--blue);
+    color: #fff;
+  }
+  .variant-title {
+    text-align: center;
+    padding: 20px 16px 8px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--slate-400);
+  }
+  .variant-label {
+    text-align: center;
+    padding: 0 16px 16px;
+    font-size: 13px;
+    color: var(--slate-500);
+    line-height: 1.4;
+  }
+
+  .floating-next {
+    position: fixed;
+    right: 20px;
+    bottom: 24px;
+    z-index: 200;
+    border: none;
+    border-radius: 999px;
+    background: linear-gradient(135deg, var(--blue), var(--blue-dark));
+    color: #fff;
+    font: inherit;
+    font-weight: 700;
+    font-size: 13px;
+    padding: 12px 18px;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    box-shadow: 0 14px 28px rgba(59, 130, 246, 0.35);
+    cursor: pointer;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+  }
+  .floating-next:active {
+    transform: scale(0.97);
+    box-shadow: 0 10px 18px rgba(59, 130, 246, 0.25);
+  }
+
+  /* ── Phone frame ── */
+  .phone-frame {
+    width: 390px;
+    max-width: 100%;
+    margin: 0 auto 40px;
+    background: var(--slate-100);
+    border-radius: 32px;
+    overflow: hidden;
+    box-shadow: 0 25px 60px rgba(0,0,0,0.15), 0 0 0 1px rgba(0,0,0,0.05);
+    position: relative;
+  }
+  .phone-notch {
+    height: 44px;
+    background: var(--slate-900);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .phone-notch::after {
+    content: '';
+    width: 120px; height: 28px;
+    background: #000;
+    border-radius: 0 0 16px 16px;
+  }
+  .phone-screen {
+    min-height: 780px;
+    position: relative;
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: calc(80px + var(--safe-bottom));
+  }
+  .phone-status-bar {
+    height: 44px;
+    background: #fff;
+    display: flex; align-items: flex-end; justify-content: space-between;
+    padding: 0 24px 6px;
+    font-size: 12px; font-weight: 600;
+  }
+
+  /* ── Shared components ── */
+  .chip {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 8px 14px;
+    border-radius: 10px;
+    border: 1.5px solid var(--slate-200);
+    background: #fff;
+    font-size: 13px; font-weight: 600;
+    color: var(--slate-600);
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+  }
+  .chip.active-blue { background: var(--blue); color: #fff; border-color: var(--blue); }
+  .chip.active-emerald { background: var(--emerald); color: #fff; border-color: var(--emerald); }
+  .chip.active-rose { background: var(--rose); color: #fff; border-color: var(--rose); }
+  .chip.active-orange { background: var(--orange); color: #fff; border-color: var(--orange); }
+  .chip.active-violet { background: var(--violet); color: #fff; border-color: var(--violet); }
+
+  .btn-primary {
+    width: 100%;
+    padding: 16px;
+    border-radius: 14px;
+    border: 0;
+    background: var(--blue);
+    color: #fff;
+    font-size: 15px; font-weight: 700;
+    cursor: pointer;
+    transition: all 0.15s;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+  }
+  .btn-primary:active { transform: scale(0.98); opacity: 0.9; }
+  .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
+  .btn-primary.emerald { background: var(--emerald); }
+
+  .btn-secondary {
+    width: 100%;
+    padding: 14px;
+    border-radius: 14px;
+    border: 1.5px dashed var(--slate-300);
+    background: transparent;
+    color: var(--slate-500);
+    font-size: 13px; font-weight: 600;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+  }
+
+  .callout {
+    padding: 14px 16px;
+    border-radius: 12px;
+    font-size: 12.5px;
+    line-height: 1.5;
+    color: var(--slate-600);
+  }
+  .callout-blue { background: #eff6ff; border: 1px solid #bfdbfe; }
+  .callout-amber { background: #fffbeb; border: 1px solid #fde68a; }
+
+  .input-field {
+    width: 100%;
+    padding: 14px 16px;
+    border-radius: 12px;
+    border: 1.5px solid var(--slate-200);
+    background: #fff;
+    font-size: 15px;
+    color: var(--slate-800);
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  .input-field:focus { border-color: var(--blue); }
+  .input-field::placeholder { color: var(--slate-400); }
+
+  .select-field {
+    width: 100%;
+    padding: 14px 16px;
+    border-radius: 12px;
+    border: 1.5px solid var(--slate-200);
+    background: #fff;
+    font-size: 15px;
+    color: var(--slate-800);
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 14px center;
+    cursor: pointer;
+  }
+
+  .client-card {
+    background: #fff;
+    border-radius: 16px;
+    border: 1.5px solid var(--slate-200);
+    padding: 16px;
+    display: flex; align-items: center; gap: 14px;
+  }
+  .client-avatar {
+    width: 44px; height: 44px;
+    border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 15px; font-weight: 800; color: #fff;
+    flex-shrink: 0;
+  }
+  .client-info { flex: 1; min-width: 0; }
+  .client-name { font-size: 14px; font-weight: 700; color: var(--slate-800); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .client-meta { font-size: 12px; color: var(--slate-400); margin-top: 2px; }
+  .client-check {
+    width: 22px; height: 22px; border-radius: 50%;
+    background: var(--emerald);
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .empty-state {
+    text-align: center;
+    padding: 40px 24px;
+  }
+  .empty-icon {
+    width: 64px; height: 64px;
+    border-radius: 20px;
+    background: var(--slate-100);
+    display: flex; align-items: center; justify-content: center;
+    margin: 0 auto 16px;
+    font-size: 28px; color: var(--slate-400);
+  }
+
+  .divider { height: 1px; background: var(--slate-200); margin: 0 16px; }
+
+  .badge {
+    display: inline-flex; align-items: center;
+    padding: 4px 10px;
+    border-radius: 8px;
+    font-size: 11px; font-weight: 700;
+  }
+
+  .section-label {
+    font-size: 11px; font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--slate-400);
+    padding: 0 4px;
+    margin-bottom: 8px;
+  }
+
+  /* Hidden by default */
+  .variant { display: none; }
+  .variant.active { display: block; }
+</style>
+</head>
+<body>
+
+<!-- Variant Navigation -->
+<nav class="variant-nav">
+  <button class="active" onclick="showVariant(1)">V1 — Chips</button>
+  <button onclick="showVariant(2)">V2 — Segmented</button>
+  <button onclick="showVariant(3)">V3 — Cards</button>
+  <button onclick="showVariant(4)">V4 — Full Search</button>
+  <button onclick="showVariant(5)">V5 — Native</button>
+</nav>
+
+<!-- ══════════════════════════════════════════════════════════════
+     V1 — CHIPS + SEARCH + COMPACT SUMMARY
+     ══════════════════════════════════════════════════════════════ -->
+<div class="variant active" id="v1">
+  <p class="variant-title">Variação 1</p>
+  <p class="variant-label">Chips horizontais scrolláveis + busca inline + resumo compacto no fundo</p>
+
+  <div class="phone-frame">
+    <div class="phone-notch"></div>
+    <div class="phone-screen">
+      <div class="phone-status-bar"><span>9:41</span><span>●●● WiFi 🔋</span></div>
+
+      <!-- Header -->
+      <div style="background:#fff; padding:16px 20px 12px;">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:4px;">
+          <div style="width:32px;height:32px;border-radius:8px;background:var(--blue);display:flex;align-items:center;justify-content:center;color:#fff;font-size:13px;font-weight:800;">1</div>
+          <div>
+            <p style="font-size:17px;font-weight:800;color:var(--slate-900);">Nova Factura</p>
+            <p style="font-size:12px;color:var(--slate-400);">Passo 1 de 3 — Cliente</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Progress bar -->
+      <div style="background:#fff;padding:0 20px 16px;">
+        <div style="display:flex;align-items:center;gap:0;">
+          <div style="flex:1;height:3px;border-radius:2px;background:var(--blue);"></div>
+          <div style="flex:1;height:3px;border-radius:2px;background:var(--slate-200);margin:0 2px;"></div>
+          <div style="flex:1;height:3px;border-radius:2px;background:var(--slate-200);"></div>
+        </div>
+        <div style="display:flex;justify-content:space-between;margin-top:6px;">
+          <span style="font-size:10px;font-weight:700;color:var(--blue);">Cliente</span>
+          <span style="font-size:10px;font-weight:600;color:var(--slate-400);">Artigos</span>
+          <span style="font-size:10px;font-weight:600;color:var(--slate-400);">Emitir</span>
+        </div>
+      </div>
+
+      <!-- Document type — scrollable chips -->
+      <div style="background:#fff;padding:0 20px 16px;">
+        <p style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--slate-400);margin-bottom:10px;">Tipo de documento</p>
+        <div style="display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;-webkit-overflow-scrolling:touch;scrollbar-width:none;">
+          <div class="chip active-blue" style="flex-shrink:0;">Factura</div>
+          <div class="chip" style="flex-shrink:0;">Factura-Recibo</div>
+          <div class="chip" style="flex-shrink:0;">Nota de Crédito</div>
+          <div class="chip" style="flex-shrink:0;">Nota de Débito</div>
+          <div class="chip" style="flex-shrink:0;">Pro-forma</div>
+          <div class="chip" style="flex-shrink:0;">Recibo</div>
+        </div>
+      </div>
+
+      <!-- Callout -->
+      <div style="padding:0 20px 16px;">
+        <div class="callout callout-blue" style="border-radius:12px;">
+          <strong>Factura</strong> — Documento comercial que formaliza a transmissão onerosa de bens ou prestação de serviços, com valor a ser liquidado no vencimento.
+        </div>
+      </div>
+
+      <!-- Client search -->
+      <div style="background:#fff;padding:0 20px 16px;">
+        <p style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--slate-400);margin-bottom:10px;">Cliente *</p>
+        <div style="position:relative;">
+          <input class="input-field" placeholder="Pesquisar por nome ou NIF..." style="padding-left:40px;">
+          <svg style="position:absolute;left:14px;top:50%;transform:translateY(-50%);color:var(--slate-400);" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+        </div>
+        <!-- Recent/suggested clients -->
+        <div style="margin-top:10px;display:flex;flex-direction:column;gap:8px;">
+          <div class="client-card">
+            <div class="client-avatar" style="background:linear-gradient(135deg,#3b82f6,#6366f1);">AE</div>
+            <div class="client-info">
+              <div class="client-name">Angola Equipamentos, Lda</div>
+              <div class="client-meta">NIF 5417082910 · +244 923 000 000</div>
+            </div>
+            <div class="client-check"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3"><path d="M20 6 9 17l-5-5"/></svg></div>
+          </div>
+          <div class="client-card">
+            <div class="client-avatar" style="background:linear-gradient(135deg,#10b981,#059669);">SM</div>
+            <div class="client-info">
+              <div class="client-name">Sonangol Mis仞os</div>
+              <div class="client-meta">NIF 5417004321 · +244 912 345 678</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="divider"></div>
+
+      <!-- Add client -->
+      <div style="padding:16px 20px;">
+        <button class="btn-secondary">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+          Adicionar cliente manualmente
+        </button>
+      </div>
+
+      <!-- Sticky bottom bar -->
+      <div style="position:absolute;bottom:0;left:0;right:0;background:rgba(255,255,255,0.95);backdrop-filter:blur(12px);border-top:1px solid var(--slate-200);padding:12px 20px calc(12px + var(--safe-bottom));">
+        <button class="btn-primary emerald">
+          Próximo: Artigos e Serviços
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════
+     V2 — SEGMENTED CONTROL + SEARCH RESULTS
+     ══════════════════════════════════════════════════════════════ -->
+<div class="variant" id="v2">
+  <p class="variant-title">Variação 2</p>
+  <p class="variant-label">Segmented control 2列 + barra de pesquisa com resultados inline</p>
+
+  <div class="phone-frame">
+    <div class="phone-notch"></div>
+    <div class="phone-screen">
+      <div class="phone-status-bar"><span>9:41</span><span>●●● WiFi 🔋</span></div>
+
+      <!-- Header with back -->
+      <div style="background:#fff;padding:12px 20px;display:flex;align-items:center;gap:12px;">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--slate-600)" stroke-width="2"><path d="m15 18-6-6 6-6"/></svg>
+        <div>
+          <p style="font-size:17px;font-weight:800;color:var(--slate-900);">Nova Factura</p>
+          <p style="font-size:12px;color:var(--slate-400);">Passo 1 de 3 — Cliente</p>
+        </div>
+      </div>
+
+      <!-- Segmented control -->
+      <div style="padding:16px 20px 12px;">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;background:var(--slate-100);border-radius:12px;padding:4px;">
+          <div style="padding:10px;border-radius:9px;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,0.08);text-align:center;">
+            <p style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--blue);">Factura</p>
+            <p style="font-size:11px;color:var(--slate-500);margin-top:2px;">Normal</p>
+          </div>
+          <div style="padding:10px;border-radius:9px;text-align:center;">
+            <p style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--slate-400);">Factura-Recibo</p>
+            <p style="font-size:11px;color:var(--slate-400);margin-top:2px;">Pagamento</p>
+          </div>
+        </div>
+        <!-- Secondary row -->
+        <div style="display:flex;gap:6px;margin-top:8px;">
+          <div class="chip" style="flex:1;justify-content:center;font-size:12px;padding:8px;">Nota Crédito</div>
+          <div class="chip" style="flex:1;justify-content:center;font-size:12px;padding:8px;">Nota Débito</div>
+          <div class="chip" style="flex:1;justify-content:center;font-size:12px;padding:8px;">Pro-forma</div>
+          <div class="chip" style="flex:1;justify-content:center;font-size:12px;padding:8px;">Recibo</div>
+        </div>
+      </div>
+
+      <!-- Callout -->
+      <div style="padding:0 20px 16px;">
+        <div class="callout callout-blue">
+          <strong>Factura:</strong> Documento comercial que formaliza a transmissão onerosa de bens ou prestação de serviços.
+        </div>
+      </div>
+
+      <!-- Client search with live results -->
+      <div style="background:#fff;padding:0 20px 16px;">
+        <p style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--slate-400);margin-bottom:8px;">Qual o cliente? *</p>
+        <div style="position:relative;">
+          <input class="input-field" placeholder="Nome, NIF ou telefone..." style="padding-left:40px;" value="An">
+          <svg style="position:absolute;left:14px;top:50%;transform:translateY(-50%);color:var(--slate-400);" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+        </div>
+        <!-- Live results dropdown -->
+        <div style="margin-top:8px;background:#fff;border:1px solid var(--slate-200);border-radius:12px;overflow:hidden;">
+          <div style="padding:12px 14px;display:flex;align-items:center;gap:12px;border-bottom:1px solid var(--slate-100);background:#f0fdf4;">
+            <div style="width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,#3b82f6,#6366f1);display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px;font-weight:800;">AE</div>
+            <div style="flex:1;min-width:0;">
+              <p style="font-size:13px;font-weight:700;color:var(--slate-800);">Angola Equipamentos, Lda</p>
+              <p style="font-size:11px;color:var(--slate-400);">NIF 5417082910</p>
+            </div>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--emerald)" stroke-width="2.5"><path d="M20 6 9 17l-5-5"/></svg>
+          </div>
+          <div style="padding:12px 14px;display:flex;align-items:center;gap:12px;">
+            <div style="width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,#f97316,#ef4444);display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px;font-weight:800;">AL</div>
+            <div style="flex:1;min-width:0;">
+              <p style="font-size:13px;font-weight:700;color:var(--slate-800);">Angola Linhas Aéreas</p>
+              <p style="font-size:11px;color:var(--slate-400);">NIF 5417005678</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Client confirmed card -->
+      <div style="padding:0 20px 16px;">
+        <div style="background:linear-gradient(135deg,#ecfdf5,#d1fae5);border:1.5px solid #a7f3d0;border-radius:14px;padding:14px 16px;display:flex;align-items:center;gap:12px;">
+          <div style="width:40px;height:40px;border-radius:11px;background:var(--emerald);display:flex;align-items:center;justify-content:center;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5"><path d="M20 6 9 17l-5-5"/></svg>
+          </div>
+          <div style="flex:1;min-width:0;">
+            <p style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--emerald);">Cliente Confirmado</p>
+            <p style="font-size:14px;font-weight:700;color:var(--slate-800);margin-top:2px;">Angola Equipamentos, Lda</p>
+            <p style="font-size:12px;color:var(--slate-500);">NIF 5417082910 · +244 923 000 000</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="divider"></div>
+
+      <!-- Add client -->
+      <div style="padding:16px 20px;">
+        <button class="btn-secondary">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+          Não encontrou? Adicionar cliente
+        </button>
+      </div>
+
+      <!-- Sticky bottom -->
+      <div style="position:absolute;bottom:0;left:0;right:0;background:rgba(255,255,255,0.95);backdrop-filter:blur(12px);border-top:1px solid var(--slate-200);padding:12px 20px calc(12px + var(--safe-bottom));">
+        <button class="btn-primary emerald">
+          Próximo: Artigos e Serviços
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════
+     V3 — CARDS COM ÍCONES + SELECT NATIVO
+     ══════════════════════════════════════════════════════════════ -->
+<div class="variant" id="v3">
+  <p class="variant-title">Variação 3</p>
+  <p class="variant-label">Cards grandes com ícone por tipo + seleção nativa de cliente</p>
+
+  <div class="phone-frame">
+    <div class="phone-notch"></div>
+    <div class="phone-screen">
+      <div class="phone-status-bar"><span>9:41</span><span>●●● WiFi 🔋</span></div>
+
+      <!-- Header -->
+      <div style="background:#fff;padding:16px 20px 12px;">
+        <p style="font-size:17px;font-weight:800;color:var(--slate-900);">Nova Factura</p>
+        <p style="font-size:12px;color:var(--slate-400);margin-top:2px;">Passo 1 de 3 — Cliente</p>
+        <!-- Inline progress -->
+        <div style="display:flex;align-items:center;gap:8px;margin-top:12px;">
+          <div style="width:24px;height:24px;border-radius:50%;background:var(--blue);display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px;font-weight:800;">1</div>
+          <div style="flex:1;height:2px;border-radius:1px;background:var(--blue);"></div>
+          <div style="width:24px;height:24px;border-radius:50%;background:var(--slate-200);display:flex;align-items:center;justify-content:center;color:var(--slate-400);font-size:11px;font-weight:800;">2</div>
+          <div style="flex:1;height:2px;border-radius:1px;background:var(--slate-200);"></div>
+          <div style="width:24px;height:24px;border-radius:50%;background:var(--slate-200);display:flex;align-items:center;justify-content:center;color:var(--slate-400);font-size:11px;font-weight:800;">3</div>
+        </div>
+      </div>
+
+      <!-- Document type as icon cards -->
+      <div style="padding:0 20px 16px;">
+        <p style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--slate-400);margin-bottom:10px;">Tipo de documento</p>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+          <!-- Active card -->
+          <div style="border-radius:14px;border:2px solid var(--blue);background:#eff6ff;padding:16px 14px;cursor:pointer;">
+            <div style="width:36px;height:36px;border-radius:10px;background:var(--blue);display:flex;align-items:center;justify-content:center;margin-bottom:10px;">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/></svg>
+            </div>
+            <p style="font-size:13px;font-weight:700;color:var(--slate-800);">Factura</p>
+            <p style="font-size:10px;color:var(--slate-500);margin-top:2px;">Pagamento a prazo</p>
+          </div>
+          <div style="border-radius:14px;border:1.5px solid var(--slate-200);background:#fff;padding:16px 14px;cursor:pointer;">
+            <div style="width:36px;height:36px;border-radius:10px;background:var(--emerald);display:flex;align-items:center;justify-content:center;margin-bottom:10px;">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/><path d="M9 15l2 2 4-4"/></svg>
+            </div>
+            <p style="font-size:13px;font-weight:700;color:var(--slate-800);">Factura-Recibo</p>
+            <p style="font-size:10px;color:var(--slate-500);margin-top:2px;">Pagamento imediato</p>
+          </div>
+          <div style="border-radius:14px;border:1.5px solid var(--slate-200);background:#fff;padding:16px 14px;cursor:pointer;">
+            <div style="width:36px;height:36px;border-radius:10px;background:var(--rose);display:flex;align-items:center;justify-content:center;margin-bottom:10px;">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/><path d="m9 9 6 6m0-6-6 6"/></svg>
+            </div>
+            <p style="font-size:13px;font-weight:700;color:var(--slate-800);">Nota de Crédito</p>
+            <p style="font-size:10px;color:var(--slate-500);margin-top:2px;">Retificação</p>
+          </div>
+          <div style="border-radius:14px;border:1.5px solid var(--slate-200);background:#fff;padding:16px 14px;cursor:pointer;">
+            <div style="width:36px;height:36px;border-radius:10px;background:var(--orange);display:flex;align-items:center;justify-content:center;margin-bottom:10px;">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/><path d="M12 8v4M12 16h.01"/></svg>
+            </div>
+            <p style="font-size:13px;font-weight:700;color:var(--slate-800);">Nota de Débito</p>
+            <p style="font-size:10px;color:var(--slate-500);margin-top:2px;">Cobrança</p>
+          </div>
+          <div style="border-radius:14px;border:1.5px solid var(--slate-200);background:#fff;padding:16px 14px;cursor:pointer;">
+            <div style="width:36px;height:36px;border-radius:10px;background:var(--violet);display:flex;align-items:center;justify-content:center;margin-bottom:10px;">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/><path d="M9 12h6M9 16h6"/></svg>
+            </div>
+            <p style="font-size:13px;font-weight:700;color:var(--slate-800);">Pro-forma</p>
+            <p style="font-size:10px;color:var(--slate-500);margin-top:2px;">Proposta</p>
+          </div>
+          <div style="border-radius:14px;border:1.5px solid var(--slate-200);background:#fff;padding:16px 14px;cursor:pointer;">
+            <div style="width:36px;height:36px;border-radius:10px;background:#06b6d4;display:flex;align-items:center;justify-content:center;margin-bottom:10px;">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/><path d="M9 15l2 2 4-4"/></svg>
+            </div>
+            <p style="font-size:13px;font-weight:700;color:var(--slate-800);">Recibo</p>
+            <p style="font-size:10px;color:var(--slate-500);margin-top:2px;">Comprovativo</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Callout -->
+      <div style="padding:0 20px 16px;">
+        <div class="callout callout-blue">
+          <strong>Factura:</strong> Documento comercial que formaliza a transmissão onerosa de bens ou prestação de serviços.
+        </div>
+      </div>
+
+      <!-- Client select -->
+      <div style="background:#fff;padding:0 20px 16px;">
+        <p style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--slate-400);margin-bottom:8px;">Qual o cliente? *</p>
+        <select class="select-field">
+          <option value="" disabled selected>Selecione um cliente...</option>
+          <option value="1">Angola Equipamentos, Lda — 5417082910</option>
+          <option value="2">Sonangol Mis仞os — 5417004321</option>
+          <option value="3">Angola Linhas Aéreas — 5417005678</option>
+        </select>
+        <button class="btn-secondary" style="margin-top:10px;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+          Adicionar cliente manualmente
+        </button>
+      </div>
+
+      <!-- Sticky bottom -->
+      <div style="position:absolute;bottom:0;left:0;right:0;background:rgba(255,255,255,0.95);backdrop-filter:blur(12px);border-top:1px solid var(--slate-200);padding:12px 20px calc(12px + var(--safe-bottom));">
+        <button class="btn-primary emerald">
+          Próximo: Artigos e Serviços
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════
+     V4 — FULL-SCREEN SEARCH + PROGRESSIVE DISCLOSURE
+     ══════════════════════════════════════════════════════════════ -->
+<div class="variant" id="v4">
+  <p class="variant-title">Variação 4</p>
+  <p class="variant-label">Busca fullscreen com lista de clientes + disclosure progressivo</p>
+
+  <div class="phone-frame">
+    <div class="phone-notch"></div>
+    <div class="phone-screen">
+      <div class="phone-status-bar"><span>9:41</span><span>●●● WiFi 🔋</span></div>
+
+      <!-- Compact header -->
+      <div style="background:#fff;padding:12px 20px;display:flex;align-items:center;gap:12px;">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--slate-600)" stroke-width="2"><path d="m15 18-6-6 6-6"/></svg>
+        <div style="flex:1;">
+          <p style="font-size:16px;font-weight:800;color:var(--slate-900);">Nova Factura</p>
+        </div>
+        <div style="font-size:11px;font-weight:700;color:var(--blue);background:#eff6ff;padding:4px 10px;border-radius:8px;">Passo 1/3</div>
+      </div>
+
+      <!-- Document type — compact dropdown -->
+      <div style="padding:12px 20px;">
+        <div style="background:#fff;border-radius:14px;border:1.5px solid var(--slate-200);overflow:hidden;">
+          <div style="padding:14px 16px;display:flex;align-items:center;justify-content:space-between;">
+            <div style="display:flex;align-items:center;gap:10px;">
+              <div style="width:32px;height:32px;border-radius:8px;background:var(--blue);display:flex;align-items:center;justify-content:center;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/></svg>
+              </div>
+              <div>
+                <p style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--slate-400);">Tipo de documento</p>
+                <p style="font-size:14px;font-weight:700;color:var(--slate-800);margin-top:1px;">Factura</p>
+              </div>
+            </div>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--slate-400)" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>
+          </div>
+        </div>
+      </div>
+
+      <!-- Callout — collapsible -->
+      <div style="padding:0 20px 12px;">
+        <div class="callout callout-blue" style="border-radius:12px;">
+          <strong>Factura:</strong> Documento comercial que formaliza a transmissão onerosa de bens ou prestação de serviços, com valor a ser liquidado no vencimento (Art. 3º f — DP 71/25).
+        </div>
+      </div>
+
+      <!-- Client section — prominent search -->
+      <div style="background:#fff;padding:16px 20px;">
+        <p style="font-size:13px;font-weight:700;color:var(--slate-800);margin-bottom:10px;">Qual o cliente? *</p>
+        <div style="position:relative;">
+          <input class="input-field" placeholder="Pesquisar cliente..." style="padding-left:40px;font-size:16px;padding:16px 16px 16px 44px;">
+          <svg style="position:absolute;left:14px;top:50%;transform:translateY(-50%);color:var(--slate-400);" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+        </div>
+      </div>
+
+      <!-- Client list -->
+      <div style="background:#fff;padding:0 20px;">
+        <div style="display:flex;align-items:center;gap:12px;padding:14px 0;border-bottom:1px solid var(--slate-100);cursor:pointer;">
+          <div style="width:40px;height:40px;border-radius:11px;background:linear-gradient(135deg,#3b82f6,#6366f1);display:flex;align-items:center;justify-content:center;color:#fff;font-size:13px;font-weight:800;">AE</div>
+          <div style="flex:1;min-width:0;">
+            <p style="font-size:14px;font-weight:700;color:var(--slate-800);">Angola Equipamentos, Lda</p>
+            <p style="font-size:12px;color:var(--slate-400);">NIF 5417082910 · +244 923 000 000</p>
+          </div>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--slate-300)" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px;padding:14px 0;border-bottom:1px solid var(--slate-100);cursor:pointer;">
+          <div style="width:40px;height:40px;border-radius:11px;background:linear-gradient(135deg,#10b981,#059669);display:flex;align-items:center;justify-content:center;color:#fff;font-size:13px;font-weight:800;">SM</div>
+          <div style="flex:1;min-width:0;">
+            <p style="font-size:14px;font-weight:700;color:var(--slate-800);">Sonangol Mis仞os</p>
+            <p style="font-size:12px;color:var(--slate-400);">NIF 5417004321 · +244 912 345 678</p>
+          </div>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--slate-300)" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px;padding:14px 0;border-bottom:1px solid var(--slate-100);cursor:pointer;">
+          <div style="width:40px;height:40px;border-radius:11px;background:linear-gradient(135deg,#f97316,#ef4444);display:flex;align-items:center;justify-content:center;color:#fff;font-size:13px;font-weight:800;">AL</div>
+          <div style="flex:1;min-width:0;">
+            <p style="font-size:14px;font-weight:700;color:var(--slate-800);">Angola Linhas Aéreas</p>
+            <p style="font-size:12px;color:var(--slate-400);">NIF 5417005678 · +244 913 456 789</p>
+          </div>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--slate-300)" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg>
+        </div>
+      </div>
+
+      <div class="divider" style="margin-top:8px;"></div>
+      <div style="padding:12px 20px;">
+        <button class="btn-secondary">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+          Novo cliente
+        </button>
+      </div>
+
+      <!-- Sticky bottom -->
+      <div style="position:absolute;bottom:0;left:0;right:0;background:rgba(255,255,255,0.95);backdrop-filter:blur(12px);border-top:1px solid var(--slate-200);padding:12px 20px calc(12px + var(--safe-bottom));">
+        <button class="btn-primary emerald">
+          Próximo: Artigos e Serviços
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════
+     V5 — iOS NATIVE PATTERN + FLOATING NEXT
+     ══════════════════════════════════════════════════════════════ -->
+<div class="variant" id="v5">
+  <p class="variant-title">Variação 5</p>
+  <p class="variant-label">Padrão iOS nativo — toggle horizontal + lista de clientes + botão flutuante</p>
+
+  <div class="phone-frame">
+    <div class="phone-notch"></div>
+    <div class="phone-screen">
+      <div class="phone-status-bar"><span>9:41</span><span>●●● WiFi 🔋</span></div>
+
+      <!-- iOS-style large title -->
+      <div style="background:#fff;padding:8px 20px 16px;">
+        <p style="font-size:28px;font-weight:800;color:var(--slate-900);letter-spacing:-0.5px;">Nova Factura</p>
+        <p style="font-size:13px;color:var(--slate-400);margin-top:4px;">Preencha os dados para emitir</p>
+      </div>
+
+      <!-- iOS segmented control -->
+      <div style="padding:0 20px 16px;">
+        <div style="display:flex;background:var(--slate-100);border-radius:10px;padding:3px;">
+          <div style="flex:1;padding:9px;border-radius:8px;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,0.08);text-align:center;">
+            <span style="font-size:12.5px;font-weight:700;color:var(--slate-800);">Factura</span>
+          </div>
+          <div style="flex:1;padding:9px;border-radius:8px;text-align:center;">
+            <span style="font-size:12.5px;font-weight:600;color:var(--slate-400);">F-Recibo</span>
+          </div>
+          <div style="flex:1;padding:9px;border-radius:8px;text-align:center;">
+            <span style="font-size:12.5px;font-weight:600;color:var(--slate-400);">NC</span>
+          </div>
+          <div style="flex:1;padding:9px;border-radius:8px;text-align:center;">
+            <span style="font-size:12.5px;font-weight:600;color:var(--slate-400);">ND</span>
+          </div>
+          <div style="flex:1;padding:9px;border-radius:8px;text-align:center;">
+            <span style="font-size:12.5px;font-weight:600;color:var(--slate-400);">Pro-f</span>
+          </div>
+          <div style="flex:1;padding:9px;border-radius:8px;text-align:center;">
+            <span style="font-size:12.5px;font-weight:600;color:var(--slate-400);">Rec</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Info box -->
+      <div style="padding:0 20px 16px;">
+        <div style="background:#f0f9ff;border-radius:12px;padding:12px 14px;display:flex;gap:10px;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--blue)" stroke-width="2" style="flex-shrink:0;margin-top:1px;"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+          <p style="font-size:12px;line-height:1.5;color:var(--slate-600);"><strong style="color:var(--blue);">Factura:</strong> Documento comercial que formaliza a transmissão onerosa de bens ou prestação de serviços.</p>
+        </div>
+      </div>
+
+      <!-- Client — iOS list style -->
+      <div style="background:#fff;padding:16px 20px 8px;">
+        <p style="font-size:13px;font-weight:700;color:var(--slate-800);margin-bottom:10px;">Cliente *</p>
+        <div style="position:relative;">
+          <input class="input-field" placeholder="Pesquisar..." style="padding-left:36px;background:var(--slate-100);border-color:transparent;font-size:15px;">
+          <svg style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--slate-400);" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+        </div>
+      </div>
+
+      <!-- Client list — iOS grouped table style -->
+      <div style="margin:12px 20px;background:#fff;border-radius:14px;overflow:hidden;border:1px solid var(--slate-200);">
+        <div style="padding:14px 16px;display:flex;align-items:center;gap:12px;border-bottom:1px solid var(--slate-100);cursor:pointer;">
+          <div style="width:38px;height:38px;border-radius:10px;background:linear-gradient(135deg,#3b82f6,#6366f1);display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px;font-weight:800;">AE</div>
+          <div style="flex:1;min-width:0;">
+            <p style="font-size:14px;font-weight:600;color:var(--slate-800);">Angola Equipamentos</p>
+            <p style="font-size:11px;color:var(--slate-400);">5417082910</p>
+          </div>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--slate-300)" stroke-width="2.5"><path d="m9 18 6-6-6-6"/></svg>
+        </div>
+        <div style="padding:14px 16px;display:flex;align-items:center;gap:12px;border-bottom:1px solid var(--slate-100);cursor:pointer;">
+          <div style="width:38px;height:38px;border-radius:10px;background:linear-gradient(135deg,#10b981,#059669);display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px;font-weight:800;">SM</div>
+          <div style="flex:1;min-width:0;">
+            <p style="font-size:14px;font-weight:600;color:var(--slate-800);">Sonangol Mis仞os</p>
+            <p style="font-size:11px;color:var(--slate-400);">5417004321</p>
+          </div>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--slate-300)" stroke-width="2.5"><path d="m9 18 6-6-6-6"/></svg>
+        </div>
+        <div style="padding:14px 16px;display:flex;align-items:center;gap:12px;cursor:pointer;">
+          <div style="width:38px;height:38px;border-radius:10px;background:linear-gradient(135deg,#f97316,#ef4444);display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px;font-weight:800;">AL</div>
+          <div style="flex:1;min-width:0;">
+            <p style="font-size:14px;font-weight:600;color:var(--slate-800);">Angola Linhas Aéreas</p>
+            <p style="font-size:11px;color:var(--slate-400);">5417005678</p>
+          </div>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--slate-300)" stroke-width="2.5"><path d="m9 18 6-6-6-6"/></svg>
+        </div>
+      </div>
+
+      <div style="padding:8px 20px;">
+        <button class="btn-secondary" style="border-radius:14px;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+          Novo cliente
+        </button>
+      </div>
+
+      <!-- Floating next button -->
+      <div style="position:absolute;bottom:calc(20px + var(--safe-bottom));right:20px;">
+        <button style="width:56px;height:56px;border-radius:50%;border:0;background:var(--blue);color:#fff;box-shadow:0 4px 16px rgba(59,130,246,0.4);display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all 0.15s;" onmousedown="this.style.transform='scale(0.95)'" onmouseup="this.style.transform='scale(1)'">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<button class="floating-next" type="button" onclick="goNext()">Next →</button>
+
+<script>
+let variantIndex = 1;
+const totalVariants = 5;
+
+function showVariant(n) {
+  variantIndex = n;
+  document.querySelectorAll('.variant').forEach(v => v.classList.remove('active'));
+  document.getElementById('v' + n).classList.add('active');
+  document.querySelectorAll('.variant-nav button').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.variant-nav button')[n - 1].classList.add('active');
+}
+
+function goNext() {
+  const next = variantIndex >= totalVariants ? 1 : variantIndex + 1;
+  showVariant(next);
+}
+</script>
+</body>
+</html>

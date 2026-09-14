@@ -3,7 +3,6 @@
 import { Suspense, useState, useSyncExternalStore } from "react";
 import { useSearchParams } from "next/navigation";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useAppStore } from "@/lib/store";
 import { Cliente, FaturaLinha, TipoDocumento } from "@/lib/types";
 import { Passo1Cliente } from "./components/passo-1-cliente";
 import { Passo2Linhas } from "./components/passo-2-linhas";
@@ -34,7 +33,6 @@ const passos = [
 
 function NovaFaturaContent() {
   const searchParams = useSearchParams();
-  const store = useAppStore();
   const mounted = useSyncExternalStore(() => () => {}, () => true, () => false);
   const [activeTab, setActiveTab] = useState("passo1");
 
@@ -77,9 +75,9 @@ function NovaFaturaContent() {
   const total = subtotal + totalIVA;
 
   return (
-    <div className="max-w-5xl mx-auto px-4 py-8">
+    <div className="w-full px-0 py-0 md:max-w-5xl md:mx-auto md:px-4 md:py-8">
       {/* Header */}
-      <div className="mb-6">
+      <div className="mb-4 px-4 pt-4 md:px-0 md:pt-0 md:mb-6">
         <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
           Nova {LABELS_DOCUMENTO[tipoDocumento] || tipoDocumento}
         </h1>
@@ -90,15 +88,15 @@ function NovaFaturaContent() {
       </div>
 
       {/* Layout: Conteúdo (main) + Resumo Sticky (aside) */}
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_290px] gap-5 items-start">
+      <div className="grid grid-cols-1 gap-4 md:gap-5 lg:grid-cols-[1fr_290px] lg:items-start">
 
         {/* Coluna principal — wizard shell */}
-        <div className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-md overflow-hidden">
+        <div className="w-full overflow-hidden border-0 bg-transparent shadow-none md:border md:rounded-2xl md:border-slate-200 md:bg-white md:dark:border-slate-800 md:dark:bg-slate-950 md:shadow-md">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
 
             {/* Stepper horizontal — estilo V4 */}
-            <div className="px-6 pt-5 pb-0">
-              <div className="flex items-center gap-5 mb-5">
+            <div className="px-4 pt-3 pb-0 md:px-6 md:pt-5">
+              <div className="mb-4 flex flex-wrap items-center gap-2 md:mb-5 md:gap-5">
                 {passos.map((passo, idx) => {
                   const ativo = progressoAtual === passo.numero;
                   const concluido = passo.numero < progressoAtual;
@@ -137,7 +135,7 @@ function NovaFaturaContent() {
                       {idx < passos.length - 1 && (
                         <div
                           className={cn(
-                            "w-10 h-[3px] rounded-full transition-colors",
+                            "hidden h-[3px] w-8 rounded-full transition-colors md:block",
                             concluido
                               ? "bg-emerald-400"
                               : "bg-slate-200 dark:bg-slate-700"
@@ -162,7 +160,7 @@ function NovaFaturaContent() {
             </TabsList>
 
             {/* Passo 1: Cliente */}
-            <TabsContent value="passo1" className="mt-0 p-6">
+            <TabsContent value="passo1" className="mt-0 p-4 md:p-6">
               <Passo1Cliente
                 clienteSelecionado={clienteSelecionado}
                 onSelectCliente={setClienteSelecionado}
@@ -178,7 +176,7 @@ function NovaFaturaContent() {
             </TabsContent>
 
             {/* Passo 2: Artigos */}
-            <TabsContent value="passo2" className="mt-0 p-6">
+            <TabsContent value="passo2" className="mt-0 p-4 md:p-6">
               <Passo2Linhas
                 linhas={linhas}
                 onUpdateLinhas={setLinhas}
@@ -191,7 +189,7 @@ function NovaFaturaContent() {
             </TabsContent>
 
             {/* Passo 3: Emitir */}
-            <TabsContent value="passo3" className="mt-0 p-6">
+            <TabsContent value="passo3" className="mt-0 p-4 md:p-6">
               <Passo3Emitir
                 clienteSelecionado={clienteSelecionado}
                 linhas={linhas}
@@ -210,37 +208,37 @@ function NovaFaturaContent() {
         </div>
 
         {/* Painel Resumo Sticky — estilo V4 */}
-        <aside className="lg:sticky lg:top-[90px] border border-slate-200 dark:border-slate-800 rounded-[14px] p-[18px] bg-white dark:bg-slate-950 shadow-sm">
+        <aside className="w-full border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-950 md:rounded-[14px] md:p-[18px] lg:sticky lg:top-[90px]">
           <p className="text-[11px] font-bold uppercase tracking-[.05em] text-slate-400">
             Resumo
           </p>
-          <p className="text-sm font-bold mt-1.5 text-slate-900 dark:text-white truncate">
+          <p className="mt-1.5 truncate text-sm font-bold text-slate-900 dark:text-white">
             {clienteSelecionado?.nome || "Nenhum cliente selecionado"}
           </p>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+          <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
             {clienteSelecionado
               ? `${tipoDocumento} · NIF ${clienteSelecionado.nif}`
               : "Selecione um cliente no passo 1."}
           </p>
 
           <div className="mt-3.5 space-y-1">
-            <div className="flex justify-between text-[13px] text-slate-500 dark:text-slate-400 py-1">
+            <div className="flex justify-between py-1 text-[13px] text-slate-500 dark:text-slate-400">
               <span>Subtotal</span>
               <span className="font-mono">{formatMoedaAOA(subtotal)}</span>
             </div>
-            <div className="flex justify-between text-[13px] text-slate-500 dark:text-slate-400 py-1">
+            <div className="flex justify-between py-1 text-[13px] text-slate-500 dark:text-slate-400">
               <span>IVA</span>
               <span className="font-mono">{formatMoedaAOA(totalIVA)}</span>
             </div>
           </div>
 
           {/* Caixa total escura */}
-          <div className="bg-slate-900 dark:bg-slate-800 rounded-xl px-4 py-3 mt-3.5">
+          <div className="mt-3.5 rounded-xl bg-slate-900 px-4 py-3 dark:bg-slate-800">
             <div className="flex justify-between text-white">
               <span className="text-[13px] font-semibold">TOTAL</span>
               <span className="font-mono text-[13px] text-slate-200">{formatMoedaAOA(total)}</span>
             </div>
-            <p className="text-[12px] text-blue-300/80 mt-0.5">
+            <p className="mt-0.5 text-[12px] text-blue-300/80">
               {linhas.length} {linhas.length === 1 ? "item" : "itens"} · vence{" "}
               {formatData(dataVencimento)}
             </p>

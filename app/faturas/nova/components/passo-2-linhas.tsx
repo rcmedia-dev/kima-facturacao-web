@@ -112,35 +112,34 @@ export function Passo2Linhas({
       )}
 
       {/* Form de adição de linha */}
-      <div className="border border-slate-200 dark:border-slate-800 rounded-[14px] p-4 bg-white dark:bg-slate-900">
-        <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-2">
+      <div className="rounded-[14px] border border-slate-200 bg-white p-3 sm:p-4 dark:border-slate-800 dark:bg-slate-900">
+        <label className="mb-2 block text-xs font-semibold text-slate-700 dark:text-slate-300">
           Que artigo ou serviço quer incluir? <span className="text-red-500">*</span>
         </label>
 
         {store.artigos.length === 0 ? (
           /* ── EMPTY STATE: sem artigos ─────────────────── */
-          <div className="text-center py-10 bg-slate-50 dark:bg-slate-800/50 rounded-xl border-2 border-dashed border-slate-200 dark:border-slate-700">
-            <PackagePlus className="w-10 h-10 text-slate-400 mx-auto mb-3" />
-            <p className="text-slate-600 dark:text-slate-300 font-medium text-sm">
+          <div className="rounded-xl border-2 border-dashed border-slate-200 bg-slate-50 py-10 text-center dark:border-slate-700 dark:bg-slate-800/50">
+            <PackagePlus className="mx-auto mb-3 h-10 w-10 text-slate-400" />
+            <p className="text-sm font-medium text-slate-600 dark:text-slate-300">
               Ainda não tem artigos registados
             </p>
-            <p className="text-slate-400 text-xs mt-1 mb-5">
+            <p className="mt-1 mb-5 text-xs text-slate-400">
               Adicione o primeiro artigo ou serviço para incluir no documento.
             </p>
             <Button
               onClick={() => setShowArtigoModal(true)}
-              className="bg-blue-600 hover:bg-blue-700 text-white"
+              className="bg-blue-600 text-white hover:bg-blue-700"
             >
-              <Plus className="w-4 h-4 mr-2" />
+              <Plus className="mr-2 h-4 w-4" />
               Adicionar Artigo
             </Button>
           </div>
         ) : (
           <>
-            {/* Linha 1: Select de artigo — largura total */}
             <div className="w-full">
               <Select value={artigoId} onValueChange={(v) => setArtigoId(v ?? "")}>
-                <SelectTrigger className="w-full bg-white dark:bg-slate-950 border-slate-300 dark:border-slate-700 h-10 text-sm">
+                <SelectTrigger className="h-11 w-full border-slate-300 bg-white text-sm dark:border-slate-700 dark:bg-slate-950">
                   <SelectValue placeholder="Escolha um artigo ou serviço...">
                     {artigoId ? (() => {
                       const a = store.getArtigoPorId(artigoId);
@@ -149,19 +148,19 @@ export function Passo2Linhas({
                   </SelectValue>
                 </SelectTrigger>
                 <SelectContent
-                  className="w-[var(--radix-select-trigger-width)] min-w-[480px]"
+                  className="w-[var(--radix-select-trigger-width)] min-w-[280px] sm:min-w-[480px]"
                   sideOffset={4}
                 >
                   {store.artigos.map((artigo) => (
                     <SelectItem key={artigo.id} value={artigo.id} className="py-2.5">
                       <div className="flex flex-col">
                         <span className="text-sm font-semibold text-slate-900 dark:text-white">
-                          <span className="font-mono text-xs font-bold text-blue-600 dark:text-blue-400 mr-1.5">
+                          <span className="mr-1.5 font-mono text-xs font-bold text-blue-600 dark:text-blue-400">
                             {artigo.codigo}
                           </span>
                           {artigo.descricao}
                         </span>
-                        <span className="text-xs text-slate-400 mt-0.5">
+                        <span className="mt-0.5 text-xs text-slate-400">
                           {formatMoedaAOA(artigo.preco)} · IVA {artigo.taxaIVA}%
                         </span>
                       </div>
@@ -171,42 +170,39 @@ export function Passo2Linhas({
               </Select>
             </div>
 
-            {/* Botão secundário: adicionar novo artigo */}
             <button
               onClick={() => setShowArtigoModal(true)}
-              className="flex items-center justify-center gap-2 w-full mt-2 py-2.5 rounded-xl border border-dashed border-slate-300 dark:border-slate-700 text-xs font-semibold text-slate-500 dark:text-slate-400 hover:border-blue-500 hover:text-blue-600 dark:hover:border-blue-400 dark:hover:text-blue-400 hover:bg-blue-50/30 dark:hover:bg-blue-950/20 transition-colors"
+              className="mt-2 flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-slate-300 py-2.5 text-xs font-semibold text-slate-500 transition-colors hover:border-blue-500 hover:bg-blue-50/30 hover:text-blue-600 dark:border-slate-700 dark:text-slate-400 dark:hover:border-blue-400 dark:hover:bg-blue-950/20 dark:hover:text-blue-400"
             >
-              <Plus className="w-3.5 h-3.5" />
+              <Plus className="h-3.5 w-3.5" />
               Não encontrou? Adicionar novo artigo
             </button>
 
-            {/* Linha 2: Quantidade + Botão — sempre lado a lado */}
-            <div className="grid grid-cols-[1fr_auto] gap-3 items-end mt-3">
+            <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
               <div>
-                <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">
+                <label className="mb-1 block text-xs font-semibold text-slate-600 dark:text-slate-400">
                   Quantidade
                 </label>
                 <Input
                   inputMode="numeric"
                   value={quantidade}
                   onChange={(e) => setQuantidade(e.target.value.replace(/\D/g, ""))}
-                  className="bg-white dark:bg-slate-950 border-slate-300 dark:border-slate-700 h-10 text-sm"
+                  className="h-11 border-slate-300 bg-white text-sm dark:border-slate-700 dark:bg-slate-950"
                 />
               </div>
 
               <Button
                 onClick={handleAddLinha}
                 disabled={!artigoId || quantidadeNumerica <= 0}
-                className="bg-blue-600 hover:bg-blue-700 text-white h-10 whitespace-nowrap"
+                className="h-11 whitespace-nowrap bg-blue-600 text-white hover:bg-blue-700"
               >
-                <Plus className="w-4 h-4 mr-1.5" />
+                <Plus className="mr-1.5 h-4 w-4" />
                 Adicionar Linha
               </Button>
             </div>
 
-            {/* Preview rápido do artigo selecionado */}
             {artigoSelecionado && (
-              <div className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs text-slate-600 dark:text-slate-400 font-medium">
+              <div className="mt-3 flex flex-col gap-2 border-t border-slate-100 pt-3 text-xs font-medium text-slate-600 dark:border-slate-800 dark:text-slate-400 sm:flex-row sm:items-center sm:justify-between">
                 <span>
                   Preço unit.:{" "}
                   <strong className="text-slate-800 dark:text-slate-200">
@@ -231,70 +227,120 @@ export function Passo2Linhas({
 
       {/* Tabela de linhas adicionadas */}
       {linhas.length === 0 ? (
-        <div className="text-center py-10 bg-slate-50 dark:bg-slate-800/50 rounded-xl border-2 border-dashed border-slate-200 dark:border-slate-700">
-          <Package className="w-8 h-8 text-slate-400 mx-auto mb-2" />
-          <p className="text-slate-600 dark:text-slate-300 font-medium text-sm">
+        <div className="rounded-xl border-2 border-dashed border-slate-200 bg-slate-50 py-10 text-center dark:border-slate-700 dark:bg-slate-800/50">
+          <Package className="mx-auto mb-2 h-8 w-8 text-slate-400" />
+          <p className="text-sm font-medium text-slate-600 dark:text-slate-300">
             Nenhuma linha adicionada ainda
           </p>
-          <p className="text-slate-400 text-xs mt-1">
+          <p className="mt-1 text-xs text-slate-400">
             Escolha um artigo acima e clique em &quot;Adicionar Linha&quot;.
           </p>
         </div>
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
-          <Table>
-            <TableHeader className="bg-slate-50 dark:bg-slate-800/50">
-              <TableRow>
-                <TableHead className="font-semibold text-xs">Descrição</TableHead>
-                <TableHead className="text-center font-semibold text-xs">Qtd</TableHead>
-                <TableHead className="text-right font-semibold text-xs">Preço Unit.</TableHead>
-                <TableHead className="text-center font-semibold text-xs">IVA</TableHead>
-                <TableHead className="text-right font-semibold text-xs">Total c/ IVA</TableHead>
-                <TableHead className="text-center font-semibold text-xs w-14" />
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {linhas.map((linha) => {
-                const totalLinhaComIVA = linha.total + (linha.total * linha.taxaIVA) / 100;
-                return (
-                  <TableRow key={linha.id} className="hover:bg-blue-50/20 dark:hover:bg-blue-950/20">
-                    <TableCell className="font-medium text-sm text-slate-900 dark:text-white">
-                      {linha.descricao}
-                    </TableCell>
-                    <TableCell className="text-center font-mono text-sm">{linha.quantidade}</TableCell>
-                    <TableCell className="text-right font-mono text-sm">{formatMoedaAOA(linha.preco)}</TableCell>
-                    <TableCell className="text-center">
+        <>
+          <div className="hidden overflow-x-auto rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900 md:block">
+            <Table>
+              <TableHeader className="bg-slate-50 dark:bg-slate-800/50">
+                <TableRow>
+                  <TableHead className="text-xs font-semibold">Descrição</TableHead>
+                  <TableHead className="text-center text-xs font-semibold">Qtd</TableHead>
+                  <TableHead className="text-right text-xs font-semibold">Preço Unit.</TableHead>
+                  <TableHead className="text-center text-xs font-semibold">IVA</TableHead>
+                  <TableHead className="text-right text-xs font-semibold">Total c/ IVA</TableHead>
+                  <TableHead className="w-14 text-center text-xs font-semibold" />
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {linhas.map((linha) => {
+                  const totalLinhaComIVA = linha.total + (linha.total * linha.taxaIVA) / 100;
+                  return (
+                    <TableRow key={linha.id} className="hover:bg-blue-50/20 dark:hover:bg-blue-950/20">
+                      <TableCell className="text-sm font-medium text-slate-900 dark:text-white">
+                        {linha.descricao}
+                      </TableCell>
+                      <TableCell className="text-center font-mono text-sm">{linha.quantidade}</TableCell>
+                      <TableCell className="text-right font-mono text-sm">{formatMoedaAOA(linha.preco)}</TableCell>
+                      <TableCell className="text-center">
+                        <Badge
+                          variant="secondary"
+                          className={`text-xs font-mono ${
+                            linha.taxaIVA === 0
+                              ? "border border-slate-100 bg-slate-100 text-slate-600 dark:border-slate-800 dark:bg-slate-800 dark:text-slate-400"
+                              : linha.taxaIVA === 7
+                              ? "border border-amber-100 bg-amber-50 text-amber-600 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-400"
+                              : "border border-blue-100 bg-blue-50 text-blue-600 dark:border-blue-900/50 dark:bg-blue-950/30 dark:text-blue-400"
+                          }`}
+                        >
+                          {linha.taxaIVA}%
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right font-mono text-sm font-bold text-slate-900 dark:text-white">
+                        {formatMoedaAOA(totalLinhaComIVA)}
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <button
+                          onClick={() => handleDeleteLinha(linha.id)}
+                          className="rounded p-1 text-red-400 transition-colors hover:text-red-600 dark:hover:text-red-400"
+                          title="Remover linha"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </div>
+
+          <div className="space-y-3 md:hidden">
+            {linhas.map((linha) => {
+              const totalLinhaComIVA = linha.total + (linha.total * linha.taxaIVA) / 100;
+              return (
+                <div key={linha.id} className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-semibold text-slate-900 dark:text-white">{linha.descricao}</p>
+                      <div className="mt-2 flex items-center gap-2 text-[11px] text-slate-500 dark:text-slate-400">
+                        <span>Qtd: {linha.quantidade}</span>
+                        <span>·</span>
+                        <span>{formatMoedaAOA(linha.preco)} / uni</span>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => handleDeleteLinha(linha.id)}
+                      className="rounded p-1.5 text-red-400 transition-colors hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/20 dark:hover:text-red-400"
+                      title="Remover linha"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
+
+                  <div className="mt-3 flex items-center justify-between border-t border-slate-100 pt-2 dark:border-slate-800">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[11px] text-slate-500 dark:text-slate-400">IVA</span>
                       <Badge
                         variant="secondary"
-                        className={`text-xs font-mono ${
+                        className={`text-[10px] font-mono ${
                           linha.taxaIVA === 0
-                            ? "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400"
+                            ? "border border-slate-100 bg-slate-100 text-slate-600 dark:border-slate-800 dark:bg-slate-800 dark:text-slate-400"
                             : linha.taxaIVA === 7
-                            ? "bg-amber-50 text-amber-600 border border-amber-100 dark:bg-amber-950/30 dark:text-amber-400"
-                            : "bg-blue-50 text-blue-600 border border-blue-100 dark:bg-blue-950/30 dark:text-blue-400"
+                            ? "border border-amber-100 bg-amber-50 text-amber-600 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-400"
+                            : "border border-blue-100 bg-blue-50 text-blue-600 dark:border-blue-900/50 dark:bg-blue-950/30 dark:text-blue-400"
                         }`}
                       >
                         {linha.taxaIVA}%
                       </Badge>
-                    </TableCell>
-                    <TableCell className="text-right font-bold font-mono text-sm text-slate-900 dark:text-white">
+                    </div>
+                    <span className="text-sm font-bold text-slate-900 dark:text-white">
                       {formatMoedaAOA(totalLinhaComIVA)}
-                    </TableCell>
-                    <TableCell className="text-center">
-                      <button
-                        onClick={() => handleDeleteLinha(linha.id)}
-                        className="text-red-400 hover:text-red-600 dark:hover:text-red-400 transition-colors p-1 rounded"
-                        title="Remover linha"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
-        </div>
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </>
       )}
 
       {/* Totais — alinhados à direita */}
@@ -320,25 +366,25 @@ export function Passo2Linhas({
       )}
 
       {/* Navegação */}
-      <div className="flex items-center justify-between gap-3 pt-4 border-t border-slate-100 dark:border-slate-800">
-        <Button variant="outline" onClick={onBack} className="text-sm">
-          <ArrowLeft className="w-4 h-4 mr-2" />
+      <div className="flex flex-col gap-3 border-t border-slate-100 pt-4 dark:border-slate-800 sm:flex-row sm:items-center sm:justify-between">
+        <Button variant="outline" onClick={onBack} className="w-full text-sm sm:w-auto">
+          <ArrowLeft className="mr-2 h-4 w-4" />
           Voltar para Cliente
         </Button>
-        <div className="flex items-center gap-3">
+        <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:items-center">
           {linhas.length > 0 && (
-            <span className="hidden sm:flex items-center gap-1.5 text-xs font-medium text-emerald-600 dark:text-emerald-400">
-              <CheckCircle2 className="w-4 h-4" />
+            <span className="hidden items-center gap-1.5 text-xs font-medium text-emerald-600 dark:text-emerald-400 sm:flex">
+              <CheckCircle2 className="h-4 w-4" />
               {linhas.length} linha(s) adicionada(s)
             </span>
           )}
           <Button
             onClick={onNext}
             disabled={linhas.length === 0}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-5 text-sm"
+            className="w-full bg-blue-600 px-5 text-sm text-white hover:bg-blue-700 sm:w-auto"
           >
             Próximo: Rever e Emitir
-            <ArrowRight className="w-4 h-4 ml-2" />
+            <ArrowRight className="ml-2 h-4 w-4" />
           </Button>
         </div>
       </div>
@@ -348,7 +394,11 @@ export function Passo2Linhas({
         <ArtigoFormModal
           onClose={() => setShowArtigoModal(false)}
           onSave={() => {
-            store.loadArtigos?.() ?? store.loadAll();
+            if (store.loadArtigos) {
+              store.loadArtigos();
+            } else {
+              store.loadAll();
+            }
             setShowArtigoModal(false);
           }}
         />

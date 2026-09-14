@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Cliente } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -27,6 +27,28 @@ export function ClienteTable({
 }: ClienteTableProps) {
   const [selectedCliente, setSelectedCliente] = useState<Cliente | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
+  // Transição suave drawer → form: o form só abre quando a animação
+  // de saída do drawer termina (300ms), evitando backdrops sobrepostos.
+  const editTimer = useRef<number | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (editTimer.current !== null) {
+        window.clearTimeout(editTimer.current);
+      }
+    };
+  }, []);
+
+  const handleEditFromDrawer = (id: string) => {
+    setSelectedCliente(null);
+    if (editTimer.current !== null) {
+      window.clearTimeout(editTimer.current);
+    }
+    editTimer.current = window.setTimeout(() => {
+      editTimer.current = null;
+      onEdit(id);
+    }, 300);
+  };
 
   const totalPages = Math.ceil(clientes.length / itemsPerPage) || 1;
   const safePage = Math.min(Math.max(1, currentPage), totalPages);
@@ -301,7 +323,7 @@ export function ClienteTable({
       </div>
 
       {/* Drawer de detalhes do cliente */}
-      <ClienteDrawer cliente={selectedCliente} onClose={() => setSelectedCliente(null)} onEdit={(id) => { setSelectedCliente(null); onEdit(id); }} />
+      <ClienteDrawer cliente={selectedCliente} onClose={() => setSelectedCliente(null)} onEdit={handleEditFromDrawer} />
     </>
   );
 }

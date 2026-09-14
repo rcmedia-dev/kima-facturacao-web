@@ -18,6 +18,7 @@ import { despesaSchemaInput, DespesaFormInput } from "@/lib/schemas";
 import { useState } from "react";
 import { useToastContext } from "@/components/ui/toast";
 import { useAppStore } from "@/lib/store";
+import { cn } from "@/lib/utils";
 
 interface DespesaFormModalProps {
   despesa?: Despesa;
@@ -104,6 +105,19 @@ export function DespesaFormModal({
   );
   const totalPreview = (parseValor(valorTexto) * (1 + parseInt(taxaIVA, 10) / 100)) || 0;
 
+  // Valores controlados do mobile (evita duplo register mobile+desktop)
+  const descricaoValor = watch("descricao") ?? "";
+  const fornecedorIdValor = watch("fornecedorId") ?? "";
+  const categoriaValor = watch("categoria") ?? "";
+  const dataValor = watch("data") ?? "";
+  const formaPagamentoValor = watch("formaPagamento") ?? "Numerário";
+  const estadoValor = watch("estado") ?? "Paga";
+  const observacoesValor = watch("observacoes") ?? "";
+
+  const setCampo = (campo: "descricao" | "fornecedorId" | "categoria" | "data" | "formaPagamento" | "estado" | "observacoes", valor: string) => {
+    setValue(campo, valor as never, { shouldValidate: true, shouldDirty: true });
+  };
+
   const onValorChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const el = e.target;
     const cursorAntes = el.selectionStart ?? el.value.length;
@@ -117,6 +131,13 @@ export function DespesaFormModal({
       const novoCursor = posCaretPosDigitos(formatado, digitosAntesCursor.length);
       el.setSelectionRange(novoCursor, novoCursor);
     });
+  };
+
+  const onValorChangeMobile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const raw = e.target.value.replace(/[^\d,]/g, "");
+    const formatado = formatarValorInput(raw);
+    setValorTexto(formatado);
+    setValue("valor", parseValor(formatado), { shouldValidate: true });
   };
 
   const onSubmit = async (data: DespesaFormInput) => {
@@ -169,8 +190,219 @@ export function DespesaFormModal({
           className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:fade-out-0"
           onClick={onClose}
         />
+
+        {/* ═══ MOBILE: V2-STYLE BOTTOM SHEET ═══ */}
         <DialogPrimitive.Popup
-          className="fixed right-0 top-0 z-50 flex h-full w-full max-w-lg flex-col bg-white dark:bg-slate-900 shadow-2xl outline-none transition-transform duration-300 ease-in-out translate-x-full data-open:translate-x-0 data-closed:translate-x-full"
+          className="fixed inset-x-0 bottom-0 top-auto z-50 mx-auto flex max-h-[92vh] w-full max-w-[420px] flex-col bg-white shadow-[0_-4px_16px_rgba(0,0,0,0.06)] outline-none transition-transform duration-300 ease-out translate-y-full data-open:translate-y-0 data-closed:translate-y-full rounded-t-[16px] sm:hidden dark:bg-slate-900 dark:shadow-[0_-4px_16px_rgba(0,0,0,0.3)]"
+          aria-label={despesa ? "Editar Despesa" : "Nova Despesa"}
+        >
+          {/* Handle + Header */}
+          <div className="shrink-0 rounded-t-[16px] bg-white px-4 pb-4 pt-3 dark:bg-slate-900">
+            <div className="mx-auto mb-3 h-1 w-9 rounded-[2px] bg-slate-300 dark:bg-slate-600" />
+            <div className="flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <p className="truncate text-[17px] font-extrabold text-slate-900 dark:text-white">
+                  {despesa ? "Editar Despesa" : "Nova Despesa"}
+                </p>
+                <p className="mt-0.5 truncate text-[11px] text-slate-400 dark:text-slate-500">
+                  {despesa ? "Atualize os dados da despesa" : "Registe uma nova despesa"}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={onClose}
+                aria-label="Fechar"
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400"
+              >
+                <X className="size-3.5" />
+              </button>
+            </div>
+          </div>
+
+          {/* Scroll + footer dentro do form */}
+          <form id="despesa-form-mobile" onSubmit={handleSubmit(onSubmit)} className="flex min-h-0 flex-1 flex-col overflow-hidden">
+            <div className="flex-1 overflow-y-auto px-4 pb-4 pt-1">
+              {/* Hero com total preview */}
+              <div
+                className="rounded-[16px] p-5 text-white"
+                style={{ background: "linear-gradient(135deg, #ef4444, #dc2626)", boxShadow: "0 4px 16px rgba(239,68,68,0.3)" }}
+              >
+                <p className="mb-1 text-[10px] font-semibold uppercase tracking-[1px] opacity-70">Total</p>
+                <p className="font-mono text-[28px] font-black leading-none">
+                  {totalPreview > 0
+                    ? new Intl.NumberFormat("pt-AO", { minimumFractionDigits: 2 }).format(totalPreview)
+                    : "0,00"}
+                </p>
+                <div className="mt-2.5 flex flex-wrap gap-2">
+                  <span className={cn(
+                    "rounded-md px-2.5 py-1 text-[11px] font-semibold",
+                    estadoValor === "Paga" ? "bg-emerald-500/40" : "bg-amber-500/40"
+                  )}>
+                    {estadoValor}
+                  </span>
+                  <span className="rounded-md bg-white/20 px-2.5 py-1 text-[11px] font-semibold">
+                    IVA {taxaIVA}%
+                  </span>
+                  <span className="rounded-md bg-white/20 px-2.5 py-1 font-mono text-[11px] font-semibold">
+                    {formatarValorInput(String(valor ?? 0).replace(".", ",")) || "0"} AOA
+                  </span>
+                </div>
+              </div>
+
+              {/* All fields — one flat iOS card */}
+              <div className="mt-3.5 overflow-hidden rounded-[16px] bg-white shadow-[0_1px_3px_rgba(0,0,0,0.06)] dark:bg-slate-900 dark:shadow-[0_1px_3px_rgba(0,0,0,0.3)]">
+                {/* Descrição */}
+                <div className="flex min-h-[48px] items-center justify-between gap-3 border-b border-slate-100 px-4 py-3.5 dark:border-slate-800/80">
+                  <label className="shrink-0 text-[14px] font-medium text-slate-900 dark:text-slate-100">Descrição</label>
+                  <Input
+                    value={descricaoValor}
+                    onChange={(e) => setCampo("descricao", e.target.value)}
+                    placeholder="Ex: Compra de material"
+                    className="h-auto w-auto max-w-[200px] border-0 bg-transparent p-0 text-right font-[inherit] text-[14px] text-slate-500 shadow-none focus:ring-0 dark:text-slate-400"
+                  />
+                </div>
+                {errors.descricao && (
+                  <div className="border-b border-slate-100 px-4 py-2 dark:border-slate-800/80">
+                    <p className="text-right text-[11px] text-red-500">{errors.descricao.message}</p>
+                  </div>
+                )}
+
+                {/* Fornecedor */}
+                <div className="flex min-h-[48px] items-center justify-between gap-3 border-b border-slate-100 px-4 py-3.5 dark:border-slate-800/80">
+                  <label className="shrink-0 text-[14px] font-medium text-slate-900 dark:text-slate-100">Fornecedor</label>
+                  <select
+                    value={fornecedorIdValor}
+                    onChange={(e) => setCampo("fornecedorId", e.target.value)}
+                    className="h-auto w-auto max-w-[190px] appearance-none border-0 bg-transparent p-0 text-right font-[inherit] text-[13px] text-slate-500 shadow-none focus:ring-0 dark:text-slate-400"
+                  >
+                    <option value="">Sem fornecedor</option>
+                    {store.fornecedores.filter((f) => f.ativo).map((f) => (
+                      <option key={f.id} value={f.id}>{f.nome}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Categoria */}
+                <div className="flex min-h-[48px] items-center justify-between gap-3 border-b border-slate-100 px-4 py-3.5 dark:border-slate-800/80">
+                  <label className="shrink-0 text-[14px] font-medium text-slate-900 dark:text-slate-100">Categoria</label>
+                  <Input
+                    value={categoriaValor}
+                    onChange={(e) => setCampo("categoria", e.target.value)}
+                    placeholder="Ex: Escritório"
+                    className="h-auto w-auto max-w-[170px] border-0 bg-transparent p-0 text-right font-[inherit] text-[14px] text-slate-500 shadow-none focus:ring-0 dark:text-slate-400"
+                  />
+                </div>
+                {errors.categoria && (
+                  <div className="border-b border-slate-100 px-4 py-2 dark:border-slate-800/80">
+                    <p className="text-right text-[11px] text-red-500">{errors.categoria.message}</p>
+                  </div>
+                )}
+
+                {/* Valor */}
+                <div className="flex min-h-[48px] items-center justify-between gap-3 border-b border-slate-100 px-4 py-3.5 dark:border-slate-800/80">
+                  <label className="shrink-0 text-[14px] font-medium text-slate-900 dark:text-slate-100">Valor (AOA)</label>
+                  <Input
+                    inputMode="decimal"
+                    value={valorTexto}
+                    onChange={onValorChangeMobile}
+                    placeholder="0,00"
+                    className="h-auto w-auto max-w-[150px] border-0 bg-transparent p-0 text-right font-mono text-[14px] text-slate-500 shadow-none focus:ring-0 dark:text-slate-400"
+                  />
+                </div>
+                {errors.valor && (
+                  <div className="border-b border-slate-100 px-4 py-2 dark:border-slate-800/80">
+                    <p className="text-right text-[11px] text-red-500">{errors.valor.message}</p>
+                  </div>
+                )}
+
+                {/* IVA */}
+                <div className="flex min-h-[48px] items-center justify-between gap-3 border-b border-slate-100 px-4 py-3.5 dark:border-slate-800/80">
+                  <label className="shrink-0 text-[14px] font-medium text-slate-900 dark:text-slate-100">IVA</label>
+                  <select
+                    value={taxaIVA}
+                    onChange={(e) => setValue("taxaIVA", e.target.value as "0" | "7" | "14", { shouldDirty: true })}
+                    className="h-auto w-auto appearance-none border-0 bg-transparent p-0 text-right font-[inherit] text-[14px] text-slate-500 shadow-none focus:ring-0 dark:text-slate-400"
+                  >
+                    <option value="0">0% (Isento)</option>
+                    <option value="7">7%</option>
+                    <option value="14">14%</option>
+                  </select>
+                </div>
+
+                {/* Data */}
+                <div className="flex min-h-[48px] items-center justify-between gap-3 border-b border-slate-100 px-4 py-3.5 dark:border-slate-800/80">
+                  <label className="shrink-0 text-[14px] font-medium text-slate-900 dark:text-slate-100">Data</label>
+                  <Input
+                    type="date"
+                    value={dataValor}
+                    onChange={(e) => setCampo("data", e.target.value)}
+                    className="h-auto w-auto max-w-[170px] border-0 bg-transparent p-0 text-right font-[inherit] text-[13px] text-slate-500 shadow-none focus:ring-0 dark:text-slate-400"
+                  />
+                </div>
+                {errors.data && (
+                  <div className="border-b border-slate-100 px-4 py-2 dark:border-slate-800/80">
+                    <p className="text-right text-[11px] text-red-500">{errors.data.message}</p>
+                  </div>
+                )}
+
+                {/* Forma de Pagamento */}
+                <div className="flex min-h-[48px] items-center justify-between gap-3 border-b border-slate-100 px-4 py-3.5 dark:border-slate-800/80">
+                  <label className="shrink-0 text-[14px] font-medium text-slate-900 dark:text-slate-100">Pagamento</label>
+                  <select
+                    value={formaPagamentoValor}
+                    onChange={(e) => setCampo("formaPagamento", e.target.value)}
+                    className="h-auto w-auto appearance-none border-0 bg-transparent p-0 text-right font-[inherit] text-[13px] text-slate-500 shadow-none focus:ring-0 dark:text-slate-400"
+                  >
+                    <option value="Numerário">Numerário</option>
+                    <option value="Transferência">Transferência</option>
+                    <option value="Multicaixa">Multicaixa</option>
+                    <option value="POS">POS</option>
+                    <option value="Cheque">Cheque</option>
+                  </select>
+                </div>
+
+                {/* Estado */}
+                <div className="flex min-h-[48px] items-center justify-between gap-3 border-b border-slate-100 px-4 py-3.5 dark:border-slate-800/80">
+                  <label className="shrink-0 text-[14px] font-medium text-slate-900 dark:text-slate-100">Estado</label>
+                  <select
+                    value={estadoValor}
+                    onChange={(e) => setCampo("estado", e.target.value)}
+                    className="h-auto w-auto appearance-none border-0 bg-transparent p-0 text-right font-[inherit] text-[13px] text-slate-500 shadow-none focus:ring-0 dark:text-slate-400"
+                  >
+                    <option value="Paga">Paga</option>
+                    <option value="Pendente">Pendente</option>
+                  </select>
+                </div>
+
+                {/* Observações */}
+                <div className="flex min-h-[48px] items-center justify-between gap-3 px-4 py-3.5">
+                  <label className="shrink-0 text-[14px] font-medium text-slate-900 dark:text-slate-100">Obs.</label>
+                  <Input
+                    value={observacoesValor}
+                    onChange={(e) => setCampo("observacoes", e.target.value)}
+                    placeholder="Notas (opcional)"
+                    className="h-auto w-auto max-w-[190px] border-0 bg-transparent p-0 text-right font-[inherit] text-[13px] text-slate-500 shadow-none focus:ring-0 dark:text-slate-400"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Fixed bottom button inside form */}
+            <div className="shrink-0 border-t border-slate-200 bg-white/95 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3 backdrop-blur-[12px] dark:border-slate-800 dark:bg-slate-900/95">
+              <button
+                type="submit"
+                disabled={isSaving}
+                className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-[14px] border-0 bg-blue-600 py-3.5 font-[inherit] text-[14px] font-bold text-white shadow-[0_4px_12px_rgba(59,130,246,0.3)] transition-all active:scale-[0.98] disabled:opacity-50"
+              >
+                {isSaving ? "A guardar..." : despesa ? "Guardar" : "Criar Despesa"}
+              </button>
+            </div>
+          </form>
+        </DialogPrimitive.Popup>
+
+        {/* ═══ DESKTOP: EXISTING RIGHT PANEL (inalterado) ═══ */}
+        <DialogPrimitive.Popup
+          className="hidden sm:flex fixed right-0 top-0 z-50 h-full w-full max-w-lg flex-col bg-white dark:bg-slate-900 shadow-2xl outline-none transition-transform duration-300 ease-in-out translate-x-full data-open:translate-x-0 data-closed:translate-x-full"
           aria-label={despesa ? "Editar Despesa" : "Nova Despesa"}
         >
           {/* Cabeçalho */}

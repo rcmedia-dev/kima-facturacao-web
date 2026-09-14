@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Fornecedor } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -29,6 +29,28 @@ export function FornecedorTable({
 }: FornecedorTableProps) {
   const [selectedFornecedor, setSelectedFornecedor] = useState<Fornecedor | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
+  // Transição suave drawer → form: o form só abre quando a animação
+  // de saída do drawer termina (300ms), evitando backdrops sobrepostos.
+  const editTimer = useRef<number | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (editTimer.current !== null) {
+        window.clearTimeout(editTimer.current);
+      }
+    };
+  }, []);
+
+  const handleEditFromDrawer = (id: string) => {
+    setSelectedFornecedor(null);
+    if (editTimer.current !== null) {
+      window.clearTimeout(editTimer.current);
+    }
+    editTimer.current = window.setTimeout(() => {
+      editTimer.current = null;
+      onEdit(id);
+    }, 300);
+  };
 
   const totalPages = Math.ceil(fornecedores.length / itemsPerPage) || 1;
   const safePage = Math.min(Math.max(1, currentPage), totalPages);
@@ -36,6 +58,18 @@ export function FornecedorTable({
   const startIndex = (safePage - 1) * itemsPerPage;
   const endIndex = Math.min(startIndex + itemsPerPage, fornecedores.length);
   const currentFornecedores = fornecedores.slice(startIndex, endIndex);
+
+  // Todos os hooks antes de qualquer return antecipado (Rules of Hooks)
+  const fornecedoresPorStatus = useMemo(() => {
+    if (!allFornecedores) return [];
+    const source = fornecedores;
+    const ativos = source.filter((f) => f.ativo);
+    const inativos = source.filter((f) => !f.ativo);
+    const groups: { label: string; items: Fornecedor[]; color: string }[] = [];
+    if (ativos.length > 0) groups.push({ label: `Ativos — ${ativos.length} fornecedor${ativos.length !== 1 ? "es" : ""}`, items: ativos, color: "emerald" });
+    if (inativos.length > 0) groups.push({ label: `Inativos — ${inativos.length} fornecedor${inativos.length !== 1 ? "es" : ""}`, items: inativos, color: "rose" });
+    return groups;
+  }, [fornecedores, allFornecedores]);
 
   if (isSearching) {
     return (
@@ -70,17 +104,6 @@ export function FornecedorTable({
       </div>
     );
   }
-
-  const fornecedoresPorStatus = useMemo(() => {
-    if (!allFornecedores) return [];
-    const source = fornecedores;
-    const ativos = source.filter((f) => f.ativo);
-    const inativos = source.filter((f) => !f.ativo);
-    const groups: { label: string; items: Fornecedor[]; color: string }[] = [];
-    if (ativos.length > 0) groups.push({ label: `Ativos — ${ativos.length} fornecedor${ativos.length !== 1 ? "es" : ""}`, items: ativos, color: "emerald" });
-    if (inativos.length > 0) groups.push({ label: `Inativos — ${inativos.length} fornecedor${inativos.length !== 1 ? "es" : ""}`, items: inativos, color: "rose" });
-    return groups;
-  }, [fornecedores, allFornecedores]);
 
   return (
     <>
@@ -320,7 +343,7 @@ export function FornecedorTable({
       </div>
 
       {/* Drawer de detalhes do fornecedor */}
-      <FornecedorDrawer fornecedor={selectedFornecedor} onClose={() => setSelectedFornecedor(null)} onEdit={(id) => { setSelectedFornecedor(null); onEdit(id); }} />
+      <FornecedorDrawer fornecedor={selectedFornecedor} onClose={() => setSelectedFornecedor(null)} onEdit={handleEditFromDrawer} />
     </>
   );
 }

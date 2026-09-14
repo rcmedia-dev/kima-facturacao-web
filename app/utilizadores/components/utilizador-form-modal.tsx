@@ -2,8 +2,7 @@
 
 import { useState } from "react";
 import { Dialog as DialogPrimitive } from "@base-ui/react/dialog";
-import { X, UserPlus } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { X, UserPlus, Loader2, Check } from "lucide-react";
 import { useToastContext } from "@/components/ui/toast";
 import type { UtilizadorData } from "../types";
 
@@ -81,8 +80,11 @@ export function UtilizadorFormModal({
     <DialogPrimitive.Root open onOpenChange={(open) => !open && onClose()}>
       <DialogPrimitive.Portal>
         <DialogPrimitive.Backdrop className="fixed inset-0 z-50 bg-slate-900/50 dark:bg-slate-950/70 backdrop-blur-sm animate-fade-in" />
-        <DialogPrimitive.Popup className="fixed left-1/2 top-1/2 z-50 w-full max-w-md -translate-x-1/2 -translate-y-1/2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xl p-0 animate-scale-in overflow-hidden">
-          <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800">
+        <DialogPrimitive.Popup className="fixed z-50 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xl p-0 animate-scale-in overflow-hidden
+          inset-x-0 bottom-0 top-auto translate-x-0 translate-y-0 rounded-t-2xl
+          sm:left-1/2 sm:top-1/2 sm:bottom-auto sm:inset-x-auto sm:w-full sm:max-w-md sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-2xl">
+          {/* Header */}
+          <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 dark:border-slate-800">
             <div className="flex items-center gap-3">
               <div className="flex items-center justify-center w-9 h-9 rounded-xl bg-blue-50 dark:bg-blue-900/30">
                 <UserPlus size={18} className="text-blue-600 dark:text-blue-400" />
@@ -106,7 +108,7 @@ export function UtilizadorFormModal({
             </button>
           </div>
 
-          <form onSubmit={handleSubmit} className="p-6 space-y-5">
+          <form onSubmit={handleSubmit} className="p-5 sm:p-6 space-y-4 sm:space-y-5">
             <div className="relative">
               <input
                 id="util-email"
@@ -115,7 +117,7 @@ export function UtilizadorFormModal({
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 disabled={isEditing}
-                className="peer w-full h-[52px] rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 pt-5 pb-1.5 text-sm text-slate-900 dark:text-white outline-none transition-all duration-200 focus:border-blue-600 focus:ring-2 focus:ring-blue-500/30 disabled:opacity-60 disabled:cursor-not-allowed"
+                className="peer w-full h-12 sm:h-[52px] rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 pt-5 pb-1.5 text-sm text-slate-900 dark:text-white outline-none transition-all duration-200 focus:border-blue-600 focus:ring-2 focus:ring-blue-500/30 disabled:opacity-60 disabled:cursor-not-allowed"
               />
               <label
                 htmlFor="util-email"
@@ -132,7 +134,7 @@ export function UtilizadorFormModal({
                 placeholder=" "
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
-                className="peer w-full h-[52px] rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 pt-5 pb-1.5 text-sm text-slate-900 dark:text-white outline-none transition-all duration-200 focus:border-blue-600 focus:ring-2 focus:ring-blue-500/30"
+                className="peer w-full h-12 sm:h-[52px] rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 pt-5 pb-1.5 text-sm text-slate-900 dark:text-white outline-none transition-all duration-200 focus:border-blue-600 focus:ring-2 focus:ring-blue-500/30"
               />
               <label
                 htmlFor="util-name"
@@ -143,29 +145,61 @@ export function UtilizadorFormModal({
             </div>
 
             {!isEditing && (
-              <p className="text-xs text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-800 rounded-lg px-3 py-2">
+              <p className="text-xs text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-800 rounded-lg px-3 py-2.5">
                 O funcionário deverá definir a sua senha no primeiro acesso.
               </p>
             )}
 
-            <div className="flex items-center justify-end gap-3 pt-2">
-              <Button
+            {/* Desktop buttons */}
+            <div className="hidden sm:flex items-center justify-end gap-3 pt-2">
+              <button
                 type="button"
-                variant="outline"
                 onClick={onClose}
-                className="h-10 px-4 text-sm font-medium rounded-xl"
+                className="h-10 px-4 text-sm font-medium rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
               >
                 Cancelar
-              </Button>
-              <Button
+              </button>
+              <button
                 type="submit"
                 disabled={isSaving || !email.trim()}
-                className="h-10 px-5 text-sm font-semibold rounded-xl bg-blue-600 hover:bg-blue-700"
+                className="h-10 px-5 text-sm font-semibold rounded-xl bg-blue-600 hover:bg-blue-700 text-white shadow-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
               >
-                {isSaving ? "A guardar..." : isEditing ? "Guardar" : "Criar Funcionário"}
-              </Button>
+                {isSaving ? (
+                  <><Loader2 size={14} className="animate-spin" /> A guardar...</>
+                ) : isEditing ? (
+                  <><Check size={14} strokeWidth={3} /> Guardar</>
+                ) : (
+                  <><Check size={14} strokeWidth={3} /> Criar Funcionário</>
+                )}
+              </button>
             </div>
           </form>
+
+          {/* Mobile sticky footer */}
+          <div className="sm:hidden flex items-stretch gap-3 px-5 py-3 border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+            <button
+              type="button"
+              onClick={onClose}
+              className="h-12 px-5 text-[13px] font-semibold rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 active:scale-[0.97] transition-all"
+            >
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              form={undefined}
+              disabled={isSaving || !email.trim()}
+              onClick={handleSubmit}
+              className="flex-1 h-12 px-6 text-[13px] font-bold rounded-xl bg-blue-600 hover:bg-blue-700 text-white shadow-md shadow-blue-500/20 active:scale-[0.97] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            >
+              {isSaving ? (
+                <><Loader2 size={15} className="animate-spin" /> A guardar...</>
+              ) : isEditing ? (
+                <><Check size={15} strokeWidth={3} /> Guardar</>
+              ) : (
+                <><Check size={15} strokeWidth={3} /> Criar</>
+              )}
+            </button>
+          </div>
         </DialogPrimitive.Popup>
       </DialogPrimitive.Portal>
     </DialogPrimitive.Root>

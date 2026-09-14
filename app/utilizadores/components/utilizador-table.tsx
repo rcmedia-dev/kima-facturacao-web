@@ -34,7 +34,7 @@ interface UtilizadorTableProps {
   itemsPerPage?: number;
 }
 
-function StatusBadge({ status }: { status: string }) {
+export function StatusBadge({ status }: { status: string }) {
   if (status === "ativo") {
     return (
       <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
@@ -59,7 +59,7 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
-function getInitials(name: string | null, email: string) {
+export function getInitials(name: string | null, email: string) {
   const source = (name || "").trim() || email;
   const parts = source.split(/[\s@.]+/).filter(Boolean);
   if (parts.length >= 2) {

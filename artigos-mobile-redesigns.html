@@ -1,806 +1,787 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="pt">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Kima Facturação — Redesigns Mobile: /artigos</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    :root {
-      --bg: #f5f7fa; --surface: #ffffff; --text-primary: #1a1d26; --text-secondary: #6b7280;
-      --text-muted: #9ca3af; --border: #e5e7eb; --blue: #3b82f6; --blue-light: #eff6ff;
-      --emerald: #10b981; --emerald-light: #ecfdf5; --amber: #f59e0b; --amber-light: #fffbeb;
-      --rose: #f43f5e; --rose-light: #fff1f2; --violet: #8b5cf6; --indigo: #6366f1;
-      --indigo-light: #eef2ff; --teal: #14b8a6; --teal-light: #f0fdfa;
-      --radius: 16px; --radius-sm: 12px;
-      --shadow-sm: 0 1px 3px rgba(0,0,0,0.06); --shadow-md: 0 4px 12px rgba(0,0,0,0.08);
-    }
-    body { font-family: 'Inter', -apple-system, sans-serif; background: var(--bg); color: var(--text-primary); -webkit-font-smoothing: antialiased; overflow-x: hidden; }
-    .phone-frame { max-width: 400px; margin: 0 auto; min-height: 100vh; background: var(--bg); position: relative; }
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>Kima Facturação - Redesign Mobile: Artigos</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+    <style>
+      * { box-sizing: border-box; }
+      html, body {
+        margin: 0;
+        padding: 0;
+        font-family: 'Inter', sans-serif;
+        background: #edf3fb;
+        color: #0f172a;
+      }
 
-    .variation-nav { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); max-width: 400px; width: 100%; z-index: 1000; display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; background: rgba(255,255,255,0.92); backdrop-filter: blur(20px); border-top: 1px solid var(--border); }
-    .variation-nav .label { font-size: 12px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; }
-    .variation-nav .dots { display: flex; gap: 6px; }
-    .variation-nav .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--border); transition: all 0.3s; cursor: pointer; }
-    .variation-nav .dot.active { background: var(--blue); width: 24px; border-radius: 4px; }
-    .variation-nav .btn-next { background: var(--blue); color: white; border: none; padding: 10px 20px; border-radius: 10px; font-size: 13px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 6px; font-family: inherit; transition: all 0.2s; }
-    .variation-nav .btn-next:hover { background: #2563eb; }
+      body {
+        min-height: 100vh;
+        display: flex;
+        justify-content: center;
+        align-items: flex-start;
+        padding: 20px 0 120px;
+      }
 
-    .v { display: none; padding-bottom: 80px; }
-    .v.active { display: block; }
+      .phone-frame {
+        position: relative;
+        width: min(420px, calc(100vw - 20px));
+        min-height: 100vh;
+        background: linear-gradient(180deg, #f8fafc 0%, #eef4ff 100%);
+        border-radius: 28px;
+        overflow: hidden;
+        box-shadow: 0 20px 50px rgba(15, 23, 42, 0.08);
+        border: 1px solid rgba(148, 163, 184, 0.2);
+      }
 
-    .search-bar { display: flex; align-items: center; gap: 8px; padding: 10px 14px; background: var(--surface); border-radius: var(--radius-sm); box-shadow: var(--shadow-sm); }
-    .search-bar svg { width: 16px; height: 16px; color: var(--text-muted); flex-shrink: 0; }
-    .search-bar input { flex: 1; border: none; outline: none; font-size: 13px; color: var(--text-primary); background: transparent; font-family: inherit; }
-    .search-bar input::placeholder { color: var(--text-muted); }
+      .screen {
+        display: none;
+        min-height: 100vh;
+        position: relative;
+      }
 
-    .seg-filter { display: flex; gap: 6px; }
-    .seg-btn { flex: 1; padding: 9px 8px; border-radius: 10px; font-size: 11px; font-weight: 700; border: 1.5px solid var(--border); background: var(--surface); color: var(--text-secondary); cursor: pointer; text-align: center; transition: all 0.2s; font-family: inherit; }
-    .seg-btn:active { transform: scale(0.96); }
-    .seg-btn.active { background: var(--blue); color: white; border-color: var(--blue); box-shadow: 0 2px 8px rgba(59,130,246,0.25); }
-    .seg-btn.active-emerald { background: var(--emerald); color: white; border-color: var(--emerald); }
-    .seg-btn.active-amber { background: var(--amber); color: white; border-color: var(--amber); }
-    .seg-btn.active-rose { background: var(--rose); color: white; border-color: var(--rose); }
+      .screen.active {
+        display: block;
+      }
 
-    .artigo-card { background: var(--surface); border-radius: var(--radius-sm); padding: 14px; box-shadow: var(--shadow-sm); margin: 0 16px 8px; cursor: pointer; transition: all 0.2s; }
-    .artigo-card:active { transform: scale(0.98); }
+      .page-bg {
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(180deg, rgba(255,255,255,0.52) 0%, rgba(237,244,255,0.92) 100%);
+      }
 
-    .badge { display: inline-flex; align-items: center; padding: 2px 7px; border-radius: 5px; font-size: 9px; font-weight: 700; }
-    .badge.emerald { background: var(--emerald-light); color: var(--emerald); }
-    .badge.amber { background: var(--amber-light); color: var(--amber); }
-    .badge.rose { background: var(--rose-light); color: var(--rose); }
-    .badge.blue { background: var(--blue-light); color: var(--blue); }
-    .badge.violet { background: #f5f3ff; color: var(--violet); }
-    .badge.slate { background: #f1f5f9; color: #64748b; }
+      .drawer-area {
+        position: relative;
+        z-index: 2;
+        width: 100%;
+        min-height: 100vh;
+        display: flex;
+        align-items: flex-end;
+        justify-content: center;
+        padding-top: 16px;
+      }
 
-    .action-btn { width: 34px; height: 34px; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; border: none; cursor: pointer; transition: all 0.2s; }
-    .action-btn:active { transform: scale(0.9); }
-    .action-btn.teal { background: var(--teal-light); color: var(--teal); }
-    .action-btn.blue { background: var(--blue-light); color: var(--blue); }
-    .action-btn.rose { background: var(--rose-light); color: var(--rose); }
+      .drawer-shell {
+        position: relative;
+        width: 100%;
+        min-height: 92vh;
+        background: #ffffff;
+        border-top-left-radius: 30px;
+        border-top-right-radius: 30px;
+        border: 1px solid #e2e8f0;
+        border-bottom: none;
+        overflow: hidden;
+        box-shadow: 0 -12px 32px rgba(15, 23, 42, 0.08);
+      }
 
-    .section-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: var(--text-muted); padding: 12px 16px 6px; }
+      .topbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 14px 16px;
+        background: rgba(255,255,255,0.96);
+        border-bottom: 1px solid #edf2f7;
+      }
 
-    @keyframes fadeUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-    .animate-in { animation: fadeUp 0.3s ease both; }
-  </style>
-</head>
-<body>
+      .icon-btn {
+        width: 36px;
+        height: 36px;
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        background: #f8fafc;
+        color: #475569;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 18px;
+        font-weight: 600;
+        cursor: pointer;
+      }
 
-<!-- ════════════════════════════════════════════════════════════════
-     VARIATION 1: SWIPE METRICS + PRICE CARDS
-     ════════════════════════════════════════════════════════════════ -->
-<div class="phone-frame">
-<div id="v1" class="v active">
-  <!-- Header -->
-  <div style="display:flex; align-items:center; justify-content:space-between; padding:16px 16px 8px;">
-    <div>
-      <h2 style="font-size:18px; font-weight:800; color:var(--text-primary);">Artigos</h2>
-      <p style="font-size:11px; color:var(--text-muted);">48 artigos registados</p>
-    </div>
-    <button style="width:40px; height:40px; border-radius:12px; background:var(--blue); color:white; display:flex; align-items:center; justify-content:center; border:none; box-shadow:0 2px 8px rgba(59,130,246,0.3); cursor:pointer;">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-    </button>
-  </div>
+      .hero {
+        padding: 18px 16px 16px;
+        background: linear-gradient(135deg, #1d4ed8 0%, #2563eb 52%, #3b82f6 100%);
+        color: white;
+      }
 
-  <!-- Swipe Metrics -->
-  <div style="display:flex; gap:8px; overflow-x:auto; padding:8px 16px; scrollbar-width:none;">
-    <div style="min-width:130px; padding:12px 14px; background:var(--surface); border-radius:var(--radius-sm); box-shadow:var(--shadow-sm); border-left:3px solid var(--blue);">
-      <p style="font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; color:var(--text-muted); margin-bottom:4px;">Total</p>
-      <p style="font-size:20px; font-weight:800; color:var(--text-primary);">48</p>
-      <p style="font-size:10px; color:var(--text-muted);">artigos</p>
-    </div>
-    <div style="min-width:130px; padding:12px 14px; background:var(--surface); border-radius:var(--radius-sm); box-shadow:var(--shadow-sm); border-left:3px solid var(--emerald);">
-      <p style="font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; color:var(--text-muted); margin-bottom:4px;">Stock</p>
-      <p style="font-size:20px; font-weight:800; color:var(--text-primary);">1.240</p>
-      <p style="font-size:10px; color:var(--text-muted);">unidades</p>
-    </div>
-    <div style="min-width:130px; padding:12px 14px; background:var(--surface); border-radius:var(--radius-sm); box-shadow:var(--shadow-sm); border-left:3px solid var(--amber);">
-      <p style="font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; color:var(--text-muted); margin-bottom:4px;">Stock Baixo</p>
-      <p style="font-size:20px; font-weight:800; color:var(--amber);">5</p>
-      <p style="font-size:10px; color:var(--text-muted);">abaixo do mínimo</p>
-    </div>
-    <div style="min-width:130px; padding:12px 14px; background:var(--surface); border-radius:var(--radius-sm); box-shadow:var(--shadow-sm); border-left:3px solid var(--teal);">
-      <p style="font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; color:var(--text-muted); margin-bottom:4px;">Ativos</p>
-      <p style="font-size:20px; font-weight:800; color:var(--text-primary);">42</p>
-      <p style="font-size:10px; color:var(--text-muted);">em catálogo</p>
-    </div>
-  </div>
+      .hero-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+      }
 
-  <!-- Search -->
-  <div style="padding:0 16px; margin-top:8px;">
-    <div class="search-bar">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-      <input type="text" placeholder="Código, descrição ou categoria...">
-    </div>
-  </div>
+      .product-icon {
+        width: 52px;
+        height: 52px;
+        border-radius: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(255,255,255,0.12);
+        border: 1px solid rgba(255,255,255,0.18);
+        font-size: 20px;
+        font-weight: 800;
+      }
 
-  <!-- Segmented IVA Filter -->
-  <div class="seg-filter" style="padding:10px 16px 0;">
-    <button class="seg-btn active">Todos (48)</button>
-    <button class="seg-btn">Isento (12)</button>
-    <button class="seg-btn">7% (18)</button>
-    <button class="seg-btn">14% (18)</button>
-  </div>
+      .title {
+        min-width: 0;
+        flex: 1;
+      }
 
-  <!-- Result Count -->
-  <div style="display:flex; align-items:center; justify-content:space-between; padding:10px 16px 4px;">
-    <span style="font-size:11px; color:var(--text-muted); font-weight:500;">48 resultados</span>
-    <button style="font-size:11px; color:var(--blue); font-weight:600; background:none; border:none; cursor:pointer; font-family:inherit;">Limpar filtros</button>
-  </div>
+      .title h1 {
+        margin: 0;
+        font-size: 22px;
+        line-height: 1.2;
+        font-weight: 900;
+        letter-spacing: -0.04em;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
 
-  <!-- Price Cards -->
-  <div class="artigo-card animate-in" style="animation-delay:0ms; border-left:3px solid var(--emerald);">
-    <div style="display:flex; align-items:start; justify-content:space-between; margin-bottom:8px;">
-      <div style="flex:1; min-width:0;">
-        <div style="display:flex; align-items:center; gap:6px; margin-bottom:3px;">
-          <span style="font-family:monospace; font-size:11px; font-weight:700; color:var(--blue); background:var(--blue-light); padding:2px 6px; border-radius:4px;">ART-001</span>
-          <span class="badge emerald">Produto</span>
+      .chip-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-top: 12px;
+      }
+
+      .chip {
+        padding: 5px 8px;
+        border-radius: 999px;
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        background: rgba(255,255,255,0.12);
+        border: 1px solid rgba(255,255,255,0.18);
+        color: white;
+      }
+
+      .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+        margin: -10px 14px 0;
+        position: relative;
+        z-index: 2;
+      }
+
+      .metric-box {
+        background: rgba(255,255,255,0.96);
+        border: 1px solid #e2e8f0;
+        border-radius: 16px;
+        padding: 12px;
+        box-shadow: 0 10px 22px rgba(15, 23, 42, 0.05);
+      }
+
+      .metric-label {
+        font-size: 10px;
+        font-weight: 800;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: #64748b;
+      }
+
+      .metric-value {
+        margin-top: 6px;
+        font-size: 22px;
+        font-weight: 900;
+        letter-spacing: -0.05em;
+        color: #0f172a;
+      }
+
+      .content {
+        padding: 16px 14px 88px;
+      }
+
+      .panel {
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 16px;
+        overflow: hidden;
+      }
+
+      .panel-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 12px 14px;
+        background: #f8fbff;
+        border-bottom: 1px solid #edf2f7;
+      }
+
+      .panel-title {
+        font-size: 11px;
+        font-weight: 800;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: #475569;
+      }
+
+      .status-pill {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 5px 7px;
+        border-radius: 999px;
+        background: #ecfdf5;
+        color: #059669;
+        border: 1px solid #a7f3d0;
+        font-size: 9px;
+        font-weight: 800;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+      }
+
+      .info-list {
+        display: grid;
+        gap: 10px;
+        padding: 14px;
+      }
+
+      .info-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 14px;
+        padding-bottom: 10px;
+        border-bottom: 1px solid #f1f5f9;
+        font-size: 12px;
+      }
+
+      .info-row:last-child {
+        border-bottom: none;
+        padding-bottom: 0;
+      }
+
+      .info-key {
+        color: #64748b;
+        font-weight: 500;
+      }
+
+      .info-value {
+        color: #0f172a;
+        font-weight: 700;
+        text-align: right;
+      }
+
+      .alert-box {
+        margin-top: 14px;
+        background: #fff7ed;
+        border: 1px solid #fdba74;
+        border-radius: 14px;
+        padding: 12px;
+      }
+
+      .alert-top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+      }
+
+      .alert-label {
+        font-size: 10px;
+        font-weight: 800;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: #9a5b00;
+      }
+
+      .alert-tag {
+        padding: 4px 7px;
+        border-radius: 999px;
+        background: #ffedd5;
+        color: #c2410c;
+        font-size: 9px;
+        font-weight: 800;
+      }
+
+      .alert-text {
+        margin-top: 8px;
+        color: #7c2d12;
+        font-size: 12px;
+        line-height: 1.5;
+      }
+
+      .action-bar {
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        display: flex;
+        gap: 10px;
+        padding: 12px 14px 18px;
+        background: rgba(255,255,255,0.96);
+        backdrop-filter: blur(18px);
+        border-top: 1px solid #e2e8f0;
+      }
+
+      .secondary-btn, .primary-btn {
+        flex: 1;
+        height: 46px;
+        border-radius: 12px;
+        font: inherit;
+        font-size: 14px;
+        font-weight: 700;
+        cursor: pointer;
+      }
+
+      .secondary-btn {
+        background: white;
+        border: 1px solid #dfe8f6;
+        color: #334155;
+      }
+
+      .primary-btn {
+        border: none;
+        background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+        color: white;
+        box-shadow: 0 10px 18px rgba(37,99,235,0.25);
+      }
+
+      .variation-nav {
+        position: fixed;
+        left: 50%;
+        bottom: 0;
+        transform: translateX(-50%);
+        width: min(420px, calc(100vw - 20px));
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 12px 16px;
+        background: rgba(255,255,255,0.9);
+        backdrop-filter: blur(18px);
+        border-top: 1px solid rgba(148,163,184,0.2);
+        z-index: 30;
+      }
+
+      .nav-label {
+        font-size: 12px;
+        font-weight: 800;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: #475569;
+      }
+
+      .dots {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+
+      .dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 999px;
+        background: #dbe3ef;
+        cursor: pointer;
+        transition: all 0.2s ease;
+      }
+
+      .dot.active {
+        width: 24px;
+        background: #2563eb;
+      }
+
+      .next-btn {
+        border: none;
+        border-radius: 10px;
+        background: #2563eb;
+        color: white;
+        padding: 10px 16px;
+        font-size: 13px;
+        font-weight: 700;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="phone-frame">
+      <div id="v1" class="screen active">
+        <div class="page-bg"></div>
+        <div class="drawer-area">
+          <div class="drawer-shell">
+            <div class="hero">
+              <div class="hero-header">
+                <button class="icon-btn" aria-label="Fechar">×</button>
+                <div class="title">
+                  <h1>Cimento CPJ 50kg</h1>
+                </div>
+                <button class="icon-btn" aria-label="Mais opções">⋯</button>
+              </div>
+              <div class="chip-row">
+                <span class="chip">Produto</span>
+                <span class="chip">IVA 7%</span>
+                <span class="chip">Ativo</span>
+              </div>
+            </div>
+
+            <div class="stats-grid">
+              <div class="metric-box">
+                <div class="metric-label">Preço</div>
+                <div class="metric-value">4.500</div>
+              </div>
+              <div class="metric-box">
+                <div class="metric-label">Stock</div>
+                <div class="metric-value">120</div>
+              </div>
+            </div>
+
+            <div class="content">
+              <div class="panel">
+                <div class="panel-header">
+                  <div class="panel-title">Dados gerais</div>
+                  <span class="status-pill">Ativo</span>
+                </div>
+                <div class="info-list">
+                  <div class="info-row"><span class="info-key">Código</span><span class="info-value">ART-001</span></div>
+                  <div class="info-row"><span class="info-key">Unidade</span><span class="info-value">Unidade</span></div>
+                  <div class="info-row"><span class="info-key">Categoria</span><span class="info-value">Construção</span></div>
+                  <div class="info-row"><span class="info-key">Fornecedor</span><span class="info-value">Marex Lda.</span></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="action-bar">
+              <button class="secondary-btn" type="button">Editar</button>
+              <button class="primary-btn" type="button">Guardar</button>
+            </div>
+          </div>
         </div>
-        <p style="font-size:14px; font-weight:600; color:var(--text-primary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Cimento CPJ 50kg</p>
       </div>
-      <div style="text-align:right; flex-shrink:0; margin-left:8px;">
-        <p style="font-size:16px; font-weight:800; color:var(--text-primary);">4.500</p>
-        <p style="font-size:9px; color:var(--text-muted);">AOA · UN</p>
-      </div>
-    </div>
-    <div style="display:flex; align-items:center; justify-content:space-between;">
-      <div style="display:flex; gap:4px; align-items:center;">
-        <span class="badge amber">IVA 7%</span>
-        <span class="badge slate">Est. 120</span>
-        <span class="badge violet">Construção</span>
-      </div>
-      <div style="display:flex; gap:4px;">
-        <button class="action-btn teal"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
-      </div>
-    </div>
-  </div>
 
-  <div class="artigo-card animate-in" style="animation-delay:30ms; border-left:3px solid var(--rose);">
-    <div style="display:flex; align-items:start; justify-content:space-between; margin-bottom:8px;">
-      <div style="flex:1; min-width:0;">
-        <div style="display:flex; align-items:center; gap:6px; margin-bottom:3px;">
-          <span style="font-family:monospace; font-size:11px; font-weight:700; color:var(--blue); background:var(--blue-light); padding:2px 6px; border-radius:4px;">ART-002</span>
-          <span class="badge emerald">Produto</span>
+      <div id="v2" class="screen">
+        <div class="page-bg"></div>
+        <div class="drawer-area">
+          <div class="drawer-shell" style="background:#f4f8ff;">
+            <div class="hero" style="padding-bottom:28px;">
+              <div class="hero-header">
+                <button class="icon-btn" style="background: rgba(255,255,255,0.12); border-color: rgba(255,255,255,0.16); color:white;">←</button>
+                <div class="title" style="text-align:center;">
+                  <h1 style="font-size:20px;">Cimento CPJ 50kg</h1>
+                </div>
+                <button class="icon-btn" style="background: rgba(255,255,255,0.12); border-color: rgba(255,255,255,0.16); color:white;">✎</button>
+              </div>
+              <div class="chip-row">
+                <span class="chip">Produto</span>
+                <span class="chip">IVA 7%</span>
+                <span class="chip">ESTOQUE BAIXO</span>
+              </div>
+            </div>
+
+            <div class="stats-grid" style="margin-top:-14px;">
+              <div class="metric-box">
+                <div class="metric-label">Preço</div>
+                <div class="metric-value">4.500</div>
+              </div>
+              <div class="metric-box">
+                <div class="metric-label">Stock</div>
+                <div class="metric-value">120</div>
+              </div>
+            </div>
+
+            <div class="content">
+              <div class="panel">
+                <div class="panel-header">
+                  <div class="panel-title">Dados gerais</div>
+                  <span class="status-pill">Ativo</span>
+                </div>
+                <div class="info-list">
+                  <div class="info-row"><span class="info-key">Código</span><span class="info-value">ART-001</span></div>
+                  <div class="info-row"><span class="info-key">Unidade</span><span class="info-value">Unidade</span></div>
+                  <div class="info-row"><span class="info-key">Categoria</span><span class="info-value">Construção</span></div>
+                  <div class="info-row"><span class="info-key">Fornecedor</span><span class="info-value">Marex Lda.</span></div>
+                </div>
+              </div>
+
+              <div class="alert-box">
+                <div class="alert-top">
+                  <span class="alert-label">Alerta</span>
+                  <span class="alert-tag">Baixo</span>
+                </div>
+                <div class="alert-text">Este artigo está próximo do stock mínimo. Recomendamos reabastecer em breve.</div>
+              </div>
+            </div>
+
+            <div class="action-bar">
+              <button class="secondary-btn" type="button">Editar</button>
+              <button class="primary-btn" type="button">Guardar</button>
+            </div>
+          </div>
         </div>
-        <p style="font-size:14px; font-weight:600; color:var(--text-primary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Tinta Acrílica Branca 20L</p>
       </div>
-      <div style="text-align:right; flex-shrink:0; margin-left:8px;">
-        <p style="font-size:16px; font-weight:800; color:var(--text-primary);">18.750</p>
-        <p style="font-size:9px; color:var(--text-muted);">AOA · UN</p>
-      </div>
-    </div>
-    <div style="display:flex; align-items:center; justify-content:space-between;">
-      <div style="display:flex; gap:4px; align-items:center;">
-        <span class="badge amber">IVA 7%</span>
-        <span class="badge rose" style="background:#fef2f2; color:#ef4444;">⚠ Stock 2</span>
-        <span class="badge violet">Pintura</span>
-      </div>
-      <div style="display:flex; gap:4px;">
-        <button class="action-btn teal"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
-      </div>
-    </div>
-  </div>
 
-  <div class="artigo-card animate-in" style="animation-delay:60ms; border-left:3px solid var(--emerald);">
-    <div style="display:flex; align-items:start; justify-content:space-between; margin-bottom:8px;">
-      <div style="flex:1; min-width:0;">
-        <div style="display:flex; align-items:center; gap:6px; margin-bottom:3px;">
-          <span style="font-family:monospace; font-size:11px; font-weight:700; color:var(--blue); background:var(--blue-light); padding:2px 6px; border-radius:4px;">SRV-001</span>
-          <span class="badge blue">Serviço</span>
+      <div id="v3" class="screen">
+        <div class="page-bg"></div>
+        <div class="drawer-area">
+          <div class="drawer-shell" style="background:#ffffff;">
+            <div class="topbar">
+              <div style="display:flex; align-items:center; gap:10px; min-width:0;">
+                <div class="product-icon" style="width:42px; height:42px; border-radius:14px; font-size:16px;">CP</div>
+                <div style="min-width:0; flex:1;">
+                  <div style="font-size:14px; font-weight:800; color:#0f172a; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Cimento CPJ 50kg</div>
+                  <div style="font-size:10px; color:#64748b;">ART-001 · Produto</div>
+                </div>
+              </div>
+              <button class="icon-btn" aria-label="Fechar">×</button>
+            </div>
+
+            <div class="content" style="padding-top:14px;">
+              <div style="background:linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%); border:1px solid #bfdbfe; border-radius:18px; padding:16px;">
+                <div style="font-size:10px; font-weight:800; letter-spacing:0.12em; text-transform:uppercase; color:#2563eb;">Preço atual</div>
+                <div style="margin-top:6px; font-size:30px; font-weight:900; letter-spacing:-0.04em; color:#0f172a;">4.500 AOA</div>
+              </div>
+
+              <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:12px;">
+                <div class="metric-box">
+                  <div class="metric-label">IVA</div>
+                  <div class="metric-value" style="font-size:18px;">7%</div>
+                </div>
+                <div class="metric-box">
+                  <div class="metric-label">Stock</div>
+                  <div class="metric-value" style="font-size:18px;">120</div>
+                </div>
+              </div>
+
+              <div class="panel" style="margin-top:12px;">
+                <div class="panel-header">
+                  <div class="panel-title">Resumo</div>
+                </div>
+                <div class="info-list">
+                  <div class="info-row"><span class="info-key">Unidade</span><span class="info-value">Unidade</span></div>
+                  <div class="info-row"><span class="info-key">Categoria</span><span class="info-value">Construção</span></div>
+                  <div class="info-row"><span class="info-key">Fornecedor</span><span class="info-value">Marex</span></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="action-bar">
+              <button class="secondary-btn" type="button">Editar</button>
+              <button class="primary-btn" type="button" style="background:linear-gradient(135deg, #10b981 0%, #059669 100%); box-shadow: 0 10px 18px rgba(16,185,129,0.2);">Guardar</button>
+            </div>
+          </div>
         </div>
-        <p style="font-size:14px; font-weight:600; color:var(--text-primary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Instalação Elétrica</p>
       </div>
-      <div style="text-align:right; flex-shrink:0; margin-left:8px;">
-        <p style="font-size:16px; font-weight:800; color:var(--text-primary);">15.000</p>
-        <p style="font-size:9px; color:var(--text-muted);">AOA · H</p>
-      </div>
-    </div>
-    <div style="display:flex; align-items:center; justify-content:space-between;">
-      <div style="display:flex; gap:4px; align-items:center;">
-        <span class="badge amber">IVA 14%</span>
-        <span class="badge emerald">Isento de stock</span>
-        <span class="badge violet">Elétrica</span>
-      </div>
-      <div style="display:flex; gap:4px;">
-        <button class="action-btn teal"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
-      </div>
-    </div>
-  </div>
 
-  <div class="artigo-card animate-in" style="animation-delay:90ms; border-left:3px solid var(--emerald);">
-    <div style="display:flex; align-items:start; justify-content:space-between; margin-bottom:8px;">
-      <div style="flex:1; min-width:0;">
-        <div style="display:flex; align-items:center; gap:6px; margin-bottom:3px;">
-          <span style="font-family:monospace; font-size:11px; font-weight:700; color:var(--blue); background:var(--blue-light); padding:2px 6px; border-radius:4px;">ART-003</span>
-          <span class="badge emerald">Produto</span>
+      <div id="v4" class="screen">
+        <div class="page-bg"></div>
+        <div class="drawer-area">
+          <div class="drawer-shell" style="background:#fff;">
+            <div class="topbar" style="padding-bottom:10px;">
+              <div style="display:flex; align-items:center; gap:10px; min-width:0;">
+                <div class="product-icon" style="width:40px; height:40px; border-radius:12px; font-size:14px;">CP</div>
+                <div style="min-width:0;">
+                  <div style="font-size:14px; font-weight:800; color:#0f172a; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Cimento CPJ 50kg</div>
+                  <div style="font-size:10px; color:#64748b;">ART-001</div>
+                </div>
+              </div>
+              <button class="icon-btn" aria-label="Fechar">×</button>
+            </div>
+
+            <div style="padding:0 14px 10px;">
+              <div style="display:flex; gap:6px; background:#f1f5f9; border-radius:12px; padding:4px;">
+                <button style="flex:1; border:none; background:#2563eb; color:white; border-radius:10px; padding:10px; font-size:11px; font-weight:800; cursor:pointer;">Resumo</button>
+                <button style="flex:1; border:none; background:transparent; color:#64748b; border-radius:10px; padding:10px; font-size:11px; font-weight:700; cursor:pointer;">Stock</button>
+                <button style="flex:1; border:none; background:transparent; color:#64748b; border-radius:10px; padding:10px; font-size:11px; font-weight:700; cursor:pointer;">Histórico</button>
+              </div>
+            </div>
+
+            <div class="content" style="padding-top:10px;">
+              <div style="display:grid; grid-template-columns:1.4fr 1fr; gap:10px;">
+                <div style="background:#eff6ff; border:1px solid #bfdbfe; border-radius:14px; padding:12px;">
+                  <div style="font-size:10px; font-weight:800; letter-spacing:0.12em; text-transform:uppercase; color:#2563eb;">Preço</div>
+                  <div style="margin-top:6px; font-size:24px; font-weight:900; color:#0f172a;">4.500</div>
+                </div>
+                <div style="background:#ecfdf5; border:1px solid #a7f3d0; border-radius:14px; padding:12px;">
+                  <div style="font-size:10px; font-weight:800; letter-spacing:0.12em; text-transform:uppercase; color:#059669;">Stock</div>
+                  <div style="margin-top:6px; font-size:24px; font-weight:900; color:#0f172a;">120</div>
+                </div>
+              </div>
+
+              <div class="panel" style="margin-top:12px;">
+                <div class="panel-header">
+                  <div class="panel-title">Detalhes</div>
+                </div>
+                <div class="info-list">
+                  <div class="info-row"><span class="info-key">IVA</span><span class="info-value">7%</span></div>
+                  <div class="info-row"><span class="info-key">Unidade</span><span class="info-value">UN</span></div>
+                  <div class="info-row"><span class="info-key">Categoria</span><span class="info-value">Construção</span></div>
+                  <div class="info-row"><span class="info-key">Fornecedor</span><span class="info-value">Marex Lda.</span></div>
+                </div>
+              </div>
+
+              <div class="alert-box">
+                <div class="alert-top">
+                  <span class="alert-label">Alerta</span>
+                  <span class="alert-tag">Baixo</span>
+                </div>
+                <div class="alert-text">Este artigo está próximo do stock mínimo. Recomenda-se reabastecer em breve.</div>
+              </div>
+            </div>
+
+            <div class="action-bar">
+              <button class="secondary-btn" type="button">Editar</button>
+              <button class="primary-btn" type="button">Guardar</button>
+            </div>
+          </div>
         </div>
-        <p style="font-size:14px; font-weight:600; color:var(--text-primary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Ferro de Construção 12mm</p>
       </div>
-      <div style="text-align:right; flex-shrink:0; margin-left:8px;">
-        <p style="font-size:16px; font-weight:800; color:var(--text-primary);">3.200</p>
-        <p style="font-size:9px; color:var(--text-muted);">AOA · KG</p>
-      </div>
-    </div>
-    <div style="display:flex; align-items:center; justify-content:space-between;">
-      <div style="display:flex; gap:4px; align-items:center;">
-        <span class="badge slate">IVA 0%</span>
-        <span class="badge slate">Est. 450</span>
-        <span class="badge violet">Construção</span>
-      </div>
-      <div style="display:flex; gap:4px;">
-        <button class="action-btn teal"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
-      </div>
-    </div>
-  </div>
 
-  <div style="display:flex; align-items:center; justify-content:space-between; padding:10px 16px;">
-    <span style="font-size:11px; color:var(--text-muted);">Página 1 de 3</span>
-  </div>
-</div>
+      <div id="v5" class="screen">
+        <div class="page-bg" style="background: #0f1117;"></div>
+        <div class="drawer-area">
+          <div class="drawer-shell" style="background:#111827; border: 1px solid rgba(148,163,184,0.18); border-bottom:none;">
+            <div class="topbar" style="background:#111827; border-color:#1f2937;">
+              <div style="display:flex; align-items:center; gap:10px; min-width:0;">
+                <div class="product-icon" style="width:42px; height:42px; border-radius:14px; font-size:16px;">CP</div>
+                <div style="min-width:0;">
+                  <div style="font-size:14px; font-weight:800; color:#f8fafc; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Cimento CPJ 50kg</div>
+                  <div style="font-size:10px; color:#94a3b8;">ART-001 · Produto</div>
+                </div>
+              </div>
+              <button class="icon-btn" style="background:#1f2937; border-color:#2a3348; color:#e2e8f0;">×</button>
+            </div>
 
-<!-- ════════════════════════════════════════════════════════════════
-     VARIATION 2: HERO STATS + SEGMENTED
-     ════════════════════════════════════════════════════════════════ -->
-<div id="v2" class="v">
-  <!-- Hero -->
-  <div style="background:linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); padding:20px 16px 40px; position:relative;">
-    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:14px;">
-      <div>
-        <h2 style="font-size:18px; font-weight:800; color:white;">Artigos</h2>
-        <p style="font-size:11px; color:rgba(255,255,255,0.7);">Catálogo de produtos e serviços</p>
-      </div>
-      <button style="width:40px; height:40px; border-radius:12px; background:rgba(255,255,255,0.2); color:white; display:flex; align-items:center; justify-content:center; border:none; backdrop-filter:blur(8px); cursor:pointer;">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-      </button>
-    </div>
-    <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
-      <div style="background:rgba(255,255,255,0.15); backdrop-filter:blur(8px); border-radius:12px; padding:12px; border:1px solid rgba(255,255,255,0.1);">
-        <p style="font-size:10px; font-weight:600; color:rgba(255,255,255,0.7); text-transform:uppercase; letter-spacing:0.5px;">Total</p>
-        <p style="font-size:22px; font-weight:800; color:white; margin-top:2px;">48</p>
-      </div>
-      <div style="background:rgba(255,255,255,0.15); backdrop-filter:blur(8px); border-radius:12px; padding:12px; border:1px solid rgba(255,255,255,0.1);">
-        <p style="font-size:10px; font-weight:600; color:rgba(255,255,255,0.7); text-transform:uppercase; letter-spacing:0.5px;">Stock Total</p>
-        <p style="font-size:22px; font-weight:800; color:white; margin-top:2px;">1.240</p>
-      </div>
-      <div style="background:rgba(255,255,255,0.15); backdrop-filter:blur(8px); border-radius:12px; padding:12px; border:1px solid rgba(255,255,255,0.1);">
-        <p style="font-size:10px; font-weight:600; color:rgba(255,255,255,0.7); text-transform:uppercase; letter-spacing:0.5px;">Stock Baixo</p>
-        <p style="font-size:22px; font-weight:800; color:#fbbf24; margin-top:2px;">5</p>
-      </div>
-      <div style="background:rgba(255,255,255,0.15); backdrop-filter:blur(8px); border-radius:12px; padding:12px; border:1px solid rgba(255,255,255,0.1);">
-        <p style="font-size:10px; font-weight:600; color:rgba(255,255,255,0.7); text-transform:uppercase; letter-spacing:0.5px;">Ativos</p>
-        <p style="font-size:22px; font-weight:800; color:white; margin-top:2px;">42</p>
-      </div>
-    </div>
-  </div>
+            <div class="content" style="padding-top:14px;">
+              <div style="background:#161d2d; border:1px solid #2a3348; border-radius:16px; padding:14px;">
+                <div style="font-size:10px; font-weight:800; letter-spacing:0.12em; text-transform:uppercase; color:#94a3b8;">Preço</div>
+                <div style="margin-top:6px; font-size:28px; font-weight:900; letter-spacing:-0.04em; color:#f8fafc;">4.500 AOA</div>
+              </div>
 
-  <!-- Search floating -->
-  <div style="margin:-20px 16px 0; position:relative; z-index:10;">
-    <div class="search-bar" style="box-shadow:var(--shadow-md);">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;color:var(--text-muted);flex-shrink:0;"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-      <input type="text" placeholder="Pesquisar artigos...">
-    </div>
-  </div>
+              <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:12px;">
+                <div style="background:#161d2d; border:1px solid #2a3348; border-radius:12px; padding:10px;">
+                  <div class="metric-label" style="color:#94a3b8;">Stock</div>
+                  <div class="metric-value" style="font-size:18px; color:#f8fafc;">120</div>
+                </div>
+                <div style="background:#161d2d; border:1px solid #2a3348; border-radius:12px; padding:10px;">
+                  <div class="metric-label" style="color:#94a3b8;">IVA</div>
+                  <div class="metric-value" style="font-size:18px; color:#f8fafc;">7%</div>
+                </div>
+              </div>
 
-  <!-- Segmented IVA Filter -->
-  <div class="seg-filter" style="padding:12px 16px 0;">
-    <button class="seg-btn active">Todos</button>
-    <button class="seg-btn">Isento</button>
-    <button class="seg-btn">7%</button>
-    <button class="seg-btn">14%</button>
-  </div>
+              <div class="panel" style="margin-top:12px; background:transparent; border-color:#2a3348;">
+                <div class="panel-header" style="background:#161d2d; border-color:#2a3348;">
+                  <div class="panel-title" style="color:#cbd5e1;">Dados</div>
+                  <span class="status-pill" style="background:rgba(16,185,129,0.14); border-color:rgba(110,231,183,0.28); color:#6ee7b7;">Ativo</span>
+                </div>
+                <div class="info-list" style="background:#161d2d;">
+                  <div class="info-row" style="border-color:#2a3348;"><span class="info-key" style="color:#94a3b8;">Código</span><span class="info-value" style="color:#f8fafc;">ART-001</span></div>
+                  <div class="info-row" style="border-color:#2a3348;"><span class="info-key" style="color:#94a3b8;">Unidade</span><span class="info-value" style="color:#f8fafc;">Unidade</span></div>
+                  <div class="info-row" style="border-color:#2a3348;"><span class="info-key" style="color:#94a3b8;">Categoria</span><span class="info-value" style="color:#f8fafc;">Construção</span></div>
+                  <div class="info-row" style="border-color:#2a3348;"><span class="info-key" style="color:#94a3b8;">Fornecedor</span><span class="info-value" style="color:#f8fafc;">Marex</span></div>
+                </div>
+              </div>
+            </div>
 
-  <!-- Result Count -->
-  <div style="display:flex; align-items:center; justify-content:space-between; padding:10px 16px 4px;">
-    <span style="font-size:11px; color:var(--text-muted); font-weight:500;">48 resultados</span>
-  </div>
-
-  <!-- Flat Cards -->
-  <div class="artigo-card animate-in" style="animation-delay:0ms; border-left:3px solid var(--emerald);">
-    <div style="display:flex; align-items:center; gap:10px;">
-      <div style="width:40px; height:40px; border-radius:10px; background:linear-gradient(135deg, #3b82f6, #2563eb); display:flex; align-items:center; justify-content:center; color:white; font-weight:700; font-size:12px; flex-shrink:0;">UN</div>
-      <div style="flex:1; min-width:0;">
-        <p style="font-size:13px; font-weight:600; color:var(--text-primary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Cimento CPJ 50kg</p>
-        <p style="font-size:10px; color:var(--text-muted);">ART-001 · Construção</p>
-      </div>
-      <div style="text-align:right; flex-shrink:0;">
-        <p style="font-size:14px; font-weight:800; color:var(--text-primary);">4.500 AOA</p>
-        <span class="badge amber" style="font-size:8px;">IVA 7%</span>
-      </div>
-    </div>
-  </div>
-
-  <div class="artigo-card animate-in" style="animation-delay:30ms; border-left:3px solid var(--rose);">
-    <div style="display:flex; align-items:center; gap:10px;">
-      <div style="width:40px; height:40px; border-radius:10px; background:linear-gradient(135deg, #f43f5e, #e11d48); display:flex; align-items:center; justify-content:center; color:white; font-weight:700; font-size:12px; flex-shrink:0;">UN</div>
-      <div style="flex:1; min-width:0;">
-        <p style="font-size:13px; font-weight:600; color:var(--text-primary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Tinta Acrílica Branca 20L</p>
-        <p style="font-size:10px; color:var(--text-muted);">ART-002 · Pintura</p>
-      </div>
-      <div style="text-align:right; flex-shrink:0;">
-        <p style="font-size:14px; font-weight:800; color:var(--text-primary);">18.750 AOA</p>
-        <span class="badge rose" style="font-size:8px;">⚠ Stock 2</span>
-      </div>
-    </div>
-  </div>
-
-  <div class="artigo-card animate-in" style="animation-delay:60ms; border-left:3px solid var(--emerald);">
-    <div style="display:flex; align-items:center; gap:10px;">
-      <div style="width:40px; height:40px; border-radius:10px; background:linear-gradient(135deg, #10b981, #059669); display:flex; align-items:center; justify-content:center; color:white; font-weight:700; font-size:12px; flex-shrink:0;">H</div>
-      <div style="flex:1; min-width:0;">
-        <p style="font-size:13px; font-weight:600; color:var(--text-primary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Instalação Elétrica</p>
-        <p style="font-size:10px; color:var(--text-muted);">SRV-001 · Elétrica</p>
-      </div>
-      <div style="text-align:right; flex-shrink:0;">
-        <p style="font-size:14px; font-weight:800; color:var(--text-primary);">15.000 AOA</p>
-        <span class="badge amber" style="font-size:8px;">IVA 14%</span>
-      </div>
-    </div>
-  </div>
-
-  <div class="artigo-card animate-in" style="animation-delay:90ms; border-left:3px solid var(--emerald);">
-    <div style="display:flex; align-items:center; gap:10px;">
-      <div style="width:40px; height:40px; border-radius:10px; background:linear-gradient(135deg, #8b5cf6, #7c3aed); display:flex; align-items:center; justify-content:center; color:white; font-weight:700; font-size:12px; flex-shrink:0;">KG</div>
-      <div style="flex:1; min-width:0;">
-        <p style="font-size:13px; font-weight:600; color:var(--text-primary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Ferro de Construção 12mm</p>
-        <p style="font-size:10px; color:var(--text-muted);">ART-003 · Construção</p>
-      </div>
-      <div style="text-align:right; flex-shrink:0;">
-        <p style="font-size:14px; font-weight:800; color:var(--text-primary);">3.200 AOA</p>
-        <span class="badge slate" style="font-size:8px;">IVA 0%</span>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- ════════════════════════════════════════════════════════════════
-     VARIATION 3: COMPACT LIST + INLINE FILTERS
-     ════════════════════════════════════════════════════════════════ -->
-<div id="v3" class="v">
-  <!-- Header -->
-  <div style="display:flex; align-items:center; justify-content:space-between; padding:16px 16px 8px;">
-    <div>
-      <h2 style="font-size:18px; font-weight:800; color:var(--text-primary);">Artigos</h2>
-      <p style="font-size:11px; color:var(--text-muted);">48 artigos</p>
-    </div>
-    <button style="width:40px; height:40px; border-radius:12px; background:var(--blue); color:white; display:flex; align-items:center; justify-content:center; border:none; box-shadow:0 2px 8px rgba(59,130,246,0.3); cursor:pointer;">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-    </button>
-  </div>
-
-  <!-- Stats Bar -->
-  <div style="display:flex; gap:1px; margin:8px 16px; background:var(--border); border-radius:10px; overflow:hidden;">
-    <div style="flex:1; background:var(--surface); padding:10px; text-align:center;">
-      <p style="font-size:16px; font-weight:800; color:var(--text-primary);">48</p>
-      <p style="font-size:9px; font-weight:600; text-transform:uppercase; letter-spacing:0.5px; color:var(--text-muted);">Total</p>
-    </div>
-    <div style="flex:1; background:var(--surface); padding:10px; text-align:center;">
-      <p style="font-size:16px; font-weight:800; color:var(--amber);">5</p>
-      <p style="font-size:9px; font-weight:600; text-transform:uppercase; letter-spacing:0.5px; color:var(--text-muted);">Stock Baixo</p>
-    </div>
-    <div style="flex:1; background:var(--surface); padding:10px; text-align:center;">
-      <p style="font-size:16px; font-weight:800; color:var(--emerald);">42</p>
-      <p style="font-size:9px; font-weight:600; text-transform:uppercase; letter-spacing:0.5px; color:var(--text-muted);">Ativos</p>
-    </div>
-  </div>
-
-  <!-- Search -->
-  <div style="padding:0 16px; margin-top:8px;">
-    <div class="search-bar">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-      <input type="text" placeholder="Pesquisar...">
-    </div>
-  </div>
-
-  <!-- Segmented -->
-  <div class="seg-filter" style="padding:10px 16px 0;">
-    <button class="seg-btn active">Todos</button>
-    <button class="seg-btn">Isento</button>
-    <button class="seg-btn">7%</button>
-    <button class="seg-btn">14%</button>
-  </div>
-
-  <!-- Compact List -->
-  <div style="margin-top:8px;">
-    <div style="display:flex; align-items:center; gap:10px; padding:10px 16px; border-bottom:1px solid var(--border); cursor:pointer;">
-      <div style="width:36px; height:36px; border-radius:10px; background:linear-gradient(135deg, #3b82f6, #2563eb); display:flex; align-items:center; justify-content:center; color:white; font-weight:700; font-size:11px; flex-shrink:0;">UN</div>
-      <div style="flex:1; min-width:0;">
-        <p style="font-size:13px; font-weight:600; color:var(--text-primary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Cimento CPJ 50kg</p>
-        <p style="font-size:10px; color:var(--text-muted);">ART-001 · 4.500 AOA</p>
-      </div>
-      <span class="badge amber">7%</span>
-    </div>
-
-    <div style="display:flex; align-items:center; gap:10px; padding:10px 16px; border-bottom:1px solid var(--border); cursor:pointer;">
-      <div style="width:36px; height:36px; border-radius:10px; background:linear-gradient(135deg, #f43f5e, #e11d48); display:flex; align-items:center; justify-content:center; color:white; font-weight:700; font-size:11px; flex-shrink:0;">UN</div>
-      <div style="flex:1; min-width:0;">
-        <p style="font-size:13px; font-weight:600; color:var(--text-primary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Tinta Acrílica Branca 20L</p>
-        <p style="font-size:10px; color:var(--text-muted);">ART-002 · 18.750 AOA · <span style="color:#ef4444;">Stock baixo</span></p>
-      </div>
-      <span class="badge amber">7%</span>
-    </div>
-
-    <div style="display:flex; align-items:center; gap:10px; padding:10px 16px; border-bottom:1px solid var(--border); cursor:pointer;">
-      <div style="width:36px; height:36px; border-radius:10px; background:linear-gradient(135deg, #10b981, #059669); display:flex; align-items:center; justify-content:center; color:white; font-weight:700; font-size:11px; flex-shrink:0;">H</div>
-      <div style="flex:1; min-width:0;">
-        <p style="font-size:13px; font-weight:600; color:var(--text-primary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Instalação Elétrica</p>
-        <p style="font-size:10px; color:var(--text-muted);">SRV-001 · 15.000 AOA</p>
-      </div>
-      <span class="badge amber">14%</span>
-    </div>
-
-    <div style="display:flex; align-items:center; gap:10px; padding:10px 16px; border-bottom:1px solid var(--border); cursor:pointer;">
-      <div style="width:36px; height:36px; border-radius:10px; background:linear-gradient(135deg, #8b5cf6, #7c3aed); display:flex; align-items:center; justify-content:center; color:white; font-weight:700; font-size:11px; flex-shrink:0;">KG</div>
-      <div style="flex:1; min-width:0;">
-        <p style="font-size:13px; font-weight:600; color:var(--text-primary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Ferro de Construção 12mm</p>
-        <p style="font-size:10px; color:var(--text-muted);">ART-003 · 3.200 AOA</p>
-      </div>
-      <span class="badge slate">0%</span>
-    </div>
-
-    <div style="display:flex; align-items:center; gap:10px; padding:10px 16px; border-bottom:1px solid var(--border); cursor:pointer;">
-      <div style="width:36px; height:36px; border-radius:10px; background:linear-gradient(135deg, #f59e0b, #d97706); display:flex; align-items:center; justify-content:center; color:white; font-weight:700; font-size:11px; flex-shrink:0;">M2</div>
-      <div style="flex:1; min-width:0;">
-        <p style="font-size:13px; font-weight:600; color:var(--text-primary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Drywall 12mm</p>
-        <p style="font-size:10px; color:var(--text-muted);">ART-004 · 2.800 AOA</p>
-      </div>
-      <span class="badge slate">0%</span>
-    </div>
-  </div>
-</div>
-
-<!-- ════════════════════════════════════════════════════════════════
-     VARIATION 4: SEGMENTED + STOCK FOCUS (FAVORITE)
-     ════════════════════════════════════════════════════════════════ -->
-<div id="v4" class="v">
-  <!-- Header -->
-  <div style="display:flex; align-items:center; justify-content:space-between; padding:16px 16px 8px;">
-    <div>
-      <h2 style="font-size:18px; font-weight:800; color:var(--text-primary);">Artigos</h2>
-      <p style="font-size:11px; color:var(--text-muted);">48 artigos registados</p>
-    </div>
-    <button style="width:40px; height:40px; border-radius:12px; background:var(--blue); color:white; display:flex; align-items:center; justify-content:center; border:none; box-shadow:0 2px 8px rgba(59,130,246,0.3); cursor:pointer;">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-    </button>
-  </div>
-
-  <!-- Segmented Tipo Filter -->
-  <div class="seg-filter" style="padding:8px 16px 0;">
-    <button class="seg-btn active">Todos (48)</button>
-    <button class="seg-btn">Produtos (35)</button>
-    <button class="seg-btn">Serviços (13)</button>
-  </div>
-
-  <!-- Search + Filter Toggle -->
-  <div style="display:flex; gap:8px; padding:10px 16px 0;">
-    <div style="flex:1; display:flex; align-items:center; gap:8px; background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:9px 12px; box-shadow:var(--shadow-sm);">
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-      <input type="text" placeholder="Pesquisar artigos…" style="flex:1; border:none; outline:none; font-size:12px; color:var(--text-primary); background:transparent; font-family:inherit;">
-    </div>
-    <button style="width:38px; height:38px; border-radius:12px; border:1px solid var(--border); background:var(--surface); display:flex; align-items:center; justify-content:center; color:var(--text-muted); flex-shrink:0; cursor:pointer;">
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/></svg>
-    </button>
-  </div>
-
-  <!-- Result Count -->
-  <div style="display:flex; align-items:center; justify-content:space-between; padding:10px 16px 4px;">
-    <span style="font-size:11px; color:var(--text-muted); font-weight:500;">48 resultados</span>
-    <button style="font-size:11px; color:var(--blue); font-weight:600; background:none; border:none; cursor:pointer; font-family:inherit;">Limpar filtros</button>
-  </div>
-
-  <!-- Cards with stock progress -->
-  <div class="artigo-card animate-in" style="animation-delay:0ms; border-left:3px solid var(--emerald);">
-    <div style="display:flex; align-items:start; justify-content:space-between; margin-bottom:6px;">
-      <div style="flex:1; min-width:0;">
-        <div style="display:flex; align-items:center; gap:6px; margin-bottom:2px;">
-          <span style="font-family:monospace; font-size:11px; font-weight:700; color:var(--blue); background:var(--blue-light); padding:2px 6px; border-radius:4px;">ART-001</span>
-          <span class="badge emerald">Produto</span>
-          <span class="badge amber">IVA 7%</span>
+            <div class="action-bar" style="background:rgba(17, 24, 39, 0.96); border-color:#1f2937;">
+              <button class="secondary-btn" style="background:#0f172a; border-color:#2a3348; color:#dbeafe;">Editar</button>
+              <button class="primary-btn" type="button">Guardar</button>
+            </div>
+          </div>
         </div>
-        <p style="font-size:14px; font-weight:600; color:var(--text-primary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Cimento CPJ 50kg</p>
-        <p style="font-size:10px; color:var(--text-muted); margin-top:1px;">Construção · UN</p>
       </div>
-      <div style="text-align:right; flex-shrink:0; margin-left:8px;">
-        <p style="font-size:16px; font-weight:800; color:var(--text-primary);">4.500</p>
-        <p style="font-size:9px; color:var(--text-muted);">AOA</p>
-      </div>
-    </div>
-    <!-- Stock bar -->
-    <div style="margin-top:6px;">
-      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:4px;">
-        <span style="font-size:10px; font-weight:600; color:var(--text-muted);">Stock: 120 / Mín: 20</span>
-        <span style="font-size:10px; font-weight:700; color:var(--emerald);">Bom</span>
-      </div>
-      <div style="height:4px; background:var(--border); border-radius:2px; overflow:hidden;">
-        <div style="height:100%; width:100%; background:var(--emerald); border-radius:2px;"></div>
-      </div>
-    </div>
-  </div>
 
-  <div class="artigo-card animate-in" style="animation-delay:30ms; border-left:3px solid var(--rose);">
-    <div style="display:flex; align-items:start; justify-content:space-between; margin-bottom:6px;">
-      <div style="flex:1; min-width:0;">
-        <div style="display:flex; align-items:center; gap:6px; margin-bottom:2px;">
-          <span style="font-family:monospace; font-size:11px; font-weight:700; color:var(--blue); background:var(--blue-light); padding:2px 6px; border-radius:4px;">ART-002</span>
-          <span class="badge emerald">Produto</span>
-          <span class="badge amber">IVA 7%</span>
+      <div id="nav1" class="variation-nav">
+        <span class="nav-label">V1</span>
+        <div class="dots">
+          <div class="dot active" data-index="1"></div>
+          <div class="dot" data-index="2"></div>
+          <div class="dot" data-index="3"></div>
+          <div class="dot" data-index="4"></div>
+          <div class="dot" data-index="5"></div>
         </div>
-        <p style="font-size:14px; font-weight:600; color:var(--text-primary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Tinta Acrílica Branca 20L</p>
-        <p style="font-size:10px; color:var(--text-muted); margin-top:1px;">Pintura · UN</p>
+        <button class="next-btn" type="button" onclick="nextVariation()">Next →</button>
       </div>
-      <div style="text-align:right; flex-shrink:0; margin-left:8px;">
-        <p style="font-size:16px; font-weight:800; color:var(--text-primary);">18.750</p>
-        <p style="font-size:9px; color:var(--text-muted);">AOA</p>
-      </div>
-    </div>
-    <div style="margin-top:6px;">
-      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:4px;">
-        <span style="font-size:10px; font-weight:600; color:var(--text-muted);">Stock: 2 / Mín: 10</span>
-        <span style="font-size:10px; font-weight:700; color:var(--rose);">⚠ Baixo</span>
-      </div>
-      <div style="height:4px; background:var(--border); border-radius:2px; overflow:hidden;">
-        <div style="height:100%; width:20%; background:var(--rose); border-radius:2px;"></div>
-      </div>
-    </div>
-  </div>
 
-  <div class="artigo-card animate-in" style="animation-delay:60ms; border-left:3px solid var(--emerald);">
-    <div style="display:flex; align-items:start; justify-content:space-between; margin-bottom:6px;">
-      <div style="flex:1; min-width:0;">
-        <div style="display:flex; align-items:center; gap:6px; margin-bottom:2px;">
-          <span style="font-family:monospace; font-size:11px; font-weight:700; color:var(--blue); background:var(--blue-light); padding:2px 6px; border-radius:4px;">SRV-001</span>
-          <span class="badge blue">Serviço</span>
-          <span class="badge amber">IVA 14%</span>
+      <div id="nav2" class="variation-nav" style="display:none;">
+        <span class="nav-label">V2</span>
+        <div class="dots">
+          <div class="dot" data-index="1"></div>
+          <div class="dot active" data-index="2"></div>
+          <div class="dot" data-index="3"></div>
+          <div class="dot" data-index="4"></div>
+          <div class="dot" data-index="5"></div>
         </div>
-        <p style="font-size:14px; font-weight:600; color:var(--text-primary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Instalação Elétrica</p>
-        <p style="font-size:10px; color:var(--text-muted); margin-top:1px;">Elétrica · H</p>
+        <button class="next-btn" type="button" onclick="nextVariation()">Next →</button>
       </div>
-      <div style="text-align:right; flex-shrink:0; margin-left:8px;">
-        <p style="font-size:16px; font-weight:800; color:var(--text-primary);">15.000</p>
-        <p style="font-size:9px; color:var(--text-muted);">AOA</p>
-      </div>
-    </div>
-    <div style="margin-top:6px; display:flex; align-items:center; gap:6px;">
-      <span class="badge emerald" style="font-size:9px;">Sem controlo de stock</span>
-    </div>
-  </div>
 
-  <div class="artigo-card animate-in" style="animation-delay:90ms; border-left:3px solid var(--emerald);">
-    <div style="display:flex; align-items:start; justify-content:space-between; margin-bottom:6px;">
-      <div style="flex:1; min-width:0;">
-        <div style="display:flex; align-items:center; gap:6px; margin-bottom:2px;">
-          <span style="font-family:monospace; font-size:11px; font-weight:700; color:var(--blue); background:var(--blue-light); padding:2px 6px; border-radius:4px;">ART-003</span>
-          <span class="badge emerald">Produto</span>
-          <span class="badge slate">IVA 0%</span>
+      <div id="nav3" class="variation-nav" style="display:none;">
+        <span class="nav-label">V3</span>
+        <div class="dots">
+          <div class="dot" data-index="1"></div>
+          <div class="dot" data-index="2"></div>
+          <div class="dot active" data-index="3"></div>
+          <div class="dot" data-index="4"></div>
+          <div class="dot" data-index="5"></div>
         </div>
-        <p style="font-size:14px; font-weight:600; color:var(--text-primary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Ferro de Construção 12mm</p>
-        <p style="font-size:10px; color:var(--text-muted); margin-top:1px;">Construção · KG</p>
+        <button class="next-btn" type="button" onclick="nextVariation()">Next →</button>
       </div>
-      <div style="text-align:right; flex-shrink:0; margin-left:8px;">
-        <p style="font-size:16px; font-weight:800; color:var(--text-primary);">3.200</p>
-        <p style="font-size:9px; color:var(--text-muted);">AOA</p>
-      </div>
-    </div>
-    <div style="margin-top:6px;">
-      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:4px;">
-        <span style="font-size:10px; font-weight:600; color:var(--text-muted);">Stock: 450 / Mín: 50</span>
-        <span style="font-size:10px; font-weight:700; color:var(--emerald);">Bom</span>
-      </div>
-      <div style="height:4px; background:var(--border); border-radius:2px; overflow:hidden;">
-        <div style="height:100%; width:100%; background:var(--emerald); border-radius:2px;"></div>
-      </div>
-    </div>
-  </div>
-</div>
 
-<!-- ════════════════════════════════════════════════════════════════
-     VARIATION 5: DARK MODE
-     ════════════════════════════════════════════════════════════════ -->
-<div id="v5" class="v" style="background:#0f1117;">
-  <!-- Header -->
-  <div style="display:flex; align-items:center; justify-content:space-between; padding:16px 16px 8px;">
-    <div>
-      <h2 style="font-size:18px; font-weight:800; color:#f1f5f9;">Artigos</h2>
-      <p style="font-size:11px; color:#64748b;">48 artigos registados</p>
-    </div>
-    <button style="width:40px; height:40px; border-radius:12px; background:#3b82f6; color:white; display:flex; align-items:center; justify-content:center; border:none; cursor:pointer;">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-    </button>
-  </div>
-
-  <!-- Swipe Metrics -->
-  <div style="display:flex; gap:8px; overflow-x:auto; padding:8px 16px; scrollbar-width:none;">
-    <div style="min-width:130px; padding:12px 14px; background:#161825; border-radius:12px; border:1px solid #252840; border-left:3px solid #3b82f6;">
-      <p style="font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; color:#64748b; margin-bottom:4px;">Total</p>
-      <p style="font-size:20px; font-weight:800; color:#f1f5f9;">48</p>
-    </div>
-    <div style="min-width:130px; padding:12px 14px; background:#161825; border-radius:12px; border:1px solid #252840; border-left:3px solid #10b981;">
-      <p style="font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; color:#64748b; margin-bottom:4px;">Stock</p>
-      <p style="font-size:20px; font-weight:800; color:#f1f5f9;">1.240</p>
-    </div>
-    <div style="min-width:130px; padding:12px 14px; background:#161825; border-radius:12px; border:1px solid #252840; border-left:3px solid #f59e0b;">
-      <p style="font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; color:#64748b; margin-bottom:4px;">Stock Baixo</p>
-      <p style="font-size:20px; font-weight:800; color:#f59e0b;">5</p>
-    </div>
-    <div style="min-width:130px; padding:12px 14px; background:#161825; border-radius:12px; border:1px solid #252840; border-left:3px solid #14b8a6;">
-      <p style="font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; color:#64748b; margin-bottom:4px;">Ativos</p>
-      <p style="font-size:20px; font-weight:800; color:#f1f5f9;">42</p>
-    </div>
-  </div>
-
-  <!-- Search -->
-  <div style="padding:0 16px; margin-top:8px;">
-    <div style="display:flex; align-items:center; gap:8px; padding:10px 14px; background:#161825; border:1px solid #252840; border-radius:12px;">
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-      <input type="text" placeholder="Pesquisar artigos…" style="flex:1; border:none; outline:none; font-size:12px; color:#f1f5f9; background:transparent; font-family:inherit;">
-    </div>
-  </div>
-
-  <!-- Segmented -->
-  <div style="display:flex; gap:6px; padding:10px 16px 0;">
-    <button style="flex:1; padding:9px 8px; border-radius:10px; font-size:11px; font-weight:700; border:1.5px solid #3b82f6; background:#3b82f6; color:white; cursor:pointer; text-align:center; font-family:inherit;">Todos (48)</button>
-    <button style="flex:1; padding:9px 8px; border-radius:10px; font-size:11px; font-weight:700; border:1.5px solid #252840; background:#161825; color:#94a3b8; cursor:pointer; text-align:center; font-family:inherit;">Isento</button>
-    <button style="flex:1; padding:9px 8px; border-radius:10px; font-size:11px; font-weight:700; border:1.5px solid #252840; background:#161825; color:#94a3b8; cursor:pointer; text-align:center; font-family:inherit;">7%</button>
-    <button style="flex:1; padding:9px 8px; border-radius:10px; font-size:11px; font-weight:700; border:1.5px solid #252840; background:#161825; color:#94a3b8; cursor:pointer; text-align:center; font-family:inherit;">14%</button>
-  </div>
-
-  <!-- Result Count -->
-  <div style="display:flex; align-items:center; justify-content:space-between; padding:10px 16px 4px;">
-    <span style="font-size:11px; color:#64748b; font-weight:500;">48 resultados</span>
-    <button style="font-size:11px; color:#3b82f6; font-weight:600; background:none; border:none; cursor:pointer; font-family:inherit;">Limpar filtros</button>
-  </div>
-
-  <!-- Cards -->
-  <div style="padding:12px 14px; margin:0 16px 8px; background:#161825; border:1px solid #252840; border-radius:12px; border-left:3px solid #10b981; cursor:pointer;">
-    <div style="display:flex; align-items:start; justify-content:space-between; margin-bottom:8px;">
-      <div style="flex:1; min-width:0;">
-        <div style="display:flex; align-items:center; gap:6px; margin-bottom:3px;">
-          <span style="font-family:monospace; font-size:11px; font-weight:700; color:#60a5fa; background:rgba(59,130,246,0.15); padding:2px 6px; border-radius:4px;">ART-001</span>
-          <span style="padding:2px 6px; border-radius:5px; font-size:9px; font-weight:700; background:rgba(16,185,129,0.15); color:#10b981;">Produto</span>
+      <div id="nav4" class="variation-nav" style="display:none;">
+        <span class="nav-label">V4</span>
+        <div class="dots">
+          <div class="dot" data-index="1"></div>
+          <div class="dot" data-index="2"></div>
+          <div class="dot" data-index="3"></div>
+          <div class="dot active" data-index="4"></div>
+          <div class="dot" data-index="5"></div>
         </div>
-        <p style="font-size:14px; font-weight:600; color:#f1f5f9; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Cimento CPJ 50kg</p>
-        <p style="font-size:10px; color:#64748b; margin-top:1px;">Construção · UN</p>
+        <button class="next-btn" type="button" onclick="nextVariation()">Next →</button>
       </div>
-      <div style="text-align:right; flex-shrink:0; margin-left:8px;">
-        <p style="font-size:16px; font-weight:800; color:#f1f5f9;">4.500</p>
-        <p style="font-size:9px; color:#64748b;">AOA</p>
-      </div>
-    </div>
-    <div style="display:flex; gap:4px; align-items:center;">
-      <span style="padding:2px 6px; border-radius:5px; font-size:9px; font-weight:700; background:rgba(245,158,11,0.15); color:#f59e0b;">IVA 7%</span>
-      <span style="padding:2px 6px; border-radius:5px; font-size:9px; font-weight:700; background:rgba(100,116,139,0.15); color:#94a3b8;">Est. 120</span>
-    </div>
-  </div>
 
-  <div style="padding:12px 14px; margin:0 16px 8px; background:#161825; border:1px solid #252840; border-radius:12px; border-left:3px solid #f43f5e; cursor:pointer;">
-    <div style="display:flex; align-items:start; justify-content:space-between; margin-bottom:8px;">
-      <div style="flex:1; min-width:0;">
-        <div style="display:flex; align-items:center; gap:6px; margin-bottom:3px;">
-          <span style="font-family:monospace; font-size:11px; font-weight:700; color:#60a5fa; background:rgba(59,130,246,0.15); padding:2px 6px; border-radius:4px;">ART-002</span>
-          <span style="padding:2px 6px; border-radius:5px; font-size:9px; font-weight:700; background:rgba(16,185,129,0.15); color:#10b981;">Produto</span>
+      <div id="nav5" class="variation-nav" style="display:none;">
+        <span class="nav-label">V5</span>
+        <div class="dots">
+          <div class="dot" data-index="1"></div>
+          <div class="dot" data-index="2"></div>
+          <div class="dot" data-index="3"></div>
+          <div class="dot" data-index="4"></div>
+          <div class="dot active" data-index="5"></div>
         </div>
-        <p style="font-size:14px; font-weight:600; color:#f1f5f9; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Tinta Acrílica Branca 20L</p>
-        <p style="font-size:10px; color:#64748b; margin-top:1px;">Pintura · UN</p>
-      </div>
-      <div style="text-align:right; flex-shrink:0; margin-left:8px;">
-        <p style="font-size:16px; font-weight:800; color:#f1f5f9;">18.750</p>
-        <p style="font-size:9px; color:#64748b;">AOA</p>
+        <button class="next-btn" type="button" onclick="nextVariation()">Next →</button>
       </div>
     </div>
-    <div style="display:flex; gap:4px; align-items:center;">
-      <span style="padding:2px 6px; border-radius:5px; font-size:9px; font-weight:700; background:rgba(245,158,11,0.15); color:#f59e0b;">IVA 7%</span>
-      <span style="padding:2px 6px; border-radius:5px; font-size:9px; font-weight:700; background:rgba(244,63,94,0.15); color:#f43f5e;">⚠ Stock 2</span>
-    </div>
-  </div>
 
-  <div style="padding:12px 14px; margin:0 16px 8px; background:#161825; border:1px solid #252840; border-radius:12px; border-left:3px solid #10b981; cursor:pointer;">
-    <div style="display:flex; align-items:start; justify-content:space-between; margin-bottom:8px;">
-      <div style="flex:1; min-width:0;">
-        <div style="display:flex; align-items:center; gap:6px; margin-bottom:3px;">
-          <span style="font-family:monospace; font-size:11px; font-weight:700; color:#60a5fa; background:rgba(59,130,246,0.15); padding:2px 6px; border-radius:4px;">SRV-001</span>
-          <span style="padding:2px 6px; border-radius:5px; font-size:9px; font-weight:700; background:rgba(59,130,246,0.15); color:#60a5fa;">Serviço</span>
-        </div>
-        <p style="font-size:14px; font-weight:600; color:#f1f5f9; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Instalação Elétrica</p>
-        <p style="font-size:10px; color:#64748b; margin-top:1px;">Elétrica · H</p>
-      </div>
-      <div style="text-align:right; flex-shrink:0; margin-left:8px;">
-        <p style="font-size:16px; font-weight:800; color:#f1f5f9;">15.000</p>
-        <p style="font-size:9px; color:#64748b;">AOA</p>
-      </div>
-    </div>
-    <div style="display:flex; gap:4px; align-items:center;">
-      <span style="padding:2px 6px; border-radius:5px; font-size:9px; font-weight:700; background:rgba(245,158,11,0.15); color:#f59e0b;">IVA 14%</span>
-      <span style="padding:2px 6px; border-radius:5px; font-size:9px; font-weight:700; background:rgba(16,185,129,0.15); color:#10b981;">Sem stock</span>
-    </div>
-  </div>
+    <script>
+      let currentIndex = 1;
+      const totalVariations = 5;
 
-  <div style="display:flex; align-items:center; justify-content:space-between; padding:10px 16px;">
-    <span style="font-size:11px; color:#64748b;">Página 1 de 3</span>
-  </div>
-</div>
+      function updateScreens() {
+        for (let i = 1; i <= totalVariations; i++) {
+          const screen = document.getElementById('v' + i);
+          const nav = document.getElementById('nav' + i);
+          if (screen) screen.classList.toggle('active', i === currentIndex);
+          if (nav) nav.style.display = i === currentIndex ? 'flex' : 'none';
+        }
 
-<!-- ════════════════════════════════════════════════════════════════
-     NAVIGATION BAR
-     ════════════════════════════════════════════════════════════════ -->
-<div class="variation-nav" id="nav1">
-  <span class="label">V1</span>
-  <div class="dots">
-    <div class="dot active" onclick="goTo(1)"></div>
-    <div class="dot" onclick="goTo(2)"></div>
-    <div class="dot" onclick="goTo(3)"></div>
-    <div class="dot" onclick="goTo(4)"></div>
-    <div class="dot" onclick="goTo(5)"></div>
-  </div>
-  <button class="btn-next" onclick="next()">Next <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg></button>
-</div>
+        document.querySelectorAll('.dot').forEach((dot) => {
+          dot.classList.toggle('active', Number(dot.dataset.index) === currentIndex);
+        });
+      }
 
-<div class="variation-nav" id="nav2" style="display:none;">
-  <span class="label">V2</span>
-  <div class="dots">
-    <div class="dot" onclick="goTo(1)"></div>
-    <div class="dot active" onclick="goTo(2)"></div>
-    <div class="dot" onclick="goTo(3)"></div>
-    <div class="dot" onclick="goTo(4)"></div>
-    <div class="dot" onclick="goTo(5)"></div>
-  </div>
-  <button class="btn-next" onclick="next()">Next <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg></button>
-</div>
+      function goToVariation(index) {
+        if (index >= 1 && index <= totalVariations) {
+          currentIndex = index;
+          updateScreens();
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+      }
 
-<div class="variation-nav" id="nav3" style="display:none;">
-  <span class="label">V3</span>
-  <div class="dots">
-    <div class="dot" onclick="goTo(1)"></div>
-    <div class="dot" onclick="goTo(2)"></div>
-    <div class="dot active" onclick="goTo(3)"></div>
-    <div class="dot" onclick="goTo(4)"></div>
-    <div class="dot" onclick="goTo(5)"></div>
-  </div>
-  <button class="btn-next" onclick="next()">Next <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg></button>
-</div>
+      function nextVariation() {
+        const next = currentIndex >= totalVariations ? 1 : currentIndex + 1;
+        goToVariation(next);
+      }
 
-<div class="variation-nav" id="nav4" style="display:none;">
-  <span class="label">V4</span>
-  <div class="dots">
-    <div class="dot" onclick="goTo(1)"></div>
-    <div class="dot" onclick="goTo(2)"></div>
-    <div class="dot" onclick="goTo(3)"></div>
-    <div class="dot active" onclick="goTo(4)"></div>
-    <div class="dot" onclick="goTo(5)"></div>
-  </div>
-  <button class="btn-next" onclick="next()">Next <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg></button>
-</div>
-
-<div class="variation-nav" id="nav5" style="display:none;">
-  <span class="label">V5</span>
-  <div class="dots">
-    <div class="dot" onclick="goTo(1)"></div>
-    <div class="dot" onclick="goTo(2)"></div>
-    <div class="dot" onclick="goTo(3)"></div>
-    <div class="dot" onclick="goTo(4)"></div>
-    <div class="dot active" onclick="goTo(5)"></div>
-  </div>
-  <button class="btn-next" onclick="next()">Next <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg></button>
-</div>
-
-<script>
-let current = 1;
-const total = 5;
-
-function goTo(n) {
-  document.getElementById('v' + current).classList.remove('active');
-  document.getElementById('nav' + current).style.display = 'none';
-  current = n;
-  document.getElementById('v' + current).classList.add('active');
-  document.getElementById('nav' + current).style.display = 'flex';
-  window.scrollTo({ top: 0, behavior: 'smooth' });
-}
-
-function next() {
-  if (current < total) goTo(current + 1);
-  else goTo(1);
-}
-</script>
-</body>
+      document.querySelectorAll('.dot').forEach((dot) => {
+        dot.addEventListener('click', () => goToVariation(Number(dot.dataset.index)));
+      });
+    </script>
+  </body>
 </html>
