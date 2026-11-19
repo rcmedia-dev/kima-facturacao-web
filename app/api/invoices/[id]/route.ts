@@ -8,7 +8,7 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const companyId = requireCompanyId(request);
+    const companyId = await requireCompanyId(request, 'invoices.view');
     const { id } = await params;
     const documento = await obterDocumentoPorId(companyId, id);
 
@@ -33,7 +33,7 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const companyId = requireCompanyId(request);
+    const companyId = await requireCompanyId(request, 'invoices.update');
     const { id } = await params;
     const body = await request.json();
 
@@ -60,7 +60,7 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const companyId = requireCompanyId(request);
+    const companyId = await requireCompanyId(request, 'invoices.delete');
     const { id } = await params;
     await deletarDocumento(companyId, id);
 
@@ -71,7 +71,7 @@ export async function DELETE(
   } catch (error: unknown) {
     return NextResponse.json(
       { success: false, error: normalizarErro(error).mensagem || "Erro ao deletar documento" },
-      { status: 500 }
+      { status: normalizarErro(error).status || 500 }
     );
   }
 }

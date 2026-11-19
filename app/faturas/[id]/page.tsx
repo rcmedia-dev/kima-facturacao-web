@@ -449,7 +449,7 @@ export default function FaturaDetailPage() {
               {store.empresa?.softwareCertificacaoNumero || "não definido"}
             </p>
             {(hashFiscal || hashExistente) && (
-              <p className="font-mono text-[10px]">Hash: {formatarHash(hashFiscal || hashExistente, 4, 8)}</p>
+              <p className="font-mono text-[10px]">Hash: {formatarHash(hashFiscal ?? hashExistente ?? "", 4, 8)}</p>
             )}
           </div>
         </main>

@@ -99,7 +99,7 @@ export async function atualizarItemFilaAGT(
   proximaTentativa: string | null,
   ultimoErro?: string | null
 ): Promise<void> {
-  const fimDeLinha = estado === 'Transmitido' || estado === 'Rejeitado';
+  const fim_de_linha = estado === 'Transmitido' || estado === 'Rejeitado';
   const { error } = await db
     .from('fila_envio_agt')
     .update({
@@ -107,7 +107,7 @@ export async function atualizarItemFilaAGT(
       tentativas,
       proxima_tentativa: proximaTentativa || null,
       ultimo_erro: ultimoErro ?? null,
-      processado_em: fimDeLinha ? new Date().toISOString() : null,
+      processado_em: fim_de_linha ? new Date().toISOString() : null,
       fim_de_linha,
       atualizado_em: new Date().toISOString(),
     })

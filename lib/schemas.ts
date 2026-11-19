@@ -82,13 +82,25 @@ export const empresaSchema = z.object({
   telefone: z.string().min(1, "Telefone é obrigatório"),
   email: z.string().email("Email inválido"),
   logoUrl: z.string().max(3_000_000, "Logotipo demasiado grande — use uma imagem até 1024px (≤1MB base64).").optional().nullable(),
+  modeloDocumento: z.enum([
+    "classico",
+    "moderno",
+    "executivo",
+    "compacto",
+    "studio",
+    "nordic",
+    "bold",
+    "grid",
+  ]).optional().nullable(),
+  corPrimaria: z.string().optional().nullable(),
+  contaBancaria: z.string().optional().nullable(),
   softwareNome: z.string().optional().nullable(),
   softwareCertificacaoNumero: z.string().optional().nullable(),
 });
 
 export const loginSchema = z.object({
   email: z.string().min(1, "Email é obrigatório").email("Email inválido"),
-  password: z.string().min(6, "A palavra-passe deve ter pelo menos 6 caracteres"),
+  password: z.string().min(1, "A palavra-passe é obrigatória"),
 });
 
 export const signupSchema = z

@@ -1,0 +1,759 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Kima Facturação — Redesigns Mobile: /despesas</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #f5f7fa; --surface: #ffffff; --text-primary: #1a1d26; --text-secondary: #6b7280;
+      --text-muted: #9ca3af; --border: #e5e7eb; --blue: #3b82f6; --blue-light: #eff6ff;
+      --emerald: #10b981; --emerald-light: #ecfdf5; --amber: #f59e0b; --amber-light: #fffbeb;
+      --rose: #f43f5e; --rose-light: #fff1f2; --violet: #8b5cf6; --indigo: #6366f1;
+      --indigo-light: #eef2ff; --teal: #14b8a6; --teal-light: #f0fdfa; --orange: #f97316;
+      --orange-light: #fff7ed;
+      --radius: 16px; --radius-sm: 12px;
+      --shadow-sm: 0 1px 3px rgba(0,0,0,0.06); --shadow-md: 0 4px 12px rgba(0,0,0,0.08);
+    }
+    body { font-family: 'Inter', -apple-system, sans-serif; background: var(--bg); color: var(--text-primary); -webkit-font-smoothing: antialiased; overflow-x: hidden; }
+    .phone-frame { max-width: 400px; margin: 0 auto; min-height: 100vh; background: var(--bg); position: relative; }
+
+    .variation-nav { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); max-width: 400px; width: 100%; z-index: 1000; display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; background: rgba(255,255,255,0.92); backdrop-filter: blur(20px); border-top: 1px solid var(--border); }
+    .variation-nav .label { font-size: 12px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; }
+    .variation-nav .dots { display: flex; gap: 6px; }
+    .variation-nav .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--border); transition: all 0.3s; cursor: pointer; }
+    .variation-nav .dot.active { background: var(--blue); width: 24px; border-radius: 4px; }
+    .variation-nav .btn-next { background: var(--blue); color: white; border: none; padding: 10px 20px; border-radius: 10px; font-size: 13px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 6px; font-family: inherit; transition: all 0.2s; }
+    .variation-nav .btn-next:hover { background: #2563eb; }
+
+    .v { display: none; padding-bottom: 80px; }
+    .v.active { display: block; }
+
+    .search-bar { display: flex; align-items: center; gap: 8px; padding: 10px 14px; background: var(--surface); border-radius: var(--radius-sm); box-shadow: var(--shadow-sm); }
+    .search-bar svg { width: 16px; height: 16px; color: var(--text-muted); flex-shrink: 0; }
+    .search-bar input { flex: 1; border: none; outline: none; font-size: 13px; color: var(--text-primary); background: transparent; font-family: inherit; }
+    .search-bar input::placeholder { color: var(--text-muted); }
+
+    .seg-filter { display: flex; gap: 6px; }
+    .seg-btn { flex: 1; padding: 9px 8px; border-radius: 10px; font-size: 11px; font-weight: 700; border: 1.5px solid var(--border); background: var(--surface); color: var(--text-secondary); cursor: pointer; text-align: center; transition: all 0.2s; font-family: inherit; }
+    .seg-btn:active { transform: scale(0.96); }
+    .seg-btn.active { background: var(--blue); color: white; border-color: var(--blue); box-shadow: 0 2px 8px rgba(59,130,246,0.25); }
+    .seg-btn.active-emerald { background: var(--emerald); color: white; border-color: var(--emerald); }
+    .seg-btn.active-amber { background: var(--amber); color: white; border-color: var(--amber); }
+    .seg-btn.active-rose { background: var(--rose); color: white; border-color: var(--rose); }
+
+    .despesa-card { background: var(--surface); border-radius: var(--radius-sm); padding: 14px; box-shadow: var(--shadow-sm); margin: 0 16px 8px; cursor: pointer; transition: all 0.2s; }
+    .despesa-card:active { transform: scale(0.98); }
+
+    .badge { display: inline-flex; align-items: center; padding: 2px 7px; border-radius: 5px; font-size: 9px; font-weight: 700; }
+    .badge.emerald { background: var(--emerald-light); color: var(--emerald); }
+    .badge.amber { background: var(--amber-light); color: var(--amber); }
+    .badge.rose { background: var(--rose-light); color: var(--rose); }
+    .badge.blue { background: var(--blue-light); color: var(--blue); }
+    .badge.violet { background: #f5f3ff; color: var(--violet); }
+    .badge.slate { background: #f1f5f9; color: #64748b; }
+    .badge.orange { background: var(--orange-light); color: var(--orange); }
+
+    .action-btn { width: 34px; height: 34px; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; border: none; cursor: pointer; transition: all 0.2s; }
+    .action-btn:active { transform: scale(0.9); }
+    .action-btn.teal { background: var(--teal-light); color: var(--teal); }
+    .action-btn.blue { background: var(--blue-light); color: var(--blue); }
+    .action-btn.rose { background: var(--rose-light); color: var(--rose); }
+
+    .section-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: var(--text-muted); padding: 12px 16px 6px; }
+
+    @keyframes fadeUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    .animate-in { animation: fadeUp 0.3s ease both; }
+  </style>
+</head>
+<body>
+
+<!-- ════════════════════════════════════════════════════════════════
+     VARIATION 1: SWIPE METRICS + PAYMENT CARDS
+     ════════════════════════════════════════════════════════════════ -->
+<div class="phone-frame">
+<div id="v1" class="v active">
+  <!-- Header -->
+  <div style="display:flex; align-items:center; justify-content:space-between; padding:16px 16px 8px;">
+    <div>
+      <h2 style="font-size:18px; font-weight:800; color:var(--text-primary);">Despesas</h2>
+      <p style="font-size:11px; color:var(--text-muted);">32 despesas registadas</p>
+    </div>
+    <button style="width:40px; height:40px; border-radius:12px; background:var(--blue); color:white; display:flex; align-items:center; justify-content:center; border:none; box-shadow:0 2px 8px rgba(59,130,246,0.3); cursor:pointer;">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    </button>
+  </div>
+
+  <!-- Swipe Metrics -->
+  <div style="display:flex; gap:8px; overflow-x:auto; padding:8px 16px; scrollbar-width:none;">
+    <div style="min-width:130px; padding:12px 14px; background:var(--surface); border-radius:var(--radius-sm); box-shadow:var(--shadow-sm); border-left:3px solid var(--blue);">
+      <p style="font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; color:var(--text-muted); margin-bottom:4px;">Total</p>
+      <p style="font-size:20px; font-weight:800; color:var(--text-primary);">32</p>
+      <p style="font-size:10px; color:var(--text-muted);">despesas</p>
+    </div>
+    <div style="min-width:140px; padding:12px 14px; background:var(--surface); border-radius:var(--radius-sm); box-shadow:var(--shadow-sm); border-left:3px solid var(--indigo);">
+      <p style="font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; color:var(--text-muted); margin-bottom:4px;">Valor Total</p>
+      <p style="font-size:18px; font-weight:800; color:var(--text-primary);">2.450.000</p>
+      <p style="font-size:10px; color:var(--text-muted);">AOA</p>
+    </div>
+    <div style="min-width:130px; padding:12px 14px; background:var(--surface); border-radius:var(--radius-sm); box-shadow:var(--shadow-sm); border-left:3px solid var(--emerald);">
+      <p style="font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; color:var(--text-muted); margin-bottom:4px;">Pagas</p>
+      <p style="font-size:20px; font-weight:800; color:var(--emerald);">24</p>
+      <p style="font-size:10px; color:var(--text-muted);">1.890.000 AOA</p>
+    </div>
+    <div style="min-width:130px; padding:12px 14px; background:var(--surface); border-radius:var(--radius-sm); box-shadow:var(--shadow-sm); border-left:3px solid var(--amber);">
+      <p style="font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; color:var(--text-muted); margin-bottom:4px;">Pendentes</p>
+      <p style="font-size:20px; font-weight:800; color:var(--amber);">8</p>
+      <p style="font-size:10px; color:var(--text-muted);">560.000 AOA</p>
+    </div>
+  </div>
+
+  <!-- Search -->
+  <div style="padding:0 16px; margin-top:8px;">
+    <div class="search-bar">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input type="text" placeholder="Descrição, categoria ou fornecedor...">
+    </div>
+  </div>
+
+  <!-- Segmented Estado Filter -->
+  <div class="seg-filter" style="padding:10px 16px 0;">
+    <button class="seg-btn active">Todos (32)</button>
+    <button class="seg-btn active-emerald">Pagas (24)</button>
+    <button class="seg-btn active-amber">Pendentes (8)</button>
+  </div>
+
+  <!-- Result Count -->
+  <div style="display:flex; align-items:center; justify-content:space-between; padding:10px 16px 4px;">
+    <span style="font-size:11px; color:var(--text-muted); font-weight:500;">32 resultados</span>
+    <button style="font-size:11px; color:var(--blue); font-weight:600; background:none; border:none; cursor:pointer; font-family:inherit;">Limpar filtros</button>
+  </div>
+
+  <!-- Payment Cards -->
+  <div class="despesa-card animate-in" style="animation-delay:0ms; border-left:3px solid var(--emerald);">
+    <div style="display:flex; align-items:start; justify-content:space-between; margin-bottom:6px;">
+      <div style="flex:1; min-width:0;">
+        <div style="display:flex; align-items:center; gap:6px; margin-bottom:3px;">
+          <span class="badge emerald">Paga</span>
+          <span class="badge violet">Aluguel</span>
+        </div>
+        <p style="font-size:14px; font-weight:600; color:var(--text-primary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Aluguel escritório - Setembro</p>
+        <p style="font-size:10px; color:var(--text-muted); margin-top:1px;">Angolan Logistics · 15/09/2025</p>
+      </div>
+      <div style="text-align:right; flex-shrink:0; margin-left:8px;">
+        <p style="font-size:16px; font-weight:800; color:var(--emerald);">350.000</p>
+        <p style="font-size:9px; color:var(--text-muted);">AOA · Numerário</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="despesa-card animate-in" style="animation-delay:30ms; border-left:3px solid var(--amber);">
+    <div style="display:flex; align-items:start; justify-content:space-between; margin-bottom:6px;">
+      <div style="flex:1; min-width:0;">
+        <div style="display:flex; align-items:center; gap:6px; margin-bottom:3px;">
+          <span class="badge amber">Pendente</span>
+          <span class="badge orange">Material</span>
+        </div>
+        <p style="font-size:14px; font-weight:600; color:var(--text-primary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Compra de materiais de escritório</p>
+        <p style="font-size:10px; color:var(--text-muted); margin-top:1px;">Techford Comércio · 18/09/2025</p>
+      </div>
+      <div style="text-align:right; flex-shrink:0; margin-left:8px;">
+        <p style="font-size:16px; font-weight:800; color:var(--amber);">45.000</p>
+        <p style="font-size:9px; color:var(--text-muted);">AOA · Transferência</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="despesa-card animate-in" style="animation-delay:60ms; border-left:3px solid var(--emerald);">
+    <div style="display:flex; align-items:start; justify-content:space-between; margin-bottom:6px;">
+      <div style="flex:1; min-width:0;">
+        <div style="display:flex; align-items:center; gap:6px; margin-bottom:3px;">
+          <span class="badge emerald">Paga</span>
+          <span class="badge blue">Salários</span>
+        </div>
+        <p style="font-size:14px; font-weight:600; color:var(--text-primary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Salários funcionários - Setembro</p>
+        <p style="font-size:10px; color:var(--text-muted); margin-top:1px;">Interno · 30/09/2025</p>
+      </div>
+      <div style="text-align:right; flex-shrink:0; margin-left:8px;">
+        <p style="font-size:16px; font-weight:800; color:var(--emerald);">890.000</p>
+        <p style="font-size:9px; color:var(--text-muted);">AOA · Transferência</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="despesa-card animate-in" style="animation-delay:90ms; border-left:3px solid var(--emerald);">
+    <div style="display:flex; align-items:start; justify-content:space-between; margin-bottom:6px;">
+      <div style="flex:1; min-width:0;">
+        <div style="display:flex; align-items:center; gap:6px; margin-bottom:3px;">
+          <span class="badge emerald">Paga</span>
+          <span class="badge slate">Utilities</span>
+        </div>
+        <p style="font-size:14px; font-weight:600; color:var(--text-primary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Conta de electricidade - Agosto</p>
+        <p style="font-size:10px; color:var(--text-muted); margin-top:1px;">ENDE · 28/08/2025</p>
+      </div>
+      <div style="text-align:right; flex-shrink:0; margin-left:8px;">
+        <p style="font-size:16px; font-weight:800; color:var(--emerald);">28.500</p>
+        <p style="font-size:9px; color:var(--text-muted);">AOA · Multicaixa</p>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex; align-items:center; justify-content:space-between; padding:10px 16px;">
+    <span style="font-size:11px; color:var(--text-muted);">Página 1 de 2</span>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════
+     VARIATION 2: HERO STATS + SEGMENTED
+     ════════════════════════════════════════════════════════════════ -->
+<div id="v2" class="v">
+  <!-- Hero -->
+  <div style="background:linear-gradient(135deg, #f43f5e 0%, #f97316 100%); padding:20px 16px 40px; position:relative;">
+    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:14px;">
+      <div>
+        <h2 style="font-size:18px; font-weight:800; color:white;">Despesas</h2>
+        <p style="font-size:11px; color:rgba(255,255,255,0.7);">Gestão de despesas</p>
+      </div>
+      <button style="width:40px; height:40px; border-radius:12px; background:rgba(255,255,255,0.2); color:white; display:flex; align-items:center; justify-content:center; border:none; backdrop-filter:blur(8px); cursor:pointer;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      </button>
+    </div>
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+      <div style="background:rgba(255,255,255,0.15); backdrop-filter:blur(8px); border-radius:12px; padding:12px; border:1px solid rgba(255,255,255,0.1);">
+        <p style="font-size:10px; font-weight:600; color:rgba(255,255,255,0.7); text-transform:uppercase; letter-spacing:0.5px;">Total</p>
+        <p style="font-size:22px; font-weight:800; color:white; margin-top:2px;">32</p>
+      </div>
+      <div style="background:rgba(255,255,255,0.15); backdrop-filter:blur(8px); border-radius:12px; padding:12px; border:1px solid rgba(255,255,255,0.1);">
+        <p style="font-size:10px; font-weight:600; color:rgba(255,255,255,0.7); text-transform:uppercase; letter-spacing:0.5px;">Valor</p>
+        <p style="font-size:18px; font-weight:800; color:white; margin-top:2px;">2.45M AOA</p>
+      </div>
+      <div style="background:rgba(255,255,255,0.15); backdrop-filter:blur(8px); border-radius:12px; padding:12px; border:1px solid rgba(255,255,255,0.1);">
+        <p style="font-size:10px; font-weight:600; color:rgba(255,255,255,0.7); text-transform:uppercase; letter-spacing:0.5px;">Pagas</p>
+        <p style="font-size:22px; font-weight:800; color:white; margin-top:2px;">24</p>
+      </div>
+      <div style="background:rgba(255,255,255,0.15); backdrop-filter:blur(8px); border-radius:12px; padding:12px; border:1px solid rgba(255,255,255,0.1);">
+        <p style="font-size:10px; font-weight:600; color:rgba(255,255,255,0.7); text-transform:uppercase; letter-spacing:0.5px;">Pendentes</p>
+        <p style="font-size:22px; font-weight:800; color:#fbbf24; margin-top:2px;">8</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Search floating -->
+  <div style="margin:-20px 16px 0; position:relative; z-index:10;">
+    <div class="search-bar" style="box-shadow:var(--shadow-md);">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;color:var(--text-muted);flex-shrink:0;"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input type="text" placeholder="Pesquisar despesas...">
+    </div>
+  </div>
+
+  <!-- Segmented Estado Filter -->
+  <div class="seg-filter" style="padding:12px 16px 0;">
+    <button class="seg-btn active">Todos</button>
+    <button class="seg-btn active-emerald">Pagas</button>
+    <button class="seg-btn active-amber">Pendentes</button>
+  </div>
+
+  <!-- Result Count -->
+  <div style="display:flex; align-items:center; justify-content:space-between; padding:10px 16px 4px;">
+    <span style="font-size:11px; color:var(--text-muted); font-weight:500;">32 resultados</span>
+  </div>
+
+  <!-- Flat Cards -->
+  <div class="despesa-card animate-in" style="animation-delay:0ms; border-left:3px solid var(--emerald);">
+    <div style="display:flex; align-items:center; gap:10px;">
+      <div style="width:40px; height:40px; border-radius:10px; background:linear-gradient(135deg, #8b5cf6, #7c3aed); display:flex; align-items:center; justify-content:center; color:white; font-weight:700; font-size:12px; flex-shrink:0;">AL</div>
+      <div style="flex:1; min-width:0;">
+        <p style="font-size:13px; font-weight:600; color:var(--text-primary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Aluguel escritório - Setembro</p>
+        <p style="font-size:10px; color:var(--text-muted);">Aluguel · 15/09/2025</p>
+      </div>
+      <div style="text-align:right; flex-shrink:0;">
+        <p style="font-size:14px; font-weight:800; color:var(--emerald);">350.000 AOA</p>
+        <span class="badge emerald" style="font-size:8px;">Paga</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="despesa-card animate-in" style="animation-delay:30ms; border-left:3px solid var(--amber);">
+    <div style="display:flex; align-items:center; gap:10px;">
+      <div style="width:40px; height:40px; border-radius:10px; background:linear-gradient(135deg, #f97316, #ea580c); display:flex; align-items:center; justify-content:center; color:white; font-weight:700; font-size:12px; flex-shrink:0;">MA</div>
+      <div style="flex:1; min-width:0;">
+        <p style="font-size:13px; font-weight:600; color:var(--text-primary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Compra de materiais de escritório</p>
+        <p style="font-size:10px; color:var(--text-muted);">Material · 18/09/2025</p>
+      </div>
+      <div style="text-align:right; flex-shrink:0;">
+        <p style="font-size:14px; font-weight:800; color:var(--amber);">45.000 AOA</p>
+        <span class="badge amber" style="font-size:8px;">Pendente</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="despesa-card animate-in" style="animation-delay:60ms; border-left:3px solid var(--emerald);">
+    <div style="display:flex; align-items:center; gap:10px;">
+      <div style="width:40px; height:40px; border-radius:10px; background:linear-gradient(135deg, #3b82f6, #2563eb); display:flex; align-items:center; justify-content:center; color:white; font-weight:700; font-size:12px; flex-shrink:0;">SA</div>
+      <div style="flex:1; min-width:0;">
+        <p style="font-size:13px; font-weight:600; color:var(--text-primary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Salários funcionários - Setembro</p>
+        <p style="font-size:10px; color:var(--text-muted);">Salários · 30/09/2025</p>
+      </div>
+      <div style="text-align:right; flex-shrink:0;">
+        <p style="font-size:14px; font-weight:800; color:var(--emerald);">890.000 AOA</p>
+        <span class="badge emerald" style="font-size:8px;">Paga</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="despesa-card animate-in" style="animation-delay:90ms; border-left:3px solid var(--emerald);">
+    <div style="display:flex; align-items:center; gap:10px;">
+      <div style="width:40px; height:40px; border-radius:10px; background:linear-gradient(135deg, #10b981, #059669); display:flex; align-items:center; justify-content:center; color:white; font-weight:700; font-size:12px; flex-shrink:0;">EL</div>
+      <div style="flex:1; min-width:0;">
+        <p style="font-size:13px; font-weight:600; color:var(--text-primary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Conta de electricidade - Agosto</p>
+        <p style="font-size:10px; color:var(--text-muted);">Utilities · 28/08/2025</p>
+      </div>
+      <div style="text-align:right; flex-shrink:0;">
+        <p style="font-size:14px; font-weight:800; color:var(--emerald);">28.500 AOA</p>
+        <span class="badge emerald" style="font-size:8px;">Paga</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════
+     VARIATION 3: COMPACT LIST + INLINE FILTERS
+     ════════════════════════════════════════════════════════════════ -->
+<div id="v3" class="v">
+  <!-- Header -->
+  <div style="display:flex; align-items:center; justify-content:space-between; padding:16px 16px 8px;">
+    <div>
+      <h2 style="font-size:18px; font-weight:800; color:var(--text-primary);">Despesas</h2>
+      <p style="font-size:11px; color:var(--text-muted);">32 despesas</p>
+    </div>
+    <button style="width:40px; height:40px; border-radius:12px; background:var(--blue); color:white; display:flex; align-items:center; justify-content:center; border:none; box-shadow:0 2px 8px rgba(59,130,246,0.3); cursor:pointer;">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    </button>
+  </div>
+
+  <!-- Stats Bar -->
+  <div style="display:flex; gap:1px; margin:8px 16px; background:var(--border); border-radius:10px; overflow:hidden;">
+    <div style="flex:1; background:var(--surface); padding:10px; text-align:center;">
+      <p style="font-size:16px; font-weight:800; color:var(--text-primary);">32</p>
+      <p style="font-size:9px; font-weight:600; text-transform:uppercase; letter-spacing:0.5px; color:var(--text-muted);">Total</p>
+    </div>
+    <div style="flex:1; background:var(--surface); padding:10px; text-align:center;">
+      <p style="font-size:16px; font-weight:800; color:var(--emerald);">24</p>
+      <p style="font-size:9px; font-weight:600; text-transform:uppercase; letter-spacing:0.5px; color:var(--text-muted);">Pagas</p>
+    </div>
+    <div style="flex:1; background:var(--surface); padding:10px; text-align:center;">
+      <p style="font-size:16px; font-weight:800; color:var(--amber);">8</p>
+      <p style="font-size:9px; font-weight:600; text-transform:uppercase; letter-spacing:0.5px; color:var(--text-muted);">Pendentes</p>
+    </div>
+  </div>
+
+  <!-- Search -->
+  <div style="padding:0 16px; margin-top:8px;">
+    <div class="search-bar">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input type="text" placeholder="Pesquisar...">
+    </div>
+  </div>
+
+  <!-- Segmented -->
+  <div class="seg-filter" style="padding:10px 16px 0;">
+    <button class="seg-btn active">Todos</button>
+    <button class="seg-btn active-emerald">Pagas</button>
+    <button class="seg-btn active-amber">Pendentes</button>
+  </div>
+
+  <!-- Compact List -->
+  <div style="margin-top:8px;">
+    <div style="display:flex; align-items:center; gap:10px; padding:10px 16px; border-bottom:1px solid var(--border); cursor:pointer;">
+      <div style="width:36px; height:36px; border-radius:10px; background:linear-gradient(135deg, #8b5cf6, #7c3aed); display:flex; align-items:center; justify-content:center; color:white; font-weight:700; font-size:11px; flex-shrink:0;">AL</div>
+      <div style="flex:1; min-width:0;">
+        <p style="font-size:13px; font-weight:600; color:var(--text-primary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Aluguel escritório - Setembro</p>
+        <p style="font-size:10px; color:var(--text-muted);">Aluguel · 15/09/2025</p>
+      </div>
+      <div style="text-align:right;">
+        <p style="font-size:13px; font-weight:700; color:var(--text-primary);">350.000</p>
+        <span class="badge emerald" style="font-size:8px;">Paga</span>
+      </div>
+    </div>
+
+    <div style="display:flex; align-items:center; gap:10px; padding:10px 16px; border-bottom:1px solid var(--border); cursor:pointer;">
+      <div style="width:36px; height:36px; border-radius:10px; background:linear-gradient(135deg, #f97316, #ea580c); display:flex; align-items:center; justify-content:center; color:white; font-weight:700; font-size:11px; flex-shrink:0;">MA</div>
+      <div style="flex:1; min-width:0;">
+        <p style="font-size:13px; font-weight:600; color:var(--text-primary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Compra de materiais de escritório</p>
+        <p style="font-size:10px; color:var(--text-muted);">Material · 18/09/2025</p>
+      </div>
+      <div style="text-align:right;">
+        <p style="font-size:13px; font-weight:700; color:var(--text-primary);">45.000</p>
+        <span class="badge amber" style="font-size:8px;">Pendente</span>
+      </div>
+    </div>
+
+    <div style="display:flex; align-items:center; gap:10px; padding:10px 16px; border-bottom:1px solid var(--border); cursor:pointer;">
+      <div style="width:36px; height:36px; border-radius:10px; background:linear-gradient(135deg, #3b82f6, #2563eb); display:flex; align-items:center; justify-content:center; color:white; font-weight:700; font-size:11px; flex-shrink:0;">SA</div>
+      <div style="flex:1; min-width:0;">
+        <p style="font-size:13px; font-weight:600; color:var(--text-primary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Salários funcionários - Setembro</p>
+        <p style="font-size:10px; color:var(--text-muted);">Salários · 30/09/2025</p>
+      </div>
+      <div style="text-align:right;">
+        <p style="font-size:13px; font-weight:700; color:var(--text-primary);">890.000</p>
+        <span class="badge emerald" style="font-size:8px;">Paga</span>
+      </div>
+    </div>
+
+    <div style="display:flex; align-items:center; gap:10px; padding:10px 16px; border-bottom:1px solid var(--border); cursor:pointer;">
+      <div style="width:36px; height:36px; border-radius:10px; background:linear-gradient(135deg, #10b981, #059669); display:flex; align-items:center; justify-content:center; color:white; font-weight:700; font-size:11px; flex-shrink:0;">EL</div>
+      <div style="flex:1; min-width:0;">
+        <p style="font-size:13px; font-weight:600; color:var(--text-primary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Conta de electricidade - Agosto</p>
+        <p style="font-size:10px; color:var(--text-muted);">Utilities · 28/08/2025</p>
+      </div>
+      <div style="text-align:right;">
+        <p style="font-size:13px; font-weight:700; color:var(--text-primary);">28.500</p>
+        <span class="badge emerald" style="font-size:8px;">Paga</span>
+      </div>
+    </div>
+
+    <div style="display:flex; align-items:center; gap:10px; padding:10px 16px; border-bottom:1px solid var(--border); cursor:pointer;">
+      <div style="width:36px; height:36px; border-radius:10px; background:linear-gradient(135deg, #f43f5e, #e11d48); display:flex; align-items:center; justify-content:center; color:white; font-weight:700; font-size:11px; flex-shrink:0;">SE</div>
+      <div style="flex:1; min-width:0;">
+        <p style="font-size:13px; font-weight:600; color:var(--text-primary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Seguro empresa - Trimestral</p>
+        <p style="font-size:10px; color:var(--text-muted);">Seguros · 01/09/2025</p>
+      </div>
+      <div style="text-align:right;">
+        <p style="font-size:13px; font-weight:700; color:var(--text-primary);">125.000</p>
+        <span class="badge amber" style="font-size:8px;">Pendente</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════
+     VARIATION 4: SEGMENTED + CATEGORY GROUPS (FAVORITE)
+     ════════════════════════════════════════════════════════════════ -->
+<div id="v4" class="v">
+  <!-- Header -->
+  <div style="display:flex; align-items:center; justify-content:space-between; padding:16px 16px 8px;">
+    <div>
+      <h2 style="font-size:18px; font-weight:800; color:var(--text-primary);">Despesas</h2>
+      <p style="font-size:11px; color:var(--text-muted);">32 despesas registadas</p>
+    </div>
+    <button style="width:40px; height:40px; border-radius:12px; background:var(--blue); color:white; display:flex; align-items:center; justify-content:center; border:none; box-shadow:0 2px 8px rgba(59,130,246,0.3); cursor:pointer;">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    </button>
+  </div>
+
+  <!-- Segmented Estado Filter -->
+  <div class="seg-filter" style="padding:8px 16px 0;">
+    <button class="seg-btn active">Todos (32)</button>
+    <button class="seg-btn active-emerald">Pagas (24)</button>
+    <button class="seg-btn active-amber">Pendentes (8)</button>
+  </div>
+
+  <!-- Search + Filter Toggle -->
+  <div style="display:flex; gap:8px; padding:10px 16px 0;">
+    <div style="flex:1; display:flex; align-items:center; gap:8px; background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:9px 12px; box-shadow:var(--shadow-sm);">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input type="text" placeholder="Pesquisar despesas…" style="flex:1; border:none; outline:none; font-size:12px; color:var(--text-primary); background:transparent; font-family:inherit;">
+    </div>
+    <button style="width:38px; height:38px; border-radius:12px; border:1px solid var(--border); background:var(--surface); display:flex; align-items:center; justify-content:center; color:var(--text-muted); flex-shrink:0; cursor:pointer;">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/></svg>
+    </button>
+  </div>
+
+  <!-- Result Count -->
+  <div style="display:flex; align-items:center; justify-content:space-between; padding:10px 16px 4px;">
+    <span style="font-size:11px; color:var(--text-muted); font-weight:500;">32 resultados</span>
+    <button style="font-size:11px; color:var(--blue); font-weight:600; background:none; border:none; cursor:pointer; font-family:inherit;">Limpar filtros</button>
+  </div>
+
+  <!-- Category Group: Aluguel -->
+  <div class="section-label">Aluguel — 2 despesas · 700.000 AOA</div>
+
+  <div class="despesa-card animate-in" style="animation-delay:0ms; border-left:3px solid var(--emerald);">
+    <div style="display:flex; align-items:start; justify-content:space-between; margin-bottom:4px;">
+      <div style="flex:1; min-width:0;">
+        <div style="display:flex; align-items:center; gap:6px; margin-bottom:2px;">
+          <span class="badge emerald">Paga</span>
+          <span class="badge violet">Aluguel</span>
+        </div>
+        <p style="font-size:14px; font-weight:600; color:var(--text-primary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Aluguel escritório - Setembro</p>
+      </div>
+      <div style="text-align:right; flex-shrink:0; margin-left:8px;">
+        <p style="font-size:15px; font-weight:800; color:var(--text-primary);">350.000</p>
+        <p style="font-size:9px; color:var(--text-muted);">AOA</p>
+      </div>
+    </div>
+    <div style="display:flex; align-items:center; justify-content:space-between;">
+      <p style="font-size:10px; color:var(--text-muted);">Angolan Logistics · Numerário · 15/09/2025</p>
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+    </div>
+  </div>
+
+  <!-- Category Group: Salários -->
+  <div class="section-label">Salários — 1 despesa · 890.000 AOA</div>
+
+  <div class="despesa-card animate-in" style="animation-delay:30ms; border-left:3px solid var(--emerald);">
+    <div style="display:flex; align-items:start; justify-content:space-between; margin-bottom:4px;">
+      <div style="flex:1; min-width:0;">
+        <div style="display:flex; align-items:center; gap:6px; margin-bottom:2px;">
+          <span class="badge emerald">Paga</span>
+          <span class="badge blue">Salários</span>
+        </div>
+        <p style="font-size:14px; font-weight:600; color:var(--text-primary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Salários funcionários - Setembro</p>
+      </div>
+      <div style="text-align:right; flex-shrink:0; margin-left:8px;">
+        <p style="font-size:15px; font-weight:800; color:var(--text-primary);">890.000</p>
+        <p style="font-size:9px; color:var(--text-muted);">AOA</p>
+      </div>
+    </div>
+    <div style="display:flex; align-items:center; justify-content:space-between;">
+      <p style="font-size:10px; color:var(--text-muted);">Interno · Transferência · 30/09/2025</p>
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+    </div>
+  </div>
+
+  <!-- Category Group: Material -->
+  <div class="section-label">Material — 3 despesas · 120.000 AOA</div>
+
+  <div class="despesa-card animate-in" style="animation-delay:60ms; border-left:3px solid var(--amber);">
+    <div style="display:flex; align-items:start; justify-content:space-between; margin-bottom:4px;">
+      <div style="flex:1; min-width:0;">
+        <div style="display:flex; align-items:center; gap:6px; margin-bottom:2px;">
+          <span class="badge amber">Pendente</span>
+          <span class="badge orange">Material</span>
+        </div>
+        <p style="font-size:14px; font-weight:600; color:var(--text-primary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Compra de materiais de escritório</p>
+      </div>
+      <div style="text-align:right; flex-shrink:0; margin-left:8px;">
+        <p style="font-size:15px; font-weight:800; color:var(--text-primary);">45.000</p>
+        <p style="font-size:9px; color:var(--text-muted);">AOA</p>
+      </div>
+    </div>
+    <div style="display:flex; align-items:center; justify-content:space-between;">
+      <p style="font-size:10px; color:var(--text-muted);">Techford Comércio · Transferência · 18/09/2025</p>
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+    </div>
+  </div>
+
+  <!-- Category Group: Utilities -->
+  <div class="section-label">Utilities — 4 despesas · 95.000 AOA</div>
+
+  <div class="despesa-card animate-in" style="animation-delay:90ms; border-left:3px solid var(--emerald);">
+    <div style="display:flex; align-items:start; justify-content:space-between; margin-bottom:4px;">
+      <div style="flex:1; min-width:0;">
+        <div style="display:flex; align-items:center; gap:6px; margin-bottom:2px;">
+          <span class="badge emerald">Paga</span>
+          <span class="badge slate">Utilities</span>
+        </div>
+        <p style="font-size:14px; font-weight:600; color:var(--text-primary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Conta de electricidade - Agosto</p>
+      </div>
+      <div style="text-align:right; flex-shrink:0; margin-left:8px;">
+        <p style="font-size:15px; font-weight:800; color:var(--text-primary);">28.500</p>
+        <p style="font-size:9px; color:var(--text-muted);">AOA</p>
+      </div>
+    </div>
+    <div style="display:flex; align-items:center; justify-content:space-between;">
+      <p style="font-size:10px; color:var(--text-muted);">ENDE · Multicaixa · 28/08/2025</p>
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════
+     VARIATION 5: DARK MODE
+     ════════════════════════════════════════════════════════════════ -->
+<div id="v5" class="v" style="background:#0f1117;">
+  <!-- Header -->
+  <div style="display:flex; align-items:center; justify-content:space-between; padding:16px 16px 8px;">
+    <div>
+      <h2 style="font-size:18px; font-weight:800; color:#f1f5f9;">Despesas</h2>
+      <p style="font-size:11px; color:#64748b;">32 despesas registadas</p>
+    </div>
+    <button style="width:40px; height:40px; border-radius:12px; background:#3b82f6; color:white; display:flex; align-items:center; justify-content:center; border:none; cursor:pointer;">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    </button>
+  </div>
+
+  <!-- Swipe Metrics -->
+  <div style="display:flex; gap:8px; overflow-x:auto; padding:8px 16px; scrollbar-width:none;">
+    <div style="min-width:130px; padding:12px 14px; background:#161825; border-radius:12px; border:1px solid #252840; border-left:3px solid #3b82f6;">
+      <p style="font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; color:#64748b; margin-bottom:4px;">Total</p>
+      <p style="font-size:20px; font-weight:800; color:#f1f5f9;">32</p>
+    </div>
+    <div style="min-width:140px; padding:12px 14px; background:#161825; border-radius:12px; border:1px solid #252840; border-left:3px solid #6366f1;">
+      <p style="font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; color:#64748b; margin-bottom:4px;">Valor</p>
+      <p style="font-size:18px; font-weight:800; color:#f1f5f9;">2.45M AOA</p>
+    </div>
+    <div style="min-width:130px; padding:12px 14px; background:#161825; border-radius:12px; border:1px solid #252840; border-left:3px solid #10b981;">
+      <p style="font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; color:#64748b; margin-bottom:4px;">Pagas</p>
+      <p style="font-size:20px; font-weight:800; color:#10b981;">24</p>
+    </div>
+    <div style="min-width:130px; padding:12px 14px; background:#161825; border-radius:12px; border:1px solid #252840; border-left:3px solid #f59e0b;">
+      <p style="font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; color:#64748b; margin-bottom:4px;">Pendentes</p>
+      <p style="font-size:20px; font-weight:800; color:#f59e0b;">8</p>
+    </div>
+  </div>
+
+  <!-- Search -->
+  <div style="padding:0 16px; margin-top:8px;">
+    <div style="display:flex; align-items:center; gap:8px; padding:10px 14px; background:#161825; border:1px solid #252840; border-radius:12px;">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input type="text" placeholder="Pesquisar despesas…" style="flex:1; border:none; outline:none; font-size:12px; color:#f1f5f9; background:transparent; font-family:inherit;">
+    </div>
+  </div>
+
+  <!-- Segmented -->
+  <div style="display:flex; gap:6px; padding:10px 16px 0;">
+    <button style="flex:1; padding:9px 8px; border-radius:10px; font-size:11px; font-weight:700; border:1.5px solid #3b82f6; background:#3b82f6; color:white; cursor:pointer; text-align:center; font-family:inherit;">Todos (32)</button>
+    <button style="flex:1; padding:9px 8px; border-radius:10px; font-size:11px; font-weight:700; border:1.5px solid #252840; background:#161825; color:#94a3b8; cursor:pointer; text-align:center; font-family:inherit;">Pagas</button>
+    <button style="flex:1; padding:9px 8px; border-radius:10px; font-size:11px; font-weight:700; border:1.5px solid #252840; background:#161825; color:#94a3b8; cursor:pointer; text-align:center; font-family:inherit;">Pendentes</button>
+  </div>
+
+  <!-- Result Count -->
+  <div style="display:flex; align-items:center; justify-content:space-between; padding:10px 16px 4px;">
+    <span style="font-size:11px; color:#64748b; font-weight:500;">32 resultados</span>
+    <button style="font-size:11px; color:#3b82f6; font-weight:600; background:none; border:none; cursor:pointer; font-family:inherit;">Limpar filtros</button>
+  </div>
+
+  <!-- Cards -->
+  <div style="padding:12px 14px; margin:0 16px 8px; background:#161825; border:1px solid #252840; border-radius:12px; border-left:3px solid #10b981; cursor:pointer;">
+    <div style="display:flex; align-items:start; justify-content:space-between; margin-bottom:6px;">
+      <div style="flex:1; min-width:0;">
+        <div style="display:flex; align-items:center; gap:6px; margin-bottom:3px;">
+          <span style="padding:2px 6px; border-radius:5px; font-size:9px; font-weight:700; background:rgba(16,185,129,0.15); color:#10b981;">Paga</span>
+          <span style="padding:2px 6px; border-radius:5px; font-size:9px; font-weight:700; background:rgba(139,92,246,0.15); color:#8b5cf6;">Aluguel</span>
+        </div>
+        <p style="font-size:14px; font-weight:600; color:#f1f5f9; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Aluguel escritório - Setembro</p>
+        <p style="font-size:10px; color:#64748b; margin-top:1px;">Angolan Logistics · Numerário · 15/09/2025</p>
+      </div>
+      <div style="text-align:right; flex-shrink:0; margin-left:8px;">
+        <p style="font-size:16px; font-weight:800; color:#10b981;">350.000</p>
+        <p style="font-size:9px; color:#64748b;">AOA</p>
+      </div>
+    </div>
+  </div>
+
+  <div style="padding:12px 14px; margin:0 16px 8px; background:#161825; border:1px solid #252840; border-radius:12px; border-left:3px solid #f59e0b; cursor:pointer;">
+    <div style="display:flex; align-items:start; justify-content:space-between; margin-bottom:6px;">
+      <div style="flex:1; min-width:0;">
+        <div style="display:flex; align-items:center; gap:6px; margin-bottom:3px;">
+          <span style="padding:2px 6px; border-radius:5px; font-size:9px; font-weight:700; background:rgba(245,158,11,0.15); color:#f59e0b;">Pendente</span>
+          <span style="padding:2px 6px; border-radius:5px; font-size:9px; font-weight:700; background:rgba(249,115,22,0.15); color:#f97316;">Material</span>
+        </div>
+        <p style="font-size:14px; font-weight:600; color:#f1f5f9; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Compra de materiais de escritório</p>
+        <p style="font-size:10px; color:#64748b; margin-top:1px;">Techford Comércio · Transferência · 18/09/2025</p>
+      </div>
+      <div style="text-align:right; flex-shrink:0; margin-left:8px;">
+        <p style="font-size:16px; font-weight:800; color:#f59e0b;">45.000</p>
+        <p style="font-size:9px; color:#64748b;">AOA</p>
+      </div>
+    </div>
+  </div>
+
+  <div style="padding:12px 14px; margin:0 16px 8px; background:#161825; border:1px solid #252840; border-radius:12px; border-left:3px solid #10b981; cursor:pointer;">
+    <div style="display:flex; align-items:start; justify-content:space-between; margin-bottom:6px;">
+      <div style="flex:1; min-width:0;">
+        <div style="display:flex; align-items:center; gap:6px; margin-bottom:3px;">
+          <span style="padding:2px 6px; border-radius:5px; font-size:9px; font-weight:700; background:rgba(16,185,129,0.15); color:#10b981;">Paga</span>
+          <span style="padding:2px 6px; border-radius:5px; font-size:9px; font-weight:700; background:rgba(59,130,246,0.15); color:#60a5fa;">Salários</span>
+        </div>
+        <p style="font-size:14px; font-weight:600; color:#f1f5f9; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Salários funcionários - Setembro</p>
+        <p style="font-size:10px; color:#64748b; margin-top:1px;">Interno · Transferência · 30/09/2025</p>
+      </div>
+      <div style="text-align:right; flex-shrink:0; margin-left:8px;">
+        <p style="font-size:16px; font-weight:800; color:#10b981;">890.000</p>
+        <p style="font-size:9px; color:#64748b;">AOA</p>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex; align-items:center; justify-content:space-between; padding:10px 16px;">
+    <span style="font-size:11px; color:#64748b;">Página 1 de 2</span>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════
+     NAVIGATION BAR
+     ════════════════════════════════════════════════════════════════ -->
+<div class="variation-nav" id="nav1">
+  <span class="label">V1</span>
+  <div class="dots">
+    <div class="dot active" onclick="goTo(1)"></div>
+    <div class="dot" onclick="goTo(2)"></div>
+    <div class="dot" onclick="goTo(3)"></div>
+    <div class="dot" onclick="goTo(4)"></div>
+    <div class="dot" onclick="goTo(5)"></div>
+  </div>
+  <button class="btn-next" onclick="next()">Next <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg></button>
+</div>
+
+<div class="variation-nav" id="nav2" style="display:none;">
+  <span class="label">V2</span>
+  <div class="dots">
+    <div class="dot" onclick="goTo(1)"></div>
+    <div class="dot active" onclick="goTo(2)"></div>
+    <div class="dot" onclick="goTo(3)"></div>
+    <div class="dot" onclick="goTo(4)"></div>
+    <div class="dot" onclick="goTo(5)"></div>
+  </div>
+  <button class="btn-next" onclick="next()">Next <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg></button>
+</div>
+
+<div class="variation-nav" id="nav3" style="display:none;">
+  <span class="label">V3</span>
+  <div class="dots">
+    <div class="dot" onclick="goTo(1)"></div>
+    <div class="dot" onclick="goTo(2)"></div>
+    <div class="dot active" onclick="goTo(3)"></div>
+    <div class="dot" onclick="goTo(4)"></div>
+    <div class="dot" onclick="goTo(5)"></div>
+  </div>
+  <button class="btn-next" onclick="next()">Next <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg></button>
+</div>
+
+<div class="variation-nav" id="nav4" style="display:none;">
+  <span class="label">V4</span>
+  <div class="dots">
+    <div class="dot" onclick="goTo(1)"></div>
+    <div class="dot" onclick="goTo(2)"></div>
+    <div class="dot" onclick="goTo(3)"></div>
+    <div class="dot active" onclick="goTo(4)"></div>
+    <div class="dot" onclick="goTo(5)"></div>
+  </div>
+  <button class="btn-next" onclick="next()">Next <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg></button>
+</div>
+
+<div class="variation-nav" id="nav5" style="display:none;">
+  <span class="label">V5</span>
+  <div class="dots">
+    <div class="dot" onclick="goTo(1)"></div>
+    <div class="dot" onclick="goTo(2)"></div>
+    <div class="dot" onclick="goTo(3)"></div>
+    <div class="dot" onclick="goTo(4)"></div>
+    <div class="dot active" onclick="goTo(5)"></div>
+  </div>
+  <button class="btn-next" onclick="next()">Next <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg></button>
+</div>
+
+<script>
+let current = 1;
+const total = 5;
+
+function goTo(n) {
+  document.getElementById('v' + current).classList.remove('active');
+  document.getElementById('nav' + current).style.display = 'none';
+  current = n;
+  document.getElementById('v' + current).classList.add('active');
+  document.getElementById('nav' + current).style.display = 'flex';
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function next() {
+  if (current < total) goTo(current + 1);
+  else goTo(1);
+}
+</script>
+</body>
+</html>

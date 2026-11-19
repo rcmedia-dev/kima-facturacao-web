@@ -1,5 +1,6 @@
 import { cookies } from 'next/headers';
-import { createServerClient } from '@supabase/ssr';
+import { createServerClient } from '@/lib/supabase-ssr';
+import { getSupabaseAuthConfig } from '@/lib/auth-source';
 
 /**
  * Devolve o utilizador autenticado a partir dos cookies de sessão do Supabase.
@@ -9,9 +10,14 @@ import { createServerClient } from '@supabase/ssr';
 export async function usuarioAtual(): Promise<{ id: string; email: string } | null> {
   try {
     const cookieStore = await cookies();
+    const authSource =
+      cookieStore.get('kima-auth-source')?.value === 'faturas'
+        ? 'faturas'
+        : 'hub';
+    const { url, anonKey } = getSupabaseAuthConfig(authSource);
     const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      url,
+      anonKey,
       {
         cookies: {
           getAll() {

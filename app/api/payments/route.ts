@@ -13,7 +13,7 @@ const registrarPagamentoSchema = z.object({
 
 export async function POST(request: Request) {
   try {
-    const companyId = requireCompanyId(request);
+    const companyId = await requireCompanyId(request, 'invoices.update');
     const body = await request.json();
     const parseResult = registrarPagamentoSchema.safeParse(body);
 

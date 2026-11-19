@@ -193,6 +193,13 @@
   .sidebar-transition {
     transition: transform 0.25s cubic-bezier(0.4,0,0.2,1);
   }
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
 }
 
 /* ============================================================
@@ -457,4 +464,14 @@
 .dark .badge-teal {
   background-color: rgba(20,184,166,0.15);
   color: #5EEAD4;
+}
+
+@keyframes bounce-once {
+  0%, 100% { transform: scale(1); }
+  30% { transform: scale(1.2); }
+  50% { transform: scale(0.95); }
+  70% { transform: scale(1.08); }
+}
+.animate-bounce-once {
+  animation: bounce-once 0.5s ease;
 }

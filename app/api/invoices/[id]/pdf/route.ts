@@ -10,7 +10,7 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const companyId = requireCompanyId(request);
+    const companyId = await requireCompanyId(request, 'invoices.view');
     const { id } = await params;
     const dbFatura = await obterDocumentoPorId(companyId, id);
 
@@ -112,7 +112,7 @@ export async function GET(
   } catch (error: unknown) {
     return NextResponse.json(
       { success: false, error: normalizarErro(error).mensagem || "Erro ao gerar PDF da fatura" },
-      { status: 500 }
+      { status: normalizarErro(error).status || 500 }
     );
   }
 }

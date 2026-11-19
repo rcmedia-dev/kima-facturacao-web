@@ -100,6 +100,18 @@ export interface Documento {
   numero: string; // Número sequencial dentro da série
   numeroCompleto: string; // Serie + Numero (ex: A/000001)
   clienteId?: string;
+  cliente?: {
+    id: string;
+    nome: string;
+    nif: string;
+    tipo?: TipoCliente;
+    morada?: string;
+    telefone?: string;
+    email?: string;
+    ativo?: boolean;
+    dataCriacao?: Date | string;
+    ultimaAtualizacao?: Date | string;
+  };
   fornecedorId?: string;
   dataEmissao: Date;
   dataVencimento: Date;
@@ -153,6 +165,16 @@ export interface SerieNumeracao {
   predefinida?: boolean; // Série predefinida para o tipo de documento
 }
 
+export type ModeloDocumento =
+  | "classico"
+  | "moderno"
+  | "executivo"
+  | "compacto"
+  | "studio"
+  | "nordic"
+  | "bold"
+  | "grid";
+
 export interface ConfiguracaoEmpresa {
   id: string;
   nomeEmpresa: string;
@@ -162,6 +184,10 @@ export interface ConfiguracaoEmpresa {
   email: string;
   website?: string;
   logoUrl?: string;
+  
+  // Design & Identidade visual
+  modeloDocumento?: ModeloDocumento; // Modelo visual padrão dos documentos
+  corPrimaria?: string; // Cor primária da marca (ex: #2563EB)
   
   // Dados bancários
   contaBancaria?: string;
@@ -192,4 +218,60 @@ export interface LogAuditoria {
   alteracoesNovas?: Record<string, unknown>;
   timestamp: Date;
   endereco?: string;
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// SISTEMA DE PERMISSÕES — Kima Facturação
+// ══════════════════════════════════════════════════════════════════════════════
+
+/** Permissão individual (código da tabela permissions) */
+export type Permission =
+  | 'dashboard.view'
+  | 'invoices.view'
+  | 'invoices.create'
+  | 'invoices.update'
+  | 'invoices.delete'
+  | 'customers.view'
+  | 'customers.manage'
+  | 'customers.delete'
+  | 'suppliers.view'
+  | 'suppliers.manage'
+  | 'articles.view'
+  | 'articles.manage'
+  | 'expenses.view'
+  | 'expenses.manage'
+  | 'reports.view'
+  | 'settings.manage'
+  | 'agt.manage'
+  | 'users.manage';
+
+/** Dados de membro carregados para a interface de gestão de acesso. */
+export interface Utilizador {
+  id: string;
+  companyId: string;
+  email: string;
+  fullName: string | null;
+  passwordHash: string | null; // NULL = precisa definir senha
+  isOwner: boolean;
+  status: 'ativo' | 'inativo' | 'pendente';
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+/** Contexto autenticado derivado da sessão Supabase e da membership ativa. */
+export interface Sessao {
+  userId: string;
+  companyId: string;
+  isOwner: boolean;
+  email: string;
+  authSource: 'hub' | 'faturas';
+}
+
+/** Permissões finais de um utilizador */
+export interface UserPermissions {
+  userId: string;
+  companyId: string;
+  isOwner: boolean;
+  permissions: Permission[];
+  email?: string;
 }

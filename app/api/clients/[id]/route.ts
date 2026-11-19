@@ -3,14 +3,14 @@ import { NextResponse } from "next/server";
 import { atualizarCliente, deletarCliente } from "@/db/queries";
 import { obterClientePorId } from "@/db/queries";
 import { clienteSchema } from "@/lib/schemas";
-import { requireCompanyMembership } from "@/lib/company";
+import { requireCompanyId } from "@/lib/company";
 
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const companyId = await requireCompanyMembership(request);
+    const companyId = await requireCompanyId(request, 'customers.view');
     const { id } = await params;
     const cliente = await obterClientePorId(companyId, id);
 
@@ -35,7 +35,7 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const companyId = await requireCompanyMembership(request);
+    const companyId = await requireCompanyId(request, 'customers.manage');
     const { id } = await params;
     const body = await request.json();
     const validatedData = clienteSchema.partial().parse(body);
@@ -52,7 +52,7 @@ export async function PUT(
     }
     return NextResponse.json(
       { success: false, error: normalizarErro(error).mensagem || "Erro ao atualizar cliente" },
-      { status: 500 }
+      { status: normalizarErro(error).status || 500 }
     );
   }
 }
@@ -62,7 +62,7 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const companyId = await requireCompanyMembership(request);
+    const companyId = await requireCompanyId(request, 'customers.delete');
     const { id } = await params;
     await deletarCliente(companyId, id);
 
@@ -73,7 +73,7 @@ export async function DELETE(
   } catch (error: unknown) {
     return NextResponse.json(
       { success: false, error: normalizarErro(error).mensagem || "Erro ao deletar cliente" },
-      { status: 500 }
+      { status: normalizarErro(error).status || 500 }
     );
   }
 }

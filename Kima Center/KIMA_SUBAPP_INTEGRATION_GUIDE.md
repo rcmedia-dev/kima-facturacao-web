@@ -155,47 +155,22 @@ export const config = {
 
 ## 5. Rota de Callback SSO (`src/app/auth/callback/route.ts`)
 
-Esta rota processa a devolução do utilizador vindo do Hub com o token SSO de curta duração (essencial para ambiente de desenvolvimento local):
+O callback tem de trocar o token de curta duração por uma sessão Supabase real.
+O endpoint do Hub `/api/sso/verify` deve confirmar o token e devolver `valid`,
+`appKey`, `userId`, `companyId`, `accessToken` e `refreshToken`. O sub-app deve:
 
-```ts
-import { NextResponse, type NextRequest } from 'next/server';
+1. validar a resposta e confirmar que `appKey` corresponde a
+   `NEXT_PUBLIC_KIMA_MODULE_KEY`;
+2. chamar `supabase.auth.setSession({ access_token, refresh_token })`;
+3. confirmar o utilizador criado pela sessão antes de definir
+   `kima-company-id`;
+4. validar membership e subscrição ativa no servidor antes de servir dados;
+5. rejeitar destinos de redireccionamento externos.
 
-export async function GET(request: NextRequest) {
-  const requestUrl = new URL(request.url);
-  const token = requestUrl.searchParams.get('token');
-  const redirectTarget = requestUrl.searchParams.get('redirect') || '/';
-
-  const response = NextResponse.redirect(new URL(redirectTarget, request.url));
-  const COOKIE_DOMAIN = process.env.NODE_ENV === 'production' ? '.kima.ao' : undefined;
-
-  if (token) {
-    try {
-      const verifyRes = await fetch(
-        `${process.env.NEXT_PUBLIC_KIMA_HUB_URL}/api/sso/verify?token=${token}`,
-        { cache: 'no-store' }
-      );
-
-      if (verifyRes.ok) {
-        const data = await verifyRes.json();
-        if (data.valid && data.companyId) {
-          response.cookies.set('kima-company-id', data.companyId, {
-            domain: COOKIE_DOMAIN,
-            path: '/',
-            httpOnly: true,
-            sameSite: 'lax',
-            secure: process.env.NODE_ENV === 'production',
-            maxAge: 60 * 60 * 24 * 30,
-          });
-        }
-      }
-    } catch (err) {
-      console.error('Erro ao verificar SSO Token no Hub:', err);
-    }
-  }
-
-  return response;
-}
-```
+Definir apenas o cookie `kima-company-id` não autentica o utilizador. Os cookies
+de autenticação Supabase devem usar o domínio `.kima.ao` apenas nos subdomínios
+de produção desse domínio; em localhost e preview devem permanecer no host da
+aplicação.
 
 ---
 
@@ -272,6 +247,29 @@ export function KimaEventListener() {
    - Será automaticamente redirecionado para `http://localhost:3000/login?app=faturas&redirect_uri=...`.
    - Faça login no Hub.
    - Será redirecionado de volta para `http://localhost:3001/auth/callback?token=...` e entrará no dashboard do sub-app com a empresa e sessão sincronizadas.
+
+## 8. Funcionários do Kima Faturas
+
+No Kima Faturas, o administrador gera o convite em `/utilizadores` e partilha
+o link apresentado pela aplicação. O convite expira após 7 dias e só pode ser
+aceite uma vez. O módulo guarda apenas o hash do token e associa o funcionário
+à empresa em `kima_facturas.employees`, com permissões em
+`kima_facturas.employee_permissions`. As rotas de dados do módulo verificam
+essas permissões no servidor; a interface apenas espelha os acessos disponíveis.
+
+A identidade continua a usar `auth.users` e Supabase Auth. Funcionários não
+recebem uma linha em `public.memberships` e, por isso, este convite não lhes dá
+acesso ao Kima Hub nem a outros módulos. A empresa e a subscrição continuam a
+ser lidas do Hub; o acesso ao Faturas só é aceite enquanto a subscrição do
+módulo estiver ativa. Se o email já tiver uma identidade Kima, o convidado
+inicia sessão com a palavra-passe existente para aceitar o convite; o fluxo não
+altera essa palavra-passe.
+
+A migration `migrations/006_funcionarios_kima_facturas.sql` cria as tabelas e
+funções necessárias no schema do módulo. Ela não é executada pela aplicação:
+deve ser revista e aplicada explicitamente antes de publicar o novo fluxo. A
+aplicação gera o link para partilha manual; não existe envio de email integrado
+nesta implementação.
 
 ---
 *© 2026 RC Media — Kima Enterprise Ecosystem*

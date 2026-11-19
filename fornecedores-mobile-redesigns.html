@@ -1,0 +1,743 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Kima Facturação — Redesigns Mobile: /fornecedores</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #f5f7fa; --surface: #ffffff; --text-primary: #1a1d26; --text-secondary: #6b7280;
+      --text-muted: #9ca3af; --border: #e5e7eb; --blue: #3b82f6; --blue-light: #eff6ff;
+      --emerald: #10b981; --emerald-light: #ecfdf5; --amber: #f59e0b; --amber-light: #fffbeb;
+      --rose: #f43f5e; --rose-light: #fff1f2; --violet: #8b5cf6; --indigo: #6366f1;
+      --indigo-light: #eef2ff; --teal: #14b8a6; --teal-light: #f0fdfa;
+      --radius: 16px; --radius-sm: 12px;
+      --shadow-sm: 0 1px 3px rgba(0,0,0,0.06); --shadow-md: 0 4px 12px rgba(0,0,0,0.08);
+    }
+    body { font-family: 'Inter', -apple-system, sans-serif; background: var(--bg); color: var(--text-primary); -webkit-font-smoothing: antialiased; overflow-x: hidden; }
+    .phone-frame { max-width: 400px; margin: 0 auto; min-height: 100vh; background: var(--bg); position: relative; }
+
+    .variation-nav { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); max-width: 400px; width: 100%; z-index: 1000; display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; background: rgba(255,255,255,0.92); backdrop-filter: blur(20px); border-top: 1px solid var(--border); }
+    .variation-nav .label { font-size: 12px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; }
+    .variation-nav .dots { display: flex; gap: 6px; }
+    .variation-nav .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--border); transition: all 0.3s; cursor: pointer; }
+    .variation-nav .dot.active { background: var(--blue); width: 24px; border-radius: 4px; }
+    .variation-nav .btn-next { background: var(--blue); color: white; border: none; padding: 10px 20px; border-radius: 10px; font-size: 13px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 6px; font-family: inherit; transition: all 0.2s; }
+    .variation-nav .btn-next:hover { background: #2563eb; }
+
+    .v { display: none; padding-bottom: 80px; }
+    .v.active { display: block; }
+
+    .search-bar { display: flex; align-items: center; gap: 8px; padding: 10px 14px; background: var(--surface); border-radius: var(--radius-sm); box-shadow: var(--shadow-sm); }
+    .search-bar svg { width: 16px; height: 16px; color: var(--text-muted); flex-shrink: 0; }
+    .search-bar input { flex: 1; border: none; outline: none; font-size: 13px; color: var(--text-primary); background: transparent; font-family: inherit; }
+    .search-bar input::placeholder { color: var(--text-muted); }
+
+    .seg-filter { display: flex; gap: 6px; }
+    .seg-btn { flex: 1; padding: 9px 8px; border-radius: 10px; font-size: 11px; font-weight: 700; border: 1.5px solid var(--border); background: var(--surface); color: var(--text-secondary); cursor: pointer; text-align: center; transition: all 0.2s; font-family: inherit; }
+    .seg-btn:active { transform: scale(0.96); }
+    .seg-btn.active { background: var(--blue); color: white; border-color: var(--blue); box-shadow: 0 2px 8px rgba(59,130,246,0.25); }
+    .seg-btn.active-emerald { background: var(--emerald); color: white; border-color: var(--emerald); }
+    .seg-btn.active-rose { background: var(--rose); color: white; border-color: var(--rose); }
+
+    .fornecedor-card { background: var(--surface); border-radius: var(--radius-sm); padding: 14px; box-shadow: var(--shadow-sm); margin: 0 16px 8px; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 12px; }
+    .fornecedor-card:active { transform: scale(0.98); }
+
+    .avatar { width: 42px; height: 42px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 15px; color: white; flex-shrink: 0; }
+    .avatar.blue { background: linear-gradient(135deg, #3b82f6, #2563eb); }
+    .avatar.emerald { background: linear-gradient(135deg, #10b981, #059669); }
+    .avatar.violet { background: linear-gradient(135deg, #8b5cf6, #7c3aed); }
+    .avatar.rose { background: linear-gradient(135deg, #f43f5e, #e11d48); }
+    .avatar.amber { background: linear-gradient(135deg, #f59e0b, #d97706); }
+    .avatar.indigo { background: linear-gradient(135deg, #6366f1, #4f46e5); }
+
+    .fornecedor-info { flex: 1; min-width: 0; }
+    .fornecedor-info .name { font-size: 14px; font-weight: 600; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .fornecedor-info .detail { font-size: 11px; color: var(--text-muted); margin-top: 2px; display: flex; align-items: center; gap: 6px; }
+
+    .action-btn { width: 34px; height: 34px; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; border: none; cursor: pointer; transition: all 0.2s; }
+    .action-btn:active { transform: scale(0.9); }
+    .action-btn.teal { background: var(--teal-light); color: var(--teal); }
+    .action-btn.blue { background: var(--blue-light); color: var(--blue); }
+    .action-btn.rose { background: var(--rose-light); color: var(--rose); }
+
+    .section-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: var(--text-muted); padding: 12px 16px 6px; }
+
+    @keyframes fadeUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    .animate-in { animation: fadeUp 0.3s ease both; }
+  </style>
+</head>
+<body>
+
+<!-- ════════════════════════════════════════════════════════════════
+     VARIATION 1: SWIPE METRICS + CONTACT CARDS
+     ════════════════════════════════════════════════════════════════ -->
+<div class="phone-frame">
+<div id="v1" class="v active">
+  <!-- Header -->
+  <div style="display:flex; align-items:center; justify-content:space-between; padding:16px 16px 8px;">
+    <div>
+      <h2 style="font-size:18px; font-weight:800; color:var(--text-primary);">Fornecedores</h2>
+      <p style="font-size:11px; color:var(--text-muted);">12 fornecedores registados</p>
+    </div>
+    <button style="width:40px; height:40px; border-radius:12px; background:var(--blue); color:white; display:flex; align-items:center; justify-content:center; border:none; box-shadow:0 2px 8px rgba(59,130,246,0.3); cursor:pointer;">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    </button>
+  </div>
+
+  <!-- Swipe Metrics -->
+  <div style="display:flex; gap:8px; overflow-x:auto; padding:8px 16px; scrollbar-width:none;" class="scrollbar-none">
+    <div style="min-width:130px; padding:12px 14px; background:var(--surface); border-radius:var(--radius-sm); box-shadow:var(--shadow-sm); border-left:3px solid var(--blue);">
+      <p style="font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; color:var(--text-muted); margin-bottom:4px;">Total</p>
+      <p style="font-size:20px; font-weight:800; color:var(--text-primary);">12</p>
+      <p style="font-size:10px; color:var(--text-muted);">fornecedores</p>
+    </div>
+    <div style="min-width:130px; padding:12px 14px; background:var(--surface); border-radius:var(--radius-sm); box-shadow:var(--shadow-sm); border-left:3px solid var(--emerald);">
+      <p style="font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; color:var(--text-muted); margin-bottom:4px;">Ativos</p>
+      <p style="font-size:20px; font-weight:800; color:var(--text-primary);">9</p>
+      <p style="font-size:10px; color:var(--text-muted);">em atividade</p>
+    </div>
+    <div style="min-width:130px; padding:12px 14px; background:var(--surface); border-radius:var(--radius-sm); box-shadow:var(--shadow-sm); border-left:3px solid var(--rose);">
+      <p style="font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; color:var(--text-muted); margin-bottom:4px;">Inativos</p>
+      <p style="font-size:20px; font-weight:800; color:var(--text-primary);">3</p>
+      <p style="font-size:10px; color:var(--text-muted);">sem atividade</p>
+    </div>
+    <div style="min-width:130px; padding:12px 14px; background:var(--surface); border-radius:var(--radius-sm); box-shadow:var(--shadow-sm); border-left:3px solid var(--indigo);">
+      <p style="font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; color:var(--text-muted); margin-bottom:4px;">Com IBAN</p>
+      <p style="font-size:20px; font-weight:800; color:var(--text-primary);">7</p>
+      <p style="font-size:10px; color:var(--text-muted);">dados bancários</p>
+    </div>
+  </div>
+
+  <!-- Search -->
+  <div style="padding:0 16px; margin-top:8px;">
+    <div class="search-bar">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input type="text" placeholder="Pesquisar fornecedores...">
+    </div>
+  </div>
+
+  <!-- Segmented Estado Filter -->
+  <div class="seg-filter" style="padding:10px 16px 0;">
+    <button class="seg-btn active">Todos (12)</button>
+    <button class="seg-btn active-emerald">Ativos (9)</button>
+    <button class="seg-btn active-rose">Inativos (3)</button>
+  </div>
+
+  <!-- Result Count -->
+  <div style="display:flex; align-items:center; justify-content:space-between; padding:10px 16px 4px;">
+    <span style="font-size:11px; color:var(--text-muted); font-weight:500;">12 resultados</span>
+    <button style="font-size:11px; color:var(--blue); font-weight:600; background:none; border:none; cursor:pointer; font-family:inherit;">Limpar filtros</button>
+  </div>
+
+  <!-- Contact Cards -->
+  <div class="fornecedor-card animate-in" style="animation-delay:0ms; border-left:3px solid var(--emerald);">
+    <div class="avatar blue">AN</div>
+    <div class="fornecedor-info">
+      <div style="display:flex; align-items:center; gap:6px;">
+        <span class="name">ANGOLAN LOGISTICS, LDA</span>
+        <span style="padding:2px 6px; border-radius:4px; font-size:9px; font-weight:700; background:var(--emerald-light); color:var(--emerald);">ATIVO</span>
+      </div>
+      <span class="detail">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>
+        923 456 789
+      </span>
+    </div>
+    <div style="display:flex; gap:4px; flex-shrink:0;">
+      <a href="tel:923456789" class="action-btn teal" onclick="event.stopPropagation()">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>
+      </a>
+      <a href="mailto:info@angolan.co.ao" class="action-btn blue" onclick="event.stopPropagation()">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+      </a>
+    </div>
+  </div>
+
+  <div class="fornecedor-card animate-in" style="animation-delay:30ms; border-left:3px solid var(--emerald);">
+    <div class="avatar emerald">TF</div>
+    <div class="fornecedor-info">
+      <div style="display:flex; align-items:center; gap:6px;">
+        <span class="name">TECHFORD COMÉRCIO, LDA</span>
+        <span style="padding:2px 6px; border-radius:4px; font-size:9px; font-weight:700; background:var(--emerald-light); color:var(--emerald);">ATIVO</span>
+      </div>
+      <span class="detail">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>
+        912 345 678
+      </span>
+    </div>
+    <div style="display:flex; gap:4px; flex-shrink:0;">
+      <a href="tel:912345678" class="action-btn teal" onclick="event.stopPropagation()"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg></a>
+      <a href="mailto:comercial@techford.co.ao" class="action-btn blue" onclick="event.stopPropagation()"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg></a>
+    </div>
+  </div>
+
+  <div class="fornecedor-card animate-in" style="animation-delay:60ms; border-left:3px solid var(--rose);">
+    <div class="avatar rose">MS</div>
+    <div class="fornecedor-info">
+      <div style="display:flex; align-items:center; gap:6px;">
+        <span class="name">MATERIAL & SERVIÇOS, SARL</span>
+        <span style="padding:2px 6px; border-radius:4px; font-size:9px; font-weight:700; background:var(--rose-light); color:var(--rose);">INATIVO</span>
+      </div>
+      <span class="detail">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>
+        921 000 111
+      </span>
+    </div>
+    <div style="display:flex; gap:4px; flex-shrink:0;">
+      <a href="tel:921000111" class="action-btn teal" onclick="event.stopPropagation()"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg></a>
+      <a href="mailto:contacto@ms.co.ao" class="action-btn blue" onclick="event.stopPropagation()"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg></a>
+    </div>
+  </div>
+
+  <div class="fornecedor-card animate-in" style="animation-delay:90ms; border-left:3px solid var(--emerald);">
+    <div class="avatar violet">AE</div>
+    <div class="fornecedor-info">
+      <div style="display:flex; align-items:center; gap:6px;">
+        <span class="name">ANGOLAN ELECTRIC, LDA</span>
+        <span style="padding:2px 6px; border-radius:4px; font-size:9px; font-weight:700; background:var(--emerald-light); color:var(--emerald);">ATIVO</span>
+      </div>
+      <span class="detail">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>
+        923 888 555
+      </span>
+    </div>
+    <div style="display:flex; gap:4px; flex-shrink:0;">
+      <a href="tel:923888555" class="action-btn teal" onclick="event.stopPropagation()"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg></a>
+      <a href="mailto:info@angoelectric.co.ao" class="action-btn blue" onclick="event.stopPropagation()"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg></a>
+    </div>
+  </div>
+
+  <div class="fornecedor-card animate-in" style="animation-delay:120ms; border-left:3px solid var(--emerald);">
+    <div class="avatar amber">CP</div>
+    <div class="fornecedor-info">
+      <div style="display:flex; align-items:center; gap:6px;">
+        <span class="name">CONSTRUÇÕES PAUL, SARL</span>
+        <span style="padding:2px 6px; border-radius:4px; font-size:9px; font-weight:700; background:var(--emerald-light); color:var(--emerald);">ATIVO</span>
+      </div>
+      <span class="detail">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>
+        912 777 333
+      </span>
+    </div>
+    <div style="display:flex; gap:4px; flex-shrink:0;">
+      <a href="tel:912777333" class="action-btn teal" onclick="event.stopPropagation()"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg></a>
+      <a href="mailto:obras@paul.co.ao" class="action-btn blue" onclick="event.stopPropagation()"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg></a>
+    </div>
+  </div>
+
+  <div style="display:flex; align-items:center; justify-content:space-between; padding:10px 16px;">
+    <span style="font-size:11px; color:var(--text-muted);">Página 1 de 1</span>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════
+     VARIATION 2: HERO STATS + SEGMENTED
+     ════════════════════════════════════════════════════════════════ -->
+<div id="v2" class="v">
+  <!-- Hero -->
+  <div style="background:linear-gradient(135deg, #3b82f6 0%, #6366f1 100%); padding:20px 16px 40px; position:relative;">
+    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:14px;">
+      <div>
+        <h2 style="font-size:18px; font-weight:800; color:white;">Fornecedores</h2>
+        <p style="font-size:11px; color:rgba(255,255,255,0.7);">Gestão de fornecedores</p>
+      </div>
+      <button style="width:40px; height:40px; border-radius:12px; background:rgba(255,255,255,0.2); color:white; display:flex; align-items:center; justify-content:center; border:none; backdrop-filter:blur(8px); cursor:pointer;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      </button>
+    </div>
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+      <div style="background:rgba(255,255,255,0.15); backdrop-filter:blur(8px); border-radius:12px; padding:12px; border:1px solid rgba(255,255,255,0.1);">
+        <p style="font-size:10px; font-weight:600; color:rgba(255,255,255,0.7); text-transform:uppercase; letter-spacing:0.5px;">Total</p>
+        <p style="font-size:22px; font-weight:800; color:white; margin-top:2px;">12</p>
+      </div>
+      <div style="background:rgba(255,255,255,0.15); backdrop-filter:blur(8px); border-radius:12px; padding:12px; border:1px solid rgba(255,255,255,0.1);">
+        <p style="font-size:10px; font-weight:600; color:rgba(255,255,255,0.7); text-transform:uppercase; letter-spacing:0.5px;">Ativos</p>
+        <p style="font-size:22px; font-weight:800; color:white; margin-top:2px;">9</p>
+      </div>
+      <div style="background:rgba(255,255,255,0.15); backdrop-filter:blur(8px); border-radius:12px; padding:12px; border:1px solid rgba(255,255,255,0.1);">
+        <p style="font-size:10px; font-weight:600; color:rgba(255,255,255,0.7); text-transform:uppercase; letter-spacing:0.5px;">Inativos</p>
+        <p style="font-size:22px; font-weight:800; color:white; margin-top:2px;">3</p>
+      </div>
+      <div style="background:rgba(255,255,255,0.15); backdrop-filter:blur(8px); border-radius:12px; padding:12px; border:1px solid rgba(255,255,255,0.1);">
+        <p style="font-size:10px; font-weight:600; color:rgba(255,255,255,0.7); text-transform:uppercase; letter-spacing:0.5px;">Com IBAN</p>
+        <p style="font-size:22px; font-weight:800; color:white; margin-top:2px;">7</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Search floating over hero -->
+  <div style="margin:-20px 16px 0; position:relative; z-index:10;">
+    <div class="search-bar" style="box-shadow:var(--shadow-md);">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;color:var(--text-muted);flex-shrink:0;"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input type="text" placeholder="Pesquisar fornecedores...">
+    </div>
+  </div>
+
+  <!-- Segmented Filter -->
+  <div class="seg-filter" style="padding:12px 16px 0;">
+    <button class="seg-btn active">Todos (12)</button>
+    <button class="seg-btn active-emerald">Ativos (9)</button>
+    <button class="seg-btn active-rose">Inativos (3)</button>
+  </div>
+
+  <!-- Result Count -->
+  <div style="display:flex; align-items:center; justify-content:space-between; padding:10px 16px 4px;">
+    <span style="font-size:11px; color:var(--text-muted); font-weight:500;">12 resultados</span>
+  </div>
+
+  <!-- Flat Cards -->
+  <div class="fornecedor-card animate-in" style="animation-delay:0ms; border-left:3px solid var(--emerald);">
+    <div class="avatar blue">AN</div>
+    <div class="fornecedor-info">
+      <span class="name">ANGOLAN LOGISTICS, LDA</span>
+      <span class="detail">NIF: 5412345678 · Luanda</span>
+    </div>
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+  </div>
+
+  <div class="fornecedor-card animate-in" style="animation-delay:30ms; border-left:3px solid var(--emerald);">
+    <div class="avatar emerald">TF</div>
+    <div class="fornecedor-info">
+      <span class="name">TECHFORD COMÉRCIO, LDA</span>
+      <span class="detail">NIF: 5498765432 · Benguela</span>
+    </div>
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+  </div>
+
+  <div class="fornecedor-card animate-in" style="animation-delay:60ms; border-left:3px solid var(--rose);">
+    <div class="avatar rose">MS</div>
+    <div class="fornecedor-info">
+      <span class="name">MATERIAL & SERVIÇOS, SARL</span>
+      <span class="detail">NIF: 5477788899 · Huambo</span>
+    </div>
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+  </div>
+
+  <div class="fornecedor-card animate-in" style="animation-delay:90ms; border-left:3px solid var(--emerald);">
+    <div class="avatar violet">AE</div>
+    <div class="fornecedor-info">
+      <span class="name">ANGOLAN ELECTRIC, LDA</span>
+      <span class="detail">NIF: 5411223344 · Luanda</span>
+    </div>
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+  </div>
+
+  <div class="fornecedor-card animate-in" style="animation-delay:120ms; border-left:3px solid var(--emerald);">
+    <div class="avatar amber">CP</div>
+    <div class="fornecedor-info">
+      <span class="name">CONSTRUÇÕES PAUL, SARL</span>
+      <span class="detail">NIF: 5455667788 · Lubango</span>
+    </div>
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════
+     VARIATION 3: COMPACT LIST + INLINE FILTERS
+     ════════════════════════════════════════════════════════════════ -->
+<div id="v3" class="v">
+  <!-- Header -->
+  <div style="display:flex; align-items:center; justify-content:space-between; padding:16px 16px 8px;">
+    <div>
+      <h2 style="font-size:18px; font-weight:800; color:var(--text-primary);">Fornecedores</h2>
+      <p style="font-size:11px; color:var(--text-muted);">12 fornecedores</p>
+    </div>
+    <button style="width:40px; height:40px; border-radius:12px; background:var(--blue); color:white; display:flex; align-items:center; justify-content:center; border:none; box-shadow:0 2px 8px rgba(59,130,246,0.3); cursor:pointer;">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    </button>
+  </div>
+
+  <!-- Stats Bar -->
+  <div style="display:flex; gap:1px; margin:8px 16px; background:var(--border); border-radius:10px; overflow:hidden;">
+    <div style="flex:1; background:var(--surface); padding:10px; text-align:center;">
+      <p style="font-size:16px; font-weight:800; color:var(--text-primary);">12</p>
+      <p style="font-size:9px; font-weight:600; text-transform:uppercase; letter-spacing:0.5px; color:var(--text-muted);">Total</p>
+    </div>
+    <div style="flex:1; background:var(--surface); padding:10px; text-align:center;">
+      <p style="font-size:16px; font-weight:800; color:var(--emerald);">9</p>
+      <p style="font-size:9px; font-weight:600; text-transform:uppercase; letter-spacing:0.5px; color:var(--text-muted);">Ativos</p>
+    </div>
+    <div style="flex:1; background:var(--surface); padding:10px; text-align:center;">
+      <p style="font-size:16px; font-weight:800; color:var(--rose);">3</p>
+      <p style="font-size:9px; font-weight:600; text-transform:uppercase; letter-spacing:0.5px; color:var(--text-muted);">Inativos</p>
+    </div>
+  </div>
+
+  <!-- Search -->
+  <div style="padding:0 16px; margin-top:8px;">
+    <div class="search-bar">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input type="text" placeholder="Pesquisar...">
+    </div>
+  </div>
+
+  <!-- Segmented -->
+  <div class="seg-filter" style="padding:10px 16px 0;">
+    <button class="seg-btn active">Todos</button>
+    <button class="seg-btn active-emerald">Ativos</button>
+    <button class="seg-btn active-rose">Inativos</button>
+  </div>
+
+  <!-- Compact List (no cards) -->
+  <div style="margin-top:8px;">
+    <div style="display:flex; align-items:center; gap:10px; padding:10px 16px; border-bottom:1px solid var(--border); cursor:pointer;" class="animate-in" style="animation-delay:0ms;">
+      <div style="width:36px; height:36px; border-radius:10px; background:linear-gradient(135deg, #3b82f6, #2563eb); display:flex; align-items:center; justify-content:center; color:white; font-weight:700; font-size:13px; flex-shrink:0;">AN</div>
+      <div style="flex:1; min-width:0;">
+        <p style="font-size:13px; font-weight:600; color:var(--text-primary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">ANGOLAN LOGISTICS, LDA</p>
+        <p style="font-size:10px; color:var(--text-muted);">923 456 789 · Ativo</p>
+      </div>
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+    </div>
+
+    <div style="display:flex; align-items:center; gap:10px; padding:10px 16px; border-bottom:1px solid var(--border); cursor:pointer;">
+      <div style="width:36px; height:36px; border-radius:10px; background:linear-gradient(135deg, #10b981, #059669); display:flex; align-items:center; justify-content:center; color:white; font-weight:700; font-size:13px; flex-shrink:0;">TF</div>
+      <div style="flex:1; min-width:0;">
+        <p style="font-size:13px; font-weight:600; color:var(--text-primary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">TECHFORD COMÉRCIO, LDA</p>
+        <p style="font-size:10px; color:var(--text-muted);">912 345 678 · Ativo</p>
+      </div>
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+    </div>
+
+    <div style="display:flex; align-items:center; gap:10px; padding:10px 16px; border-bottom:1px solid var(--border); cursor:pointer;">
+      <div style="width:36px; height:36px; border-radius:10px; background:linear-gradient(135deg, #f43f5e, #e11d48); display:flex; align-items:center; justify-content:center; color:white; font-weight:700; font-size:13px; flex-shrink:0;">MS</div>
+      <div style="flex:1; min-width:0;">
+        <p style="font-size:13px; font-weight:600; color:var(--text-primary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">MATERIAL & SERVIÇOS, SARL</p>
+        <p style="font-size:10px; color:var(--text-muted);">921 000 111 · Inativo</p>
+      </div>
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+    </div>
+
+    <div style="display:flex; align-items:center; gap:10px; padding:10px 16px; border-bottom:1px solid var(--border); cursor:pointer;">
+      <div style="width:36px; height:36px; border-radius:10px; background:linear-gradient(135deg, #8b5cf6, #7c3aed); display:flex; align-items:center; justify-content:center; color:white; font-weight:700; font-size:13px; flex-shrink:0;">AE</div>
+      <div style="flex:1; min-width:0;">
+        <p style="font-size:13px; font-weight:600; color:var(--text-primary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">ANGOLAN ELECTRIC, LDA</p>
+        <p style="font-size:10px; color:var(--text-muted);">923 888 555 · Ativo</p>
+      </div>
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+    </div>
+
+    <div style="display:flex; align-items:center; gap:10px; padding:10px 16px; border-bottom:1px solid var(--border); cursor:pointer;">
+      <div style="width:36px; height:36px; border-radius:10px; background:linear-gradient(135deg, #f59e0b, #d97706); display:flex; align-items:center; justify-content:center; color:white; font-weight:700; font-size:13px; flex-shrink:0;">CP</div>
+      <div style="flex:1; min-width:0;">
+        <p style="font-size:13px; font-weight:600; color:var(--text-primary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">CONSTRUÇÕES PAUL, SARL</p>
+        <p style="font-size:10px; color:var(--text-muted);">912 777 333 · Ativo</p>
+      </div>
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════
+     VARIATION 4: SEGMENTED + TIMELINE (FAVORITE)
+     ════════════════════════════════════════════════════════════════ -->
+<div id="v4" class="v">
+  <!-- Header -->
+  <div style="display:flex; align-items:center; justify-content:space-between; padding:16px 16px 8px;">
+    <div>
+      <h2 style="font-size:18px; font-weight:800; color:var(--text-primary);">Fornecedores</h2>
+      <p style="font-size:11px; color:var(--text-muted);">12 fornecedores registados</p>
+    </div>
+    <button style="width:40px; height:40px; border-radius:12px; background:var(--blue); color:white; display:flex; align-items:center; justify-content:center; border:none; box-shadow:0 2px 8px rgba(59,130,246,0.3); cursor:pointer;">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    </button>
+  </div>
+
+  <!-- Segmented Estado -->
+  <div class="seg-filter" style="padding:8px 16px 0;">
+    <button class="seg-btn active">Todos (12)</button>
+    <button class="seg-btn active-emerald">Ativos (9)</button>
+    <button class="seg-btn active-rose">Inativos (3)</button>
+  </div>
+
+  <!-- Search + Filter Toggle -->
+  <div style="display:flex; gap:8px; padding:10px 16px 0;">
+    <div style="flex:1; display:flex; align-items:center; gap:8px; background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:9px 12px; box-shadow:var(--shadow-sm);">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input type="text" placeholder="Pesquisar fornecedores…" style="flex:1; border:none; outline:none; font-size:12px; color:var(--text-primary); background:transparent; font-family:inherit;">
+    </div>
+    <button style="width:38px; height:38px; border-radius:12px; border:1px solid var(--border); background:var(--surface); display:flex; align-items:center; justify-content:center; color:var(--text-muted); flex-shrink:0; cursor:pointer;">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/></svg>
+    </button>
+  </div>
+
+  <!-- Result Count -->
+  <div style="display:flex; align-items:center; justify-content:space-between; padding:10px 16px 4px;">
+    <span style="font-size:11px; color:var(--text-muted); font-weight:500;">12 resultados</span>
+    <button style="font-size:11px; color:var(--blue); font-weight:600; background:none; border:none; cursor:pointer; font-family:inherit;">Limpar filtros</button>
+  </div>
+
+  <!-- Timeline Group: Ativos -->
+  <div class="section-label">Ativos — 9 fornecedores</div>
+
+  <div class="fornecedor-card animate-in" style="animation-delay:0ms; border-left:3px solid var(--emerald);">
+    <div class="avatar blue">AN</div>
+    <div class="fornecedor-info">
+      <div style="display:flex; align-items:center; gap:6px;">
+        <span class="name">ANGOLAN LOGISTICS, LDA</span>
+        <span style="padding:2px 6px; border-radius:4px; font-size:9px; font-weight:700; background:var(--emerald-light); color:var(--emerald);">ATIVO</span>
+      </div>
+      <span class="detail">NIF: 5412345678 · 923 456 789</span>
+    </div>
+    <div style="display:flex; gap:4px; flex-shrink:0;">
+      <a href="tel:923456789" class="action-btn teal" onclick="event.stopPropagation()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg></a>
+      <a href="mailto:info@angolan.co.ao" class="action-btn blue" onclick="event.stopPropagation()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg></a>
+    </div>
+  </div>
+
+  <div class="fornecedor-card animate-in" style="animation-delay:30ms; border-left:3px solid var(--emerald);">
+    <div class="avatar emerald">TF</div>
+    <div class="fornecedor-info">
+      <div style="display:flex; align-items:center; gap:6px;">
+        <span class="name">TECHFORD COMÉRCIO, LDA</span>
+        <span style="padding:2px 6px; border-radius:4px; font-size:9px; font-weight:700; background:var(--emerald-light); color:var(--emerald);">ATIVO</span>
+      </div>
+      <span class="detail">NIF: 5498765432 · 912 345 678</span>
+    </div>
+    <div style="display:flex; gap:4px; flex-shrink:0;">
+      <a href="tel:912345678" class="action-btn teal" onclick="event.stopPropagation()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg></a>
+      <a href="mailto:comercial@techford.co.ao" class="action-btn blue" onclick="event.stopPropagation()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg></a>
+    </div>
+  </div>
+
+  <div class="fornecedor-card animate-in" style="animation-delay:60ms; border-left:3px solid var(--emerald);">
+    <div class="avatar violet">AE</div>
+    <div class="fornecedor-info">
+      <div style="display:flex; align-items:center; gap:6px;">
+        <span class="name">ANGOLAN ELECTRIC, LDA</span>
+        <span style="padding:2px 6px; border-radius:4px; font-size:9px; font-weight:700; background:var(--emerald-light); color:var(--emerald);">ATIVO</span>
+      </div>
+      <span class="detail">NIF: 5411223344 · 923 888 555</span>
+    </div>
+    <div style="display:flex; gap:4px; flex-shrink:0;">
+      <a href="tel:923888555" class="action-btn teal" onclick="event.stopPropagation()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg></a>
+      <a href="mailto:info@angoelectric.co.ao" class="action-btn blue" onclick="event.stopPropagation()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg></a>
+    </div>
+  </div>
+
+  <!-- Timeline Group: Inativos -->
+  <div class="section-label">Inativos — 3 fornecedores</div>
+
+  <div class="fornecedor-card animate-in" style="animation-delay:90ms; border-left:3px solid var(--rose);">
+    <div class="avatar rose">MS</div>
+    <div class="fornecedor-info">
+      <div style="display:flex; align-items:center; gap:6px;">
+        <span class="name">MATERIAL & SERVIÇOS, SARL</span>
+        <span style="padding:2px 6px; border-radius:4px; font-size:9px; font-weight:700; background:var(--rose-light); color:var(--rose);">INATIVO</span>
+      </div>
+      <span class="detail">NIF: 5477788899 · 921 000 111</span>
+    </div>
+    <div style="display:flex; gap:4px; flex-shrink:0;">
+      <a href="tel:921000111" class="action-btn teal" onclick="event.stopPropagation()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg></a>
+      <a href="mailto:contacto@ms.co.ao" class="action-btn blue" onclick="event.stopPropagation()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg></a>
+    </div>
+  </div>
+
+  <div class="fornecedor-card animate-in" style="animation-delay:120ms; border-left:3px solid var(--rose);">
+    <div class="avatar indigo">AL</div>
+    <div class="fornecedor-info">
+      <div style="display:flex; align-items:center; gap:6px;">
+        <span class="name">ALFA TRANSPORTES, LDA</span>
+        <span style="padding:2px 6px; border-radius:4px; font-size:9px; font-weight:700; background:var(--rose-light); color:var(--rose);">INATIVO</span>
+      </div>
+      <span class="detail">NIF: 5433445566 · 912 000 222</span>
+    </div>
+    <div style="display:flex; gap:4px; flex-shrink:0;">
+      <a href="tel:912000222" class="action-btn teal" onclick="event.stopPropagation()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg></a>
+      <a href="mailto:info@alfa.co.ao" class="action-btn blue" onclick="event.stopPropagation()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg></a>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════
+     VARIATION 5: DARK MODE
+     ════════════════════════════════════════════════════════════════ -->
+<div id="v5" class="v" style="background:#0f1117;">
+  <!-- Header -->
+  <div style="display:flex; align-items:center; justify-content:space-between; padding:16px 16px 8px;">
+    <div>
+      <h2 style="font-size:18px; font-weight:800; color:#f1f5f9;">Fornecedores</h2>
+      <p style="font-size:11px; color:#64748b;">12 fornecedores registados</p>
+    </div>
+    <button style="width:40px; height:40px; border-radius:12px; background:#3b82f6; color:white; display:flex; align-items:center; justify-content:center; border:none; cursor:pointer;">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    </button>
+  </div>
+
+  <!-- Swipe Metrics -->
+  <div style="display:flex; gap:8px; overflow-x:auto; padding:8px 16px; scrollbar-width:none;">
+    <div style="min-width:130px; padding:12px 14px; background:#161825; border-radius:12px; border:1px solid #252840; border-left:3px solid #3b82f6;">
+      <p style="font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; color:#64748b; margin-bottom:4px;">Total</p>
+      <p style="font-size:20px; font-weight:800; color:#f1f5f9;">12</p>
+    </div>
+    <div style="min-width:130px; padding:12px 14px; background:#161825; border-radius:12px; border:1px solid #252840; border-left:3px solid #10b981;">
+      <p style="font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; color:#64748b; margin-bottom:4px;">Ativos</p>
+      <p style="font-size:20px; font-weight:800; color:#f1f5f9;">9</p>
+    </div>
+    <div style="min-width:130px; padding:12px 14px; background:#161825; border-radius:12px; border:1px solid #252840; border-left:3px solid #f43f5e;">
+      <p style="font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; color:#64748b; margin-bottom:4px;">Inativos</p>
+      <p style="font-size:20px; font-weight:800; color:#f1f5f9;">3</p>
+    </div>
+    <div style="min-width:130px; padding:12px 14px; background:#161825; border-radius:12px; border:1px solid #252840; border-left:3px solid #6366f1;">
+      <p style="font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; color:#64748b; margin-bottom:4px;">Com IBAN</p>
+      <p style="font-size:20px; font-weight:800; color:#f1f5f9;">7</p>
+    </div>
+  </div>
+
+  <!-- Search -->
+  <div style="padding:0 16px; margin-top:8px;">
+    <div style="display:flex; align-items:center; gap:8px; padding:10px 14px; background:#161825; border:1px solid #252840; border-radius:12px;">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input type="text" placeholder="Pesquisar fornecedores…" style="flex:1; border:none; outline:none; font-size:12px; color:#f1f5f9; background:transparent; font-family:inherit;">
+    </div>
+  </div>
+
+  <!-- Segmented -->
+  <div style="display:flex; gap:6px; padding:10px 16px 0;">
+    <button style="flex:1; padding:9px 8px; border-radius:10px; font-size:11px; font-weight:700; border:1.5px solid #3b82f6; background:#3b82f6; color:white; cursor:pointer; text-align:center; font-family:inherit;">Todos (12)</button>
+    <button style="flex:1; padding:9px 8px; border-radius:10px; font-size:11px; font-weight:700; border:1.5px solid #252840; background:#161825; color:#94a3b8; cursor:pointer; text-align:center; font-family:inherit;">Ativos (9)</button>
+    <button style="flex:1; padding:9px 8px; border-radius:10px; font-size:11px; font-weight:700; border:1.5px solid #252840; background:#161825; color:#94a3b8; cursor:pointer; text-align:center; font-family:inherit;">Inativos (3)</button>
+  </div>
+
+  <!-- Result Count -->
+  <div style="display:flex; align-items:center; justify-content:space-between; padding:10px 16px 4px;">
+    <span style="font-size:11px; color:#64748b; font-weight:500;">12 resultados</span>
+    <button style="font-size:11px; color:#3b82f6; font-weight:600; background:none; border:none; cursor:pointer; font-family:inherit;">Limpar filtros</button>
+  </div>
+
+  <!-- Cards -->
+  <div style="display:flex; align-items:center; gap:12px; padding:12px 14px; margin:0 16px 8px; background:#161825; border:1px solid #252840; border-radius:12px; border-left:3px solid #10b981; cursor:pointer;">
+    <div style="width:42px; height:42px; border-radius:12px; background:linear-gradient(135deg, #3b82f6, #2563eb); display:flex; align-items:center; justify-content:center; color:white; font-weight:700; font-size:15px; flex-shrink:0;">AN</div>
+    <div style="flex:1; min-width:0;">
+      <div style="display:flex; align-items:center; gap:6px;">
+        <p style="font-size:14px; font-weight:600; color:#f1f5f9; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">ANGOLAN LOGISTICS, LDA</p>
+        <span style="padding:2px 6px; border-radius:4px; font-size:9px; font-weight:700; background:rgba(16,185,129,0.15); color:#10b981;">ATIVO</span>
+      </div>
+      <p style="font-size:11px; color:#64748b; margin-top:2px;">923 456 789</p>
+    </div>
+    <div style="display:flex; gap:4px; flex-shrink:0;">
+      <a href="tel:923456789" style="width:34px; height:34px; border-radius:10px; display:flex; align-items:center; justify-content:center; background:rgba(20,184,166,0.15); color:#14b8a6; text-decoration:none;" onclick="event.stopPropagation()"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg></a>
+      <a href="mailto:info@angolan.co.ao" style="width:34px; height:34px; border-radius:10px; display:flex; align-items:center; justify-content:center; background:rgba(59,130,246,0.15); color:#3b82f6; text-decoration:none;" onclick="event.stopPropagation()"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg></a>
+    </div>
+  </div>
+
+  <div style="display:flex; align-items:center; gap:12px; padding:12px 14px; margin:0 16px 8px; background:#161825; border:1px solid #252840; border-radius:12px; border-left:3px solid #10b981; cursor:pointer;">
+    <div style="width:42px; height:42px; border-radius:12px; background:linear-gradient(135deg, #10b981, #059669); display:flex; align-items:center; justify-content:center; color:white; font-weight:700; font-size:15px; flex-shrink:0;">TF</div>
+    <div style="flex:1; min-width:0;">
+      <div style="display:flex; align-items:center; gap:6px;">
+        <p style="font-size:14px; font-weight:600; color:#f1f5f9; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">TECHFORD COMÉRCIO, LDA</p>
+        <span style="padding:2px 6px; border-radius:4px; font-size:9px; font-weight:700; background:rgba(16,185,129,0.15); color:#10b981;">ATIVO</span>
+      </div>
+      <p style="font-size:11px; color:#64748b; margin-top:2px;">912 345 678</p>
+    </div>
+    <div style="display:flex; gap:4px; flex-shrink:0;">
+      <a href="tel:912345678" style="width:34px; height:34px; border-radius:10px; display:flex; align-items:center; justify-content:center; background:rgba(20,184,166,0.15); color:#14b8a6; text-decoration:none;" onclick="event.stopPropagation()"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg></a>
+      <a href="mailto:comercial@techford.co.ao" style="width:34px; height:34px; border-radius:10px; display:flex; align-items:center; justify-content:center; background:rgba(59,130,246,0.15); color:#3b82f6; text-decoration:none;" onclick="event.stopPropagation()"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg></a>
+    </div>
+  </div>
+
+  <div style="display:flex; align-items:center; gap:12px; padding:12px 14px; margin:0 16px 8px; background:#161825; border:1px solid #252840; border-radius:12px; border-left:3px solid #f43f5e; cursor:pointer;">
+    <div style="width:42px; height:42px; border-radius:12px; background:linear-gradient(135deg, #f43f5e, #e11d48); display:flex; align-items:center; justify-content:center; color:white; font-weight:700; font-size:15px; flex-shrink:0;">MS</div>
+    <div style="flex:1; min-width:0;">
+      <div style="display:flex; align-items:center; gap:6px;">
+        <p style="font-size:14px; font-weight:600; color:#f1f5f9; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">MATERIAL & SERVIÇOS, SARL</p>
+        <span style="padding:2px 6px; border-radius:4px; font-size:9px; font-weight:700; background:rgba(244,63,94,0.15); color:#f43f5e;">INATIVO</span>
+      </div>
+      <p style="font-size:11px; color:#64748b; margin-top:2px;">921 000 111</p>
+    </div>
+    <div style="display:flex; gap:4px; flex-shrink:0;">
+      <a href="tel:921000111" style="width:34px; height:34px; border-radius:10px; display:flex; align-items:center; justify-content:center; background:rgba(20,184,166,0.15); color:#14b8a6; text-decoration:none;" onclick="event.stopPropagation()"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg></a>
+      <a href="mailto:contacto@ms.co.ao" style="width:34px; height:34px; border-radius:10px; display:flex; align-items:center; justify-content:center; background:rgba(59,130,246,0.15); color:#3b82f6; text-decoration:none;" onclick="event.stopPropagation()"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg></a>
+    </div>
+  </div>
+
+  <div style="display:flex; align-items:center; justify-content:space-between; padding:10px 16px;">
+    <span style="font-size:11px; color:#64748b;">Página 1 de 1</span>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════
+     NAVIGATION BAR
+     ════════════════════════════════════════════════════════════════ -->
+<div class="variation-nav" id="nav1">
+  <span class="label">V1</span>
+  <div class="dots">
+    <div class="dot active" onclick="goTo(1)"></div>
+    <div class="dot" onclick="goTo(2)"></div>
+    <div class="dot" onclick="goTo(3)"></div>
+    <div class="dot" onclick="goTo(4)"></div>
+    <div class="dot" onclick="goTo(5)"></div>
+  </div>
+  <button class="btn-next" onclick="next()">Next <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg></button>
+</div>
+
+<div class="variation-nav" id="nav2" style="display:none;">
+  <span class="label">V2</span>
+  <div class="dots">
+    <div class="dot" onclick="goTo(1)"></div>
+    <div class="dot active" onclick="goTo(2)"></div>
+    <div class="dot" onclick="goTo(3)"></div>
+    <div class="dot" onclick="goTo(4)"></div>
+    <div class="dot" onclick="goTo(5)"></div>
+  </div>
+  <button class="btn-next" onclick="next()">Next <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg></button>
+</div>
+
+<div class="variation-nav" id="nav3" style="display:none;">
+  <span class="label">V3</span>
+  <div class="dots">
+    <div class="dot" onclick="goTo(1)"></div>
+    <div class="dot" onclick="goTo(2)"></div>
+    <div class="dot active" onclick="goTo(3)"></div>
+    <div class="dot" onclick="goTo(4)"></div>
+    <div class="dot" onclick="goTo(5)"></div>
+  </div>
+  <button class="btn-next" onclick="next()">Next <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg></button>
+</div>
+
+<div class="variation-nav" id="nav4" style="display:none;">
+  <span class="label">V4</span>
+  <div class="dots">
+    <div class="dot" onclick="goTo(1)"></div>
+    <div class="dot" onclick="goTo(2)"></div>
+    <div class="dot" onclick="goTo(3)"></div>
+    <div class="dot active" onclick="goTo(4)"></div>
+    <div class="dot" onclick="goTo(5)"></div>
+  </div>
+  <button class="btn-next" onclick="next()">Next <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg></button>
+</div>
+
+<div class="variation-nav" id="nav5" style="display:none;">
+  <span class="label">V5</span>
+  <div class="dots">
+    <div class="dot" onclick="goTo(1)"></div>
+    <div class="dot" onclick="goTo(2)"></div>
+    <div class="dot" onclick="goTo(3)"></div>
+    <div class="dot" onclick="goTo(4)"></div>
+    <div class="dot active" onclick="goTo(5)"></div>
+  </div>
+  <button class="btn-next" onclick="next()">Next <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg></button>
+</div>
+
+<script>
+let current = 1;
+const total = 5;
+
+function goTo(n) {
+  document.getElementById('v' + current).classList.remove('active');
+  document.getElementById('nav' + current).style.display = 'none';
+  current = n;
+  document.getElementById('v' + current).classList.add('active');
+  document.getElementById('nav' + current).style.display = 'flex';
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function next() {
+  if (current < total) goTo(current + 1);
+  else goTo(1);
+}
+</script>
+</body>
+</html>

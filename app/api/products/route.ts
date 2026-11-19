@@ -2,13 +2,16 @@ import { normalizarErro } from "@/lib/utils";
 import { NextResponse } from "next/server";
 import { artigoSchema } from "@/lib/schemas";
 import { obterArtigos, criarArtigo } from "@/db/queries";
-import { requireCompanyMembership } from "@/lib/company";
+import { requireCompanyId } from "@/lib/company";
 
 export async function GET(request: Request) {
   try {
-    const companyId = await requireCompanyMembership(request);
-    const artigos = await obterArtigos(companyId);
-    return NextResponse.json({ success: true, data: artigos });
+    const companyId = await requireCompanyId(request, 'articles.view');
+    const { searchParams } = new URL(request.url);
+    const limit = Math.min(parseInt(searchParams.get("limit") || "100"), 200);
+    const offset = parseInt(searchParams.get("offset") || "0", 10);
+    const result = await obterArtigos(companyId, { limit, offset });
+    return NextResponse.json({ success: true, data: result.data, total: result.total });
   } catch (error: unknown) {
     return NextResponse.json(
       { success: false, error: normalizarErro(error).mensagem || "Erro ao obter artigos" },
@@ -19,7 +22,7 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const companyId = await requireCompanyMembership(request);
+    const companyId = await requireCompanyId(request, 'articles.manage');
     const body = await request.json();
     const validatedData = artigoSchema.parse(body);
 
@@ -53,7 +56,7 @@ export async function POST(request: Request) {
     }
     return NextResponse.json(
       { success: false, error: normalizarErro(error).mensagem || "Erro ao criar artigo" },
-      { status: 500 }
+      { status: normalizarErro(error).status || 500 }
     );
   }
 }

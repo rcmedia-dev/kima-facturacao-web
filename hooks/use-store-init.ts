@@ -4,14 +4,18 @@ import { useEffect } from "react";
 import { usePathname } from "next/navigation";
 import { useAppStore } from "@/lib/store";
 
+const AUTH_PATHS = ["/login", "/signup", "/auth", "/primeiro-acesso", "/acesso-negado"];
+
 export function useStoreInit() {
   const pathname = usePathname();
-  const isAuthPage =
-    pathname === "/login" || pathname === "/signup" || pathname === "/auth";
+  const isAuthPage = AUTH_PATHS.some((p) => pathname.startsWith(p));
 
   useEffect(() => {
     if (isAuthPage) return;
-    // Load all data from the API (Supabase) once on mount when authenticated
-    useAppStore.getState().loadAll();
-  }, [isAuthPage]);
+
+    const store = useAppStore.getState();
+    if (store._loaded) return;
+
+    void store.loadAll();
+  }, [isAuthPage, pathname]);
 }

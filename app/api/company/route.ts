@@ -2,11 +2,11 @@ import { normalizarErro } from "@/lib/utils";
 import { NextResponse } from "next/server";
 import { empresaSchema } from "@/lib/schemas";
 import { obterEmpresa, atualizarEmpresa } from "@/db/queries";
-import { requireCompanyMembership } from "@/lib/company";
+import { requireCompanyId } from "@/lib/company";
 
 export async function GET(request: Request) {
   try {
-    const companyId = await requireCompanyMembership(request);
+    const companyId = await requireCompanyId(request);
     const empresa = await obterEmpresa(companyId);
     return NextResponse.json({
       success: true,
@@ -22,7 +22,7 @@ export async function GET(request: Request) {
 
 export async function PUT(request: Request) {
   try {
-    const companyId = await requireCompanyMembership(request);
+    const companyId = await requireCompanyId(request, 'settings.manage');
     const body = await request.json();
     const validatedData = empresaSchema.parse(body);
 
@@ -33,6 +33,9 @@ export async function PUT(request: Request) {
       telefone: validatedData.telefone,
       email: validatedData.email,
       logoUrl: validatedData.logoUrl || undefined,
+      modeloDocumento: (validatedData.modeloDocumento as any) || undefined,
+      corPrimaria: validatedData.corPrimaria || undefined,
+      contaBancaria: validatedData.contaBancaria || undefined,
       softwareNome: validatedData.softwareNome || undefined,
       softwareCertificacaoNumero: validatedData.softwareCertificacaoNumero || undefined,
     });
@@ -47,7 +50,7 @@ export async function PUT(request: Request) {
     }
     return NextResponse.json(
       { success: false, error: normalizarErro(error).mensagem || "Erro ao atualizar empresa" },
-      { status: 500 }
+      { status: normalizarErro(error).status || 500 }
     );
   }
 }

@@ -1,15 +1,17 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Despesa } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { Menu as MenuPrimitive } from "@base-ui/react/menu";
-import { Wallet, MoreVertical, Pencil, Trash2, ChevronLeft, ChevronRight } from "lucide-react";
+import { Wallet, MoreVertical, Pencil, Trash2, ChevronLeft, ChevronRight, ChevronDown } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { formatAOA, formatData } from "@/lib/formatters";
 import { useAppStore } from "@/lib/store";
 import { DespesaDrawer } from "./despesa-drawer";
+import { format } from "date-fns";
+import { pt } from "date-fns/locale";
 
 interface DespesaTableProps {
   despesas: Despesa[];
@@ -36,6 +38,28 @@ export function DespesaTable({
   const store = useAppStore();
   const [selectedDespesa, setSelectedDespesa] = useState<Despesa | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
+  // Transição suave drawer → form: o form só abre quando a animação
+  // de saída do drawer termina (300ms), evitando backdrops sobrepostos.
+  const editTimer = useRef<number | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (editTimer.current !== null) {
+        window.clearTimeout(editTimer.current);
+      }
+    };
+  }, []);
+
+  const handleEditFromDrawer = (id: string) => {
+    setSelectedDespesa(null);
+    if (editTimer.current !== null) {
+      window.clearTimeout(editTimer.current);
+    }
+    editTimer.current = window.setTimeout(() => {
+      editTimer.current = null;
+      onEdit(id);
+    }, 300);
+  };
 
   const totalPages = Math.ceil(despesas.length / itemsPerPage) || 1;
   const safePage = Math.min(Math.max(1, currentPage), totalPages);
@@ -43,6 +67,18 @@ export function DespesaTable({
   const startIndex = (safePage - 1) * itemsPerPage;
   const endIndex = Math.min(startIndex + itemsPerPage, despesas.length);
   const currentDespesas = despesas.slice(startIndex, endIndex);
+
+  // Todos os hooks antes de qualquer return antecipado (Rules of Hooks)
+  const despesasPorCategoria = useMemo(() => {
+    const grupos: Record<string, { despesas: Despesa[]; total: number }> = {};
+    for (const d of despesas) {
+      const cat = d.categoria || "Sem categoria";
+      if (!grupos[cat]) grupos[cat] = { despesas: [], total: 0 };
+      grupos[cat].despesas.push(d);
+      grupos[cat].total += Number(d.total);
+    }
+    return grupos;
+  }, [despesas]);
 
   if (isSearching) {
     return (
@@ -57,30 +93,166 @@ export function DespesaTable({
 
   if (despesas.length === 0) {
     return (
-      <div className="p-12 text-center space-y-3">
-        <div className="flex justify-center">
-          <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center">
-            <Wallet className="w-5 h-5 text-gray-400" />
+      <>
+        {/* Mobile empty state */}
+        <div className="sm:hidden p-12 text-center space-y-3">
+          <div className="flex justify-center">
+            <div className="w-12 h-12 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
+              <Wallet className="w-5 h-5 text-slate-400" />
+            </div>
           </div>
+          {hasQuery ? (
+            <>
+              <p className="text-sm font-medium text-slate-600 dark:text-slate-300">Sem resultados</p>
+              <p className="text-xs text-slate-400">Tente pesquisar por outro termo ou categoria.</p>
+            </>
+          ) : (
+            <>
+              <p className="text-sm font-medium text-slate-600 dark:text-slate-300">Nenhuma despesa registada</p>
+              <p className="text-xs text-slate-400">Clique em &quot;+&quot; para começar.</p>
+            </>
+          )}
         </div>
-        {hasQuery ? (
-          <>
-            <p className="text-sm font-medium text-gray-600">Sem resultados</p>
-            <p className="text-xs text-gray-400">Tente pesquisar por outro termo ou categoria.</p>
-          </>
-        ) : (
-          <>
-            <p className="text-sm font-medium text-gray-600">Nenhuma despesa registada</p>
-            <p className="text-xs text-gray-400">Clique em &quot;Nova Despesa&quot; para começar.</p>
-          </>
-        )}
-      </div>
+
+        {/* Desktop empty state */}
+        <div className="hidden sm:block p-12 text-center space-y-3">
+          <div className="flex justify-center">
+            <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center">
+              <Wallet className="w-5 h-5 text-gray-400" />
+            </div>
+          </div>
+          {hasQuery ? (
+            <>
+              <p className="text-sm font-medium text-gray-600">Sem resultados</p>
+              <p className="text-xs text-gray-400">Tente pesquisar por outro termo ou categoria.</p>
+            </>
+          ) : (
+            <>
+              <p className="text-sm font-medium text-gray-600">Nenhuma despesa registada</p>
+              <p className="text-xs text-gray-400">Clique em &quot;Nova Despesa&quot; para começar.</p>
+            </>
+          )}
+        </div>
+      </>
     );
   }
 
   return (
     <>
-      <div className="overflow-x-auto">
+      {/* ═══════════════════════════════════════════════════════════════
+          MOBILE VIEW — Category Grouped Cards
+          ═══════════════════════════════════════════════════════════════ */}
+      <div className="sm:hidden">
+        {Object.entries(despesasPorCategoria).map(([categoria, grupo], groupIdx) => (
+          <div key={categoria}>
+            {/* Category Group Header */}
+            <div className="px-4 pt-3 pb-1.5">
+              <p className="text-[10px] font-[700] uppercase tracking-[0.8px] text-slate-400 dark:text-slate-500">
+                {categoria} — {grupo.despesas.length} {grupo.despesas.length === 1 ? "despesa" : "despesas"} · {formatAOA(grupo.total)}
+              </p>
+            </div>
+
+            {/* Cards in this category */}
+            {grupo.despesas.map((despesa, cardIdx) => {
+              const fornecedor = despesa.fornecedorId ? store.getFornecedorPorId(despesa.fornecedorId) : undefined;
+              return (
+                <div
+                  key={despesa.id}
+                  onClick={() => setSelectedDespesa(despesa)}
+                  className={cn(
+                    "mx-4 mb-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[12px] p-3.5 cursor-pointer transition-all active:scale-[0.98]",
+                    despesa.estado === "Paga"
+                      ? "border-l-[3px] border-l-teal-500"
+                      : "border-l-[3px] border-l-amber-500"
+                  )}
+                  style={{ animationDelay: `${(groupIdx * 3 + cardIdx) * 30}ms` }}
+                >
+                  {/* Badges */}
+                  <div className="flex items-center gap-1.5 mb-1.5">
+                    <Badge className={cn(
+                      "text-[9px] font-[700] px-1.5 py-0.5",
+                      despesa.estado === "Paga"
+                        ? "bg-teal-50 text-teal-700 dark:bg-teal-950/60 dark:text-teal-400 border border-teal-200 dark:border-teal-800"
+                        : "bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-400 border border-amber-200 dark:border-amber-800"
+                    )}>
+                      {despesa.estado}
+                    </Badge>
+                    <Badge className="text-[9px] font-[700] px-1.5 py-0.5 bg-violet-50 text-violet-700 dark:bg-violet-950/60 dark:text-violet-400 border border-violet-200 dark:border-violet-800">
+                      {despesa.categoria}
+                    </Badge>
+                  </div>
+
+                  {/* Description */}
+                  <p className="text-[14px] font-[600] text-slate-900 dark:text-white truncate">
+                    {despesa.descricao}
+                  </p>
+
+                  {/* Meta line */}
+                  <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">
+                    {fornecedor?.nome || "Sem fornecedor"} · {formatData(despesa.data)}
+                  </p>
+
+                  {/* Amount + actions */}
+                  <div className="flex items-center justify-between mt-2.5">
+                    <div>
+                      <p className="text-[15px] font-[800] text-slate-900 dark:text-white">
+                        {formatAOA(despesa.total)}
+                      </p>
+                      <p className="text-[9px] text-slate-400 dark:text-slate-500">
+                        {despesa.formaPagamento}
+                      </p>
+                    </div>
+                    <div className="flex gap-1.5">
+                      <button
+                        onClick={(e) => { e.stopPropagation(); onEdit(despesa.id); }}
+                        className="w-8 h-8 rounded-[8px] bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 flex items-center justify-center"
+                      >
+                        <Pencil size={14} />
+                      </button>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); onDelete(despesa.id); }}
+                        className="w-8 h-8 rounded-[8px] bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-400 flex items-center justify-center"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        ))}
+
+        {/* Mobile Pagination */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between px-4 py-3">
+            <span className="text-[11px] text-slate-500 dark:text-slate-400">
+              Página {safePage} de {totalPages}
+            </span>
+            <div className="flex items-center gap-1.5">
+              <button
+                onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+                disabled={safePage === 1}
+                className="w-8 h-8 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 disabled:opacity-40 flex items-center justify-center"
+              >
+                <ChevronLeft size={14} />
+              </button>
+              <button
+                onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+                disabled={safePage === totalPages}
+                className="w-8 h-8 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 disabled:opacity-40 flex items-center justify-center"
+              >
+                <ChevronRight size={14} />
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* ═══════════════════════════════════════════════════════════════
+          DESKTOP VIEW — Table (unchanged)
+          ═══════════════════════════════════════════════════════════════ */}
+      <div className="hidden sm:block overflow-x-auto">
         <Table>
           <TableHeader className="bg-blue-600 text-white">
             <TableRow className="border-b border-blue-700">
@@ -224,7 +396,7 @@ export function DespesaTable({
       </div>
 
       {/* Drawer de detalhes da despesa */}
-      <DespesaDrawer despesa={selectedDespesa} onClose={() => setSelectedDespesa(null)} onEdit={(id) => { setSelectedDespesa(null); onEdit(id); }} />
+      <DespesaDrawer despesa={selectedDespesa} onClose={() => setSelectedDespesa(null)} onEdit={handleEditFromDrawer} />
     </>
   );
 }

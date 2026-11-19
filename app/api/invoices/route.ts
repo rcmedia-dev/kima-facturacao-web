@@ -1,7 +1,7 @@
 import { normalizarErro } from "@/lib/utils";
 import { NextResponse } from "next/server";
 import { db } from "@/db/client";
-import { obterDocumentos, criarDocumento, obterSeriePredefinida, obterEmpresa } from "@/db/queries";
+import { obterDocumentos, criarDocumento, obterSeriePredefinida, obterEmpresa, listarDocumentosLeve } from "@/db/queries";
 import { faturaLinhaSchema } from "@/lib/schemas";
 import { gerarHashEncadeado, construirPayloadQR, assinarDocumentoJWS } from "@/lib/crypto-engine";
 import {
@@ -12,7 +12,7 @@ import {
 } from "@/lib/queries-agt-fase1";
 import { usuarioAtual } from "@/lib/session";
 import { z } from "zod";
-import { requireCompanyMembership } from "@/lib/company";
+import { requireCompanyId } from "@/lib/company";
 import { SOFTWARE_NOME } from "@/lib/constants";
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -60,19 +60,22 @@ async function proximoNumero(companyId: string, tipo: string, serie: string): Pr
 
 export async function GET(request: Request) {
   try {
-    const companyId = await requireCompanyMembership(request);
+    const companyId = await requireCompanyId(request, 'invoices.view');
     const { searchParams } = new URL(request.url);
     const tipo = searchParams.get("tipo") || undefined;
     const status = searchParams.get("status");
     const dataInicioStr = searchParams.get("dataInicio");
     const dataFimStr = searchParams.get("dataFim");
     const page = parseInt(searchParams.get("page") || "1", 10);
-    const limit = searchParams.has("limit") ? parseInt(searchParams.get("limit")!, 10) : 5000;
+    const limit = searchParams.has("limit") ? Math.min(parseInt(searchParams.get("limit")!, 10), 200) : 50;
 
-    let documentos = await obterDocumentos(companyId, tipo);
+    // Paginação real no banco (em vez de buscar tudo e paginar em memória)
+    const offset = (page - 1) * limit;
+    const { documentos: documentosBase, total } = await listarDocumentosLeve(companyId, { tipo, limit, offset });
+    let documentos = documentosBase;
 
     if (status && status !== "Todos") {
-      documentos = documentos.filter((d) => d.status.toLowerCase() === status.toLowerCase());
+      documentos = documentos.filter((d) => String(d.status ?? '').toLowerCase() === status.toLowerCase());
     }
     if (dataInicioStr) {
       const dataInicio = new Date(dataInicioStr);
@@ -88,14 +91,12 @@ export async function GET(request: Request) {
       (a, b) => new Date(b.dataEmissao).getTime() - new Date(a.dataEmissao).getTime()
     );
 
-    const totalItems = documentos.length;
+    const totalItems = total;
     const totalPages = Math.ceil(totalItems / limit) || 1;
-    const startIndex = (page - 1) * limit;
-    const paginated = documentos.slice(startIndex, startIndex + limit);
 
     return NextResponse.json({
       success: true,
-      data: paginated,
+      data: documentos,
       pagination: { totalItems, totalPages, currentPage: page, itemsPerPage: limit },
     });
   } catch (error: unknown) {
@@ -108,7 +109,7 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const companyId = await requireCompanyMembership(request);
+    const companyId = await requireCompanyId(request, 'invoices.create');
     const body = await request.json();
     const validatedData = criarDocumentoSchema.parse(body);
 
@@ -370,8 +371,8 @@ export async function POST(request: Request) {
       try {
         const { enfileirarDocumentoAGT } = await import('@/lib/queries-agt-fase2');
         await enfileirarDocumentoAGT(companyId, novoDocumento.id);
-      } catch (e: any) {
-        console.warn('FASE 2 — não foi possível enfileirar documento AGT:', e?.message || e);
+      } catch (e: unknown) {
+        console.warn('FASE 2 — não foi possível enfileirar documento AGT:', e instanceof Error ? e.message : String(e));
       }
     }
 
@@ -405,4 +406,4 @@ export async function POST(request: Request) {
       { status: httpStatus }
     );
   }
-}
+}

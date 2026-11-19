@@ -133,6 +133,7 @@ function normalizarDocumento(d: DocumentoRaw): Documento {
 }
 
 interface AppStore {
+  _loaded: boolean;
   // Clientes
   clientes: Cliente[];
   addCliente: (cliente: Omit<Cliente, "id" | "dataCriacao" | "ultimaAtualizacao">) => Promise<Cliente>;
@@ -189,6 +190,7 @@ interface AppStore {
 
   // Gestão de dados (remoto via API)
   loadFromStorage: () => Promise<void>;
+  loadArtigos: () => Promise<void>;
   loadAll: () => Promise<void>;
   seedMockData: () => void;
   clearAllData: () => void;
@@ -203,6 +205,7 @@ interface AppStore {
 }
 
 export const useAppStore = create<AppStore>((set, get) => ({
+  _loaded: false,
   clientes: [],
   artigos: [],
   fornecedores: [],
@@ -471,6 +474,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
 
   clearAllData: () => {
     set({
+      _loaded: false,
       empresa: null,
       clientes: [],
       artigos: [],
@@ -484,25 +488,57 @@ export const useAppStore = create<AppStore>((set, get) => ({
 
   loadFromStorage: () => get().loadAll(),
 
-  loadAll: async () => {
+  loadArtigos: async () => {
     try {
-      const [clientes, artigos, fornecedores, despesas, documentos, empresa] =
+      const result = await apiFetch<{ data: ArtigoRaw[]; total: number }>('/api/products?limit=200');
+      set({ artigos: (result.data || []).map(normalizarArtigo) });
+    } catch (error) {
+      console.error('Erro ao carregar artigos da API:', error);
+    }
+  },
+
+  loadAll: async () => {
+    if (get()._loaded) return;
+    try {
+      const permissionsResponse = await fetch("/api/auth/permissions", {
+        cache: "no-store",
+      });
+      const permissionsResult = await permissionsResponse.json();
+      if (!permissionsResponse.ok) {
+        throw new Error(
+          permissionsResult.error || "Não foi possível carregar as permissões."
+        );
+      }
+      const permissions = new Set<string>(permissionsResult.permissions || []);
+
+      const [clientesRes, artigosRes, fornecedoresRes, despesasRes, documentosRes, empresa] =
         await Promise.all([
-          apiFetch<ClienteRaw[]>("/api/clients"),
-          apiFetch<ArtigoRaw[]>("/api/products"),
-          apiFetch<FornecedorRaw[]>("/api/suppliers"),
-          apiFetch<DespesaRaw[]>("/api/expenses"),
-          apiFetch<DocumentoRaw[]>("/api/invoices"),
+          permissions.has("customers.view")
+            ? apiFetch<{ data: ClienteRaw[]; total: number }>("/api/clients?limit=200")
+            : Promise.resolve({ data: [], total: 0 }),
+          permissions.has("articles.view")
+            ? apiFetch<{ data: ArtigoRaw[]; total: number }>("/api/products?limit=200")
+            : Promise.resolve({ data: [], total: 0 }),
+          permissions.has("suppliers.view")
+            ? apiFetch<{ data: FornecedorRaw[]; total: number }>("/api/suppliers?limit=200")
+            : Promise.resolve({ data: [], total: 0 }),
+          permissions.has("expenses.view")
+            ? apiFetch<{ data: DespesaRaw[]; total: number }>("/api/expenses?limit=200")
+            : Promise.resolve({ data: [], total: 0 }),
+          permissions.has("invoices.view")
+            ? apiFetch<{ data: DocumentoRaw[]; total: number }>("/api/invoices?limit=50")
+            : Promise.resolve({ data: [], total: 0 }),
           apiFetch<ConfiguracaoEmpresa | null>("/api/company"),
         ]);
 
       set({
-        clientes: (clientes || []).map(normalizarCliente),
-        artigos: (artigos || []).map(normalizarArtigo),
-        fornecedores: (fornecedores || []).map(normalizarFornecedor),
-        despesas: (despesas || []).map(normalizarDespesa),
-        documentos: (documentos || []).map(normalizarDocumento),
+        clientes: (clientesRes.data || []).map(normalizarCliente),
+        artigos: (artigosRes.data || []).map(normalizarArtigo),
+        fornecedores: (fornecedoresRes.data || []).map(normalizarFornecedor),
+        despesas: (despesasRes.data || []).map(normalizarDespesa),
+        documentos: (documentosRes.data || []).map(normalizarDocumento),
         empresa: empresa || null,
+        _loaded: true,
       });
     } catch (error) {
       console.error("Erro ao carregar dados da API:", error);

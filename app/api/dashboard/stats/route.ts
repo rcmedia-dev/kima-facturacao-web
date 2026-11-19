@@ -1,41 +1,59 @@
 import { normalizarErro } from "@/lib/utils";
 import { NextResponse } from "next/server";
-import { obterDocumentos, obterClientes } from "@/db/queries";
+import { db } from "@/db/client";
 import { requireCompanyId } from "@/lib/company";
 
 export async function GET(request: Request) {
   try {
-    const companyId = requireCompanyId(request);
-    const documentos = await obterDocumentos(companyId);
-    const clientes = await obterClientes(companyId);
+    const companyId = await requireCompanyId(request, 'dashboard.view');
 
     const agora = new Date();
     const inicioMes = new Date(agora.getFullYear(), agora.getMonth(), 1);
     const fimMes = new Date(agora.getFullYear(), agora.getMonth() + 1, 0, 23, 59, 59, 999);
 
-    const faturasValidas = documentos.filter((d) => d.status !== "Cancelado");
+    const [faturadoMesResult, pendentesResult, totalResult, clientesResult, ultimasResult] = await Promise.all([
+      db
+        .from('documentos')
+        .select('total')
+        .eq('company_id', companyId)
+        .neq('status', 'Cancelado')
+        .gte('data_emissao', inicioMes.toISOString())
+        .lte('data_emissao', fimMes.toISOString())
+        .limit(500),
+      db
+        .from('documentos')
+        .select('id', { count: 'exact', head: true })
+        .eq('company_id', companyId)
+        .eq('status', 'Pendente'),
+      db
+        .from('documentos')
+        .select('id', { count: 'exact', head: true })
+        .eq('company_id', companyId)
+        .neq('status', 'Cancelado'),
+      db
+        .from('clientes')
+        .select('id', { count: 'exact', head: true })
+        .eq('company_id', companyId),
+      db
+        .from('documentos')
+        .select('id, tipo, serie, numero, numero_completo, cliente_id, data_emissao, status, total, created_at')
+        .eq('company_id', companyId)
+        .neq('status', 'Cancelado')
+        .order('created_at', { ascending: false })
+        .limit(6),
+    ]);
 
-    const faturasEsteMes = faturasValidas.filter((f) => {
-      const dataEmissao = new Date(f.dataEmissao);
-      return dataEmissao >= inicioMes && dataEmissao <= fimMes;
-    });
-
-    const totalFaturadoMes = faturasEsteMes.reduce((sum, f) => sum + Number(f.total), 0);
-    const faturasPendentes = faturasValidas.filter((f) => f.status === "Pendente");
-
-    const ultimasFaturas = [...faturasValidas]
-      .sort((a, b) => new Date(b.dataEmissao).getTime() - new Date(a.dataEmissao).getTime())
-      .slice(0, 6);
+    const totalFaturadoMes = (faturadoMesResult.data || []).reduce((sum: number, f: any) => sum + Number(f.total), 0);
 
     return NextResponse.json({
       success: true,
       data: {
         totalFaturadoMes,
-        faturasEsteMesCount: faturasEsteMes.length,
-        faturasPendentesCount: faturasPendentes.length,
-        totalClientesCount: clientes.length,
-        totalFaturasCount: faturasValidas.length,
-        ultimasFaturas,
+        faturasEsteMesCount: (faturadoMesResult.data || []).length,
+        faturasPendentesCount: pendentesResult.count ?? 0,
+        totalClientesCount: clientesResult.count ?? 0,
+        totalFaturasCount: totalResult.count ?? 0,
+        ultimasFaturas: ultimasResult.data || [],
       },
     });
   } catch (error: unknown) {

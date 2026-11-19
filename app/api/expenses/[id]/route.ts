@@ -10,7 +10,7 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const companyId = requireCompanyId(request);
+    const companyId = await requireCompanyId(request, 'expenses.view');
     const { id } = await params;
     const despesa = await obterDespesaPorId(companyId, id);
 
@@ -35,7 +35,7 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const companyId = requireCompanyId(request);
+    const companyId = await requireCompanyId(request, 'expenses.manage');
     const { id } = await params;
     const body = await request.json();
     const validatedData = despesaSchemaInput.partial().parse(body);
@@ -65,7 +65,7 @@ export async function PUT(
     }
     return NextResponse.json(
       { success: false, error: normalizarErro(error).mensagem || "Erro ao atualizar despesa" },
-      { status: 500 }
+      { status: normalizarErro(error).status || 500 }
     );
   }
 }
@@ -75,7 +75,7 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const companyId = requireCompanyId(request);
+    const companyId = await requireCompanyId(request, 'expenses.manage');
     const { id } = await params;
     await deletarDespesa(companyId, id);
 
@@ -86,7 +86,7 @@ export async function DELETE(
   } catch (error: unknown) {
     return NextResponse.json(
       { success: false, error: normalizarErro(error).mensagem || "Erro ao deletar despesa" },
-      { status: 500 }
+      { status: normalizarErro(error).status || 500 }
     );
   }
 }

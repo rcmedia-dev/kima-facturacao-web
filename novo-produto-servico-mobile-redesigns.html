@@ -1,0 +1,951 @@
+<!DOCTYPE html>
+<html lang="pt">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>Kima Facturação - Novo Produto / Novo Serviço</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+    <style>
+      * { box-sizing: border-box; }
+
+      html, body {
+        margin: 0;
+        padding: 0;
+        font-family: 'Inter', sans-serif;
+        background: linear-gradient(180deg, #edf3fb 0%, #f5f7ff 100%);
+        color: #0f172a;
+      }
+
+      body {
+        min-height: 100vh;
+        display: flex;
+        justify-content: center;
+        align-items: flex-start;
+        padding: 20px 0 110px;
+      }
+
+      .phone-frame {
+        position: relative;
+        width: min(420px, calc(100vw - 20px));
+        min-height: 100vh;
+        border-radius: 30px;
+        overflow: hidden;
+        border: 1px solid rgba(148, 163, 184, 0.2);
+        box-shadow: 0 24px 60px rgba(15, 23, 42, 0.08);
+        background: linear-gradient(180deg, #f8fafc 0%, #eef4ff 100%);
+      }
+
+      .screen {
+        display: none;
+        min-height: 100vh;
+        position: relative;
+      }
+
+      .screen.active {
+        display: block;
+      }
+
+      .page-bg {
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0.4) 0%, rgba(237, 244, 255, 0.92) 100%);
+      }
+
+      .drawer-shell {
+        position: relative;
+        z-index: 1;
+        width: 100%;
+        min-height: 100vh;
+        background: #ffffff;
+        border-radius: 32px 32px 0 0;
+        overflow: hidden;
+        box-shadow: 0 -18px 46px rgba(15, 23, 42, 0.08);
+      }
+
+      .topbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 14px 16px;
+        background: rgba(255,255,255,0.96);
+        border-bottom: 1px solid #edf2f7;
+      }
+
+      .icon-btn {
+        width: 38px;
+        height: 38px;
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        background: #f8fafc;
+        color: #475569;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 18px;
+        font-weight: 700;
+        cursor: pointer;
+      }
+
+      .title-label {
+        font-size: 11px;
+        font-weight: 800;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: #64748b;
+      }
+
+      .hero {
+        padding: 18px 16px 22px;
+        color: #ffffff;
+      }
+
+      .hero-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+      }
+
+      .hero-mark {
+        width: 54px;
+        height: 54px;
+        border-radius: 18px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 22px;
+        font-weight: 900;
+        background: rgba(255,255,255,0.12);
+        border: 1px solid rgba(255,255,255,0.18);
+      }
+
+      .hero-name {
+        min-width: 0;
+        flex: 1;
+      }
+
+      .hero-name h1 {
+        margin: 0;
+        font-size: 22px;
+        line-height: 1.2;
+        font-weight: 900;
+        letter-spacing: -0.05em;
+      }
+
+      .chip-row {
+        margin-top: 12px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+      }
+
+      .chip {
+        padding: 6px 9px;
+        border-radius: 999px;
+        font-size: 10px;
+        font-weight: 800;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        background: rgba(255,255,255,0.12);
+        border: 1px solid rgba(255,255,255,0.16);
+      }
+
+      .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+        margin: -10px 14px 0;
+        position: relative;
+        z-index: 2;
+      }
+
+      .stat-card {
+        background: rgba(255,255,255,0.96);
+        border: 1px solid #e2e8f0;
+        border-radius: 16px;
+        padding: 12px;
+        box-shadow: 0 10px 22px rgba(15, 23, 42, 0.05);
+      }
+
+      .stat-label {
+        font-size: 10px;
+        font-weight: 800;
+        color: #64748b;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+      }
+
+      .stat-value {
+        margin-top: 6px;
+        font-size: 22px;
+        font-weight: 900;
+        letter-spacing: -0.04em;
+        color: #0f172a;
+      }
+
+      .content {
+        padding: 16px 14px 96px;
+      }
+
+      .panel {
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 18px;
+        overflow: hidden;
+      }
+
+      .panel-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 12px 14px;
+        background: #f8fbff;
+        border-bottom: 1px solid #edf2f7;
+      }
+
+      .panel-title {
+        font-size: 11px;
+        font-weight: 800;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: #475569;
+      }
+
+      .toggle-pill {
+        display: inline-flex;
+        align-items: center;
+        padding: 6px 8px;
+        border-radius: 999px;
+        font-size: 9px;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+      }
+
+      .field-list {
+        padding: 14px;
+        display: grid;
+        gap: 12px;
+      }
+
+      .field {
+        display: grid;
+        gap: 6px;
+      }
+
+      .field label {
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        color: #475569;
+      }
+
+      .input, .select, .textarea {
+        width: 100%;
+        border: 1px solid #dfe8f6;
+        background: #f8fbff;
+        border-radius: 12px;
+        padding: 12px 13px;
+        font: inherit;
+        font-size: 14px;
+        color: #0f172a;
+        outline: none;
+        transition: border-color 0.2s ease, box-shadow 0.2s ease;
+      }
+
+      .input:focus, .select:focus, .textarea:focus {
+        border-color: #93c5fd;
+        box-shadow: 0 0 0 3px rgba(59,130,246,0.12);
+      }
+
+      .select {
+        appearance: none;
+        background-image: linear-gradient(45deg, transparent 50%, #64748b 50%), linear-gradient(135deg, #64748b 50%, transparent 50%);
+        background-position: calc(100% - 18px) calc(50% - 3px), calc(100% - 12px) calc(50% - 3px);
+        background-size: 6px 6px, 6px 6px;
+        background-repeat: no-repeat;
+      }
+
+      .textarea {
+        min-height: 90px;
+        resize: vertical;
+      }
+
+      .inline-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+      }
+
+      .segmented {
+        display: flex;
+        gap: 6px;
+        padding: 4px;
+        background: #f1f5f9;
+        border-radius: 12px;
+      }
+
+      .segmented button {
+        flex: 1;
+        border: none;
+        border-radius: 10px;
+        background: transparent;
+        color: #64748b;
+        font: inherit;
+        font-size: 11px;
+        font-weight: 800;
+        padding: 10px 8px;
+        cursor: pointer;
+      }
+
+      .segmented button.active {
+        background: #2563eb;
+        color: white;
+        box-shadow: 0 6px 12px rgba(37,99,235,0.18);
+      }
+
+      .alert {
+        margin-top: 14px;
+        background: #eff6ff;
+        border: 1px solid #bfdbfe;
+        border-radius: 14px;
+        padding: 12px;
+      }
+
+      .alert-top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+      }
+
+      .alert-label {
+        font-size: 10px;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        font-weight: 800;
+        color: #2563eb;
+      }
+
+      .alert-badge {
+        padding: 4px 7px;
+        border-radius: 999px;
+        background: #dbeafe;
+        color: #1d4ed8;
+        font-size: 9px;
+        font-weight: 800;
+      }
+
+      .alert-text {
+        margin-top: 8px;
+        color: #1e3a8a;
+        font-size: 12px;
+        line-height: 1.5;
+      }
+
+      .action-bar {
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        display: flex;
+        gap: 10px;
+        padding: 12px 14px 16px;
+        background: rgba(255,255,255,0.96);
+        backdrop-filter: blur(18px);
+        border-top: 1px solid #e2e8f0;
+      }
+
+      .secondary-btn, .primary-btn {
+        flex: 1;
+        height: 46px;
+        border-radius: 12px;
+        font: inherit;
+        font-size: 14px;
+        font-weight: 700;
+        cursor: pointer;
+      }
+
+      .secondary-btn {
+        border: 1px solid #dfe8f6;
+        background: white;
+        color: #334155;
+      }
+
+      .primary-btn {
+        border: none;
+        background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+        color: white;
+        box-shadow: 0 10px 16px rgba(37,99,235,0.22);
+      }
+
+      .variation-nav {
+        position: fixed;
+        left: 50%;
+        bottom: 0;
+        transform: translateX(-50%);
+        width: min(420px, calc(100vw - 20px));
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 12px 16px;
+        background: rgba(255,255,255,0.92);
+        backdrop-filter: blur(18px);
+        border-top: 1px solid rgba(148,163,184,0.22);
+        z-index: 30;
+      }
+
+      .nav-label {
+        font-size: 12px;
+        font-weight: 800;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: #475569;
+      }
+
+      .dots {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+
+      .dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 999px;
+        background: #dbe3ef;
+        cursor: pointer;
+        transition: all 0.2s ease;
+      }
+
+      .dot.active {
+        width: 24px;
+        background: #2563eb;
+      }
+
+      .next-btn {
+        border: none;
+        border-radius: 10px;
+        background: #2563eb;
+        color: white;
+        padding: 10px 16px;
+        font-size: 13px;
+        font-weight: 700;
+        cursor: pointer;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="phone-frame">
+      <div id="v1" class="screen active">
+        <div class="page-bg"></div>
+        <div class="drawer-shell">
+          <div class="hero" style="background: linear-gradient(135deg, #1d4ed8 0%, #2563eb 52%, #3b82f6 100%);">
+            <div class="hero-header">
+              <button class="icon-btn" style="background: rgba(255,255,255,0.12); border-color: rgba(255,255,255,0.15); color: white;">×</button>
+              <div class="title-label" style="color: rgba(255,255,255,0.8);">Novo</div>
+              <button class="icon-btn" style="background: rgba(255,255,255,0.12); border-color: rgba(255,255,255,0.15); color: white;">?</button>
+            </div>
+
+            <div class="hero-header" style="margin-top: 16px;">
+              <div class="hero-mark">＋</div>
+              <div class="hero-name">
+                <h1>Produto</h1>
+              </div>
+            </div>
+
+            <div class="chip-row">
+              <span class="chip">Ativo</span>
+              <span class="chip">Público</span>
+              <span class="chip">VAT</span>
+            </div>
+          </div>
+
+          <div class="stats-grid">
+            <div class="stat-card">
+              <div class="stat-label">Tipo</div>
+              <div class="stat-value">Produto</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">IVA</div>
+              <div class="stat-value">7%</div>
+            </div>
+          </div>
+
+          <div class="content">
+            <div class="panel">
+              <div class="panel-header">
+                <div class="panel-title">Dados gerais</div>
+                <span class="toggle-pill" style="background: #ecfdf5; border: 1px solid #a7f3d0; color: #059669;">Ativo</span>
+              </div>
+
+              <div class="field-list">
+                <div class="field">
+                  <label>Nome</label>
+                  <input class="input" type="text" value="Cimento CPJ 50kg" />
+                </div>
+
+                <div class="field">
+                  <label>Tipo</label>
+                  <select class="select">
+                    <option selected>Produto</option>
+                    <option>Serviço</option>
+                    <option>Material</option>
+                  </select>
+                </div>
+
+                <div class="inline-grid">
+                  <div class="field">
+                    <label>Unidade</label>
+                    <select class="select">
+                      <option selected>Unidade</option>
+                      <option>Caixa</option>
+                      <option>Kg</option>
+                      <option>Hora</option>
+                    </select>
+                  </div>
+                  <div class="field">
+                    <label>Categoria</label>
+                    <select class="select">
+                      <option selected>Construção</option>
+                      <option>Consultoria</option>
+                      <option>Manutenção</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div class="field">
+                  <label>Preço</label>
+                  <input class="input" type="text" value="4.500 AOA" />
+                </div>
+
+                <div class="field">
+                  <label>Fornecedor</label>
+                  <input class="input" type="text" value="Marex Lda." />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="action-bar">
+            <button class="secondary-btn" type="button">Cancelar</button>
+            <button class="primary-btn" type="button">Guardar</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="v2" class="screen">
+        <div class="page-bg"></div>
+        <div class="drawer-shell" style="background: #f4f8ff;">
+          <div class="hero" style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 42%, #334155 100%);">
+            <div class="hero-header">
+              <button class="icon-btn" style="background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.12); color: white;">←</button>
+              <div class="title-label" style="color: rgba(255,255,255,0.8);">Novo</div>
+              <button class="icon-btn" style="background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.12); color: white;">⋯</button>
+            </div>
+
+            <div class="hero-header" style="margin-top: 16px; gap: 14px; align-items: flex-start;">
+              <div class="hero-mark" style="background: rgba(96,165,250,0.15);">✦</div>
+              <div class="hero-name">
+                <h1>Serviço</h1>
+                <div class="chip-row" style="margin-top: 8px;">
+                  <span class="chip">Consulta</span>
+                  <span class="chip">Taxa</span>
+                  <span class="chip">Faturável</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="stats-grid" style="margin-top: -4px;">
+            <div class="stat-card">
+              <div class="stat-label">Preço</div>
+              <div class="stat-value">12.500</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">Tempo</div>
+              <div class="stat-value">2h</div>
+            </div>
+          </div>
+
+          <div class="content">
+            <div class="panel">
+              <div class="panel-header">
+                <div class="panel-title">Descrição</div>
+                <span class="toggle-pill" style="background: #ecfdf5; border: 1px solid #a7f3d0; color: #059669;">Disponível</span>
+              </div>
+
+              <div class="field-list">
+                <div class="field">
+                  <label>Nome</label>
+                  <input class="input" type="text" value="Consultoria técnica" />
+                </div>
+
+                <div class="field">
+                  <label>Tipo</label>
+                  <div class="segmented">
+                    <button type="button" class="active">Serviço</button>
+                    <button type="button">Produto</button>
+                  </div>
+                </div>
+
+                <div class="field">
+                  <label>Categoria</label>
+                  <select class="select">
+                    <option selected>Consultoria</option>
+                    <option>Construção</option>
+                    <option>Manutenção</option>
+                  </select>
+                </div>
+
+                <div class="inline-grid">
+                  <div class="field">
+                    <label>Preço</label>
+                    <input class="input" type="text" value="12.500" />
+                  </div>
+                  <div class="field">
+                    <label>IVA</label>
+                    <select class="select">
+                      <option selected>14%</option>
+                      <option>7%</option>
+                      <option>Isento</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div class="field">
+                  <label>Observações</label>
+                  <textarea class="textarea">Atendimento presencial e acompanhamento de obra.</textarea>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="action-bar">
+            <button class="secondary-btn" type="button">Guardar e sair</button>
+            <button class="primary-btn" type="button">Continuar</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="v3" class="screen">
+        <div class="page-bg"></div>
+        <div class="drawer-shell" style="background: linear-gradient(180deg, #f8fbff 0%, #eff6ff 100%);">
+          <div class="topbar" style="background: rgba(255,255,255,0.92);">
+            <button class="icon-btn" aria-label="Fechar">×</button>
+            <div class="title-label">Adicionar</div>
+            <button class="icon-btn" aria-label="Ajuda">?</button>
+          </div>
+
+          <div class="content" style="padding-top: 18px;">
+            <div style="background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%); border: 1px solid #bfdbfe; border-radius: 20px; padding: 18px;">
+              <div style="font-size: 10px; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; color: #2563eb;">Novo item</div>
+              <div style="margin-top: 8px; font-size: 26px; font-weight: 900; letter-spacing: -0.05em; color: #0f172a;">Produto / Serviço</div>
+            </div>
+
+            <div class="panel" style="margin-top: 14px;">
+              <div class="panel-header">
+                <div class="panel-title">Detalhes</div>
+                <span class="toggle-pill" style="background: #ecfdf5; border: 1px solid #a7f3d0; color: #059669;">Ativo</span>
+              </div>
+
+              <div class="field-list">
+                <div class="field">
+                  <label>Nome do item</label>
+                  <input class="input" type="text" value="Pintura interior" />
+                </div>
+
+                <div class="inline-grid">
+                  <div class="field">
+                    <label>Tipo</label>
+                    <select class="select">
+                      <option selected>Produto</option>
+                      <option>Serviço</option>
+                    </select>
+                  </div>
+                  <div class="field">
+                    <label>Unidade</label>
+                    <select class="select">
+                      <option selected>Litro</option>
+                      <option>Unidade</option>
+                      <option>Hora</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div class="inline-grid">
+                  <div class="field">
+                    <label>Preço</label>
+                    <input class="input" type="text" value="1.300" />
+                  </div>
+                  <div class="field">
+                    <label>IVA</label>
+                    <select class="select">
+                      <option selected>7%</option>
+                      <option>14%</option>
+                      <option>Isento</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div class="field">
+                  <label>Observações</label>
+                  <textarea class="textarea">Pintura de acabamento com garantia de 12 meses.</textarea>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="action-bar">
+            <button class="secondary-btn" type="button">Cancelar</button>
+            <button class="primary-btn" type="button">Salvar</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="v4" class="screen">
+        <div class="page-bg"></div>
+        <div class="drawer-shell" style="background: #fff;">
+          <div class="topbar">
+            <button class="icon-btn">×</button>
+            <div class="title-label">Novo</div>
+            <button class="icon-btn">✓</button>
+          </div>
+
+          <div style="padding: 0 14px 12px;">
+            <div class="segmented" style="margin-top: 6px;">
+              <button type="button" class="active">Produto</button>
+              <button type="button">Serviço</button>
+            </div>
+          </div>
+
+          <div class="content" style="padding-top: 0;">
+            <div style="display: grid; grid-template-columns: 1.2fr 1fr; gap: 10px;">
+              <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 14px; padding: 12px;">
+                <div style="font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; font-weight: 800; color: #2563eb;">Preço</div>
+                <div style="margin-top: 6px; font-size: 24px; font-weight: 900; letter-spacing: -0.05em; color: #0f172a;">4.500</div>
+              </div>
+              <div style="background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 14px; padding: 12px;">
+                <div style="font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; font-weight: 800; color: #059669;">Status</div>
+                <div style="margin-top: 6px; font-size: 20px; font-weight: 900; color: #0f172a;">Ativo</div>
+              </div>
+            </div>
+
+            <div class="panel" style="margin-top: 14px;">
+              <div class="panel-header">
+                <div class="panel-title">Ficha</div>
+              </div>
+
+              <div class="field-list">
+                <div class="field">
+                  <label>Nome</label>
+                  <input class="input" type="text" value="Argamassa tipo A" />
+                </div>
+
+                <div class="inline-grid">
+                  <div class="field">
+                    <label>Categoria</label>
+                    <select class="select">
+                      <option selected>Construção</option>
+                      <option>Consultoria</option>
+                    </select>
+                  </div>
+                  <div class="field">
+                    <label>Unidade</label>
+                    <select class="select">
+                      <option selected>Unidade</option>
+                      <option>Saco</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div class="field">
+                  <label>Fornecedor</label>
+                  <input class="input" type="text" value="Marex Lda." />
+                </div>
+
+                <div class="field">
+                  <label>Observações</label>
+                  <textarea class="textarea">Material recomendado para reforço estrutural.</textarea>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="action-bar">
+            <button class="secondary-btn" type="button">Cancelar</button>
+            <button class="primary-btn" type="button">Guardar</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="v5" class="screen">
+        <div class="page-bg" style="background: rgba(15, 23, 42, 0.78);"></div>
+        <div class="drawer-shell" style="background: #111827; border: 1px solid rgba(148,163,184,0.18);">
+          <div class="topbar" style="background: #111827; border-color: #1f2937;">
+            <button class="icon-btn" style="background: #1f2937; border-color: #2a3348; color: #e2e8f0;">×</button>
+            <div class="title-label" style="color: #cbd5e1;">Novo</div>
+            <button class="icon-btn" style="background: #1f2937; border-color: #2a3348; color: #e2e8f0;">?</button>
+          </div>
+
+          <div class="content" style="padding-top: 18px;">
+            <div style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); border: 1px solid #2a3348; border-radius: 18px; padding: 16px;">
+              <div style="font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: #94a3b8; font-weight: 800;">Adicionar item</div>
+              <div style="margin-top: 8px; font-size: 24px; font-weight: 900; letter-spacing: -0.05em; color: #f8fafc;">Produto & Serviço</div>
+            </div>
+
+            <div class="panel" style="margin-top: 14px; background: transparent; border-color: #2a3348;">
+              <div class="panel-header" style="background: #161d2d; border-color: #2a3348;">
+                <div class="panel-title" style="color: #cbd5e1;">Dados</div>
+                <span class="toggle-pill" style="background: rgba(16,185,129,0.12); border: 1px solid rgba(110,231,183,0.2); color: #6ee7b7;">Ativo</span>
+              </div>
+
+              <div class="field-list" style="background: #161d2d;">
+                <div class="field">
+                  <label style="color: #cbd5e1;">Nome</label>
+                  <input class="input" type="text" value="Manutenção predial" style="background: #0f172a; border-color: #2a3348; color: #f8fafc;" />
+                </div>
+
+                <div class="inline-grid">
+                  <div class="field">
+                    <label style="color: #cbd5e1;">Tipo</label>
+                    <select class="select" style="background-color: #0f172a; border-color: #2a3348; color: #f8fafc;">
+                      <option selected>Serviço</option>
+                      <option>Produto</option>
+                    </select>
+                  </div>
+                  <div class="field">
+                    <label style="color: #cbd5e1;">IVA</label>
+                    <select class="select" style="background-color: #0f172a; border-color: #2a3348; color: #f8fafc;">
+                      <option selected>14%</option>
+                      <option>7%</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div class="inline-grid">
+                  <div class="field">
+                    <label style="color: #cbd5e1;">Preço</label>
+                    <input class="input" type="text" value="9.900" style="background: #0f172a; border-color: #2a3348; color: #f8fafc;" />
+                  </div>
+                  <div class="field">
+                    <label style="color: #cbd5e1;">Tempo</label>
+                    <input class="input" type="text" value="4h" style="background: #0f172a; border-color: #2a3348; color: #f8fafc;" />
+                  </div>
+                </div>
+
+                <div class="field">
+                  <label style="color: #cbd5e1;">Notas</label>
+                  <textarea class="textarea" style="background: #0f172a; border-color: #2a3348; color: #f8fafc;">Serviço de manutenção preventiva com relatório final.</textarea>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="action-bar" style="background: rgba(17, 24, 39, 0.96); border-color: #1f2937;">
+            <button class="secondary-btn" style="background: #0f172a; border-color: #2a3348; color: #dbeafe;">Cancelar</button>
+            <button class="primary-btn" type="button">Guardar</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="nav1" class="variation-nav">
+        <span class="nav-label">V1</span>
+        <div class="dots">
+          <div class="dot active" data-index="1"></div>
+          <div class="dot" data-index="2"></div>
+          <div class="dot" data-index="3"></div>
+          <div class="dot" data-index="4"></div>
+          <div class="dot" data-index="5"></div>
+        </div>
+        <button class="next-btn" type="button" onclick="nextVariation()">Next →</button>
+      </div>
+
+      <div id="nav2" class="variation-nav" style="display:none;">
+        <span class="nav-label">V2</span>
+        <div class="dots">
+          <div class="dot" data-index="1"></div>
+          <div class="dot active" data-index="2"></div>
+          <div class="dot" data-index="3"></div>
+          <div class="dot" data-index="4"></div>
+          <div class="dot" data-index="5"></div>
+        </div>
+        <button class="next-btn" type="button" onclick="nextVariation()">Next →</button>
+      </div>
+
+      <div id="nav3" class="variation-nav" style="display:none;">
+        <span class="nav-label">V3</span>
+        <div class="dots">
+          <div class="dot" data-index="1"></div>
+          <div class="dot" data-index="2"></div>
+          <div class="dot active" data-index="3"></div>
+          <div class="dot" data-index="4"></div>
+          <div class="dot" data-index="5"></div>
+        </div>
+        <button class="next-btn" type="button" onclick="nextVariation()">Next →</button>
+      </div>
+
+      <div id="nav4" class="variation-nav" style="display:none;">
+        <span class="nav-label">V4</span>
+        <div class="dots">
+          <div class="dot" data-index="1"></div>
+          <div class="dot" data-index="2"></div>
+          <div class="dot" data-index="3"></div>
+          <div class="dot active" data-index="4"></div>
+          <div class="dot" data-index="5"></div>
+        </div>
+        <button class="next-btn" type="button" onclick="nextVariation()">Next →</button>
+      </div>
+
+      <div id="nav5" class="variation-nav" style="display:none;">
+        <span class="nav-label">V5</span>
+        <div class="dots">
+          <div class="dot" data-index="1"></div>
+          <div class="dot" data-index="2"></div>
+          <div class="dot" data-index="3"></div>
+          <div class="dot" data-index="4"></div>
+          <div class="dot active" data-index="5"></div>
+        </div>
+        <button class="next-btn" type="button" onclick="nextVariation()">Next →</button>
+      </div>
+    </div>
+
+    <script>
+      let currentIndex = 1;
+      const totalVariations = 5;
+
+      function updateScreens() {
+        for (let i = 1; i <= totalVariations; i++) {
+          const screen = document.getElementById('v' + i);
+          const nav = document.getElementById('nav' + i);
+          if (screen) screen.classList.toggle('active', i === currentIndex);
+          if (nav) nav.style.display = i === currentIndex ? 'flex' : 'none';
+        }
+
+        document.querySelectorAll('.dot').forEach((dot) => {
+          dot.classList.toggle('active', Number(dot.dataset.index) === currentIndex);
+        });
+      }
+
+      function goToVariation(index) {
+        if (index >= 1 && index <= totalVariations) {
+          currentIndex = index;
+          updateScreens();
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+      }
+
+      function nextVariation() {
+        const next = currentIndex >= totalVariations ? 1 : currentIndex + 1;
+        goToVariation(next);
+      }
+
+      document.querySelectorAll('.dot').forEach((dot) => {
+        dot.addEventListener('click', () => goToVariation(Number(dot.dataset.index)));
+      });
+    </script>
+  </body>
+</html>

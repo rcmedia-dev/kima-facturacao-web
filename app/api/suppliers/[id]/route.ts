@@ -10,7 +10,7 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const companyId = requireCompanyId(request);
+    const companyId = await requireCompanyId(request, 'suppliers.view');
     const { id } = await params;
     const fornecedor = await obterFornecedorPorId(companyId, id);
 
@@ -35,7 +35,7 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const companyId = requireCompanyId(request);
+    const companyId = await requireCompanyId(request, 'suppliers.manage');
     const { id } = await params;
     const body = await request.json();
     const validatedData = fornecedorSchema.partial().parse(body);
@@ -60,7 +60,7 @@ export async function PUT(
     }
     return NextResponse.json(
       { success: false, error: normalizarErro(error).mensagem || "Erro ao atualizar fornecedor" },
-      { status: 500 }
+      { status: normalizarErro(error).status || 500 }
     );
   }
 }
@@ -70,7 +70,7 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const companyId = requireCompanyId(request);
+    const companyId = await requireCompanyId(request, 'suppliers.manage');
     const { id } = await params;
     await deletarFornecedor(companyId, id);
 
@@ -81,7 +81,7 @@ export async function DELETE(
   } catch (error: unknown) {
     return NextResponse.json(
       { success: false, error: normalizarErro(error).mensagem || "Erro ao deletar fornecedor" },
-      { status: 500 }
+      { status: normalizarErro(error).status || 500 }
     );
   }
 }

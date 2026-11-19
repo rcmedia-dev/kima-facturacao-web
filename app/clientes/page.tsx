@@ -3,7 +3,8 @@
 import { useSyncExternalStore, useState } from "react";
 import { useAppStore } from "@/lib/store";
 import { useToastContext } from "@/components/ui/toast";
-import { Plus, Users, UserCheck, UserX, Building2 } from "lucide-react";
+import { Plus, Users, UserCheck, UserX, Building2, Search, SlidersHorizontal } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { ClienteTable } from "./components/cliente-table";
 import { ClienteFilters } from "./components/cliente-filters";
 import { ClienteFormModal } from "./components/cliente-form-modal";
@@ -19,6 +20,7 @@ export default function ClientesPage() {
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [showMobileFilters, setShowMobileFilters] = useState(false);
 
   const handleDelete = async () => {
     if (deleteId) {
@@ -34,7 +36,7 @@ export default function ClientesPage() {
 
   if (!mounted) {
     return (
-      <div className="max-w-7xl mx-auto px-2 py-6 space-y-5 animate-pulse">
+      <div className="max-w-7xl mx-auto px-4 py-6 space-y-5 animate-pulse">
         <div className="h-8 w-40 bg-slate-200 dark:bg-slate-800 rounded-xl" />
         <div className="h-14 bg-slate-200 dark:bg-slate-800 rounded-2xl" />
         <div className="h-64 bg-slate-200 dark:bg-slate-800 rounded-2xl" />
@@ -75,9 +77,122 @@ export default function ClientesPage() {
   const clientesPJ = store.clientes.filter((c) => c.tipo === "PJ").length;
 
   return (
-    <div className="max-w-7xl mx-auto px-2 py-2 space-y-5 animate-slide-up">
-      {/* ── HEADER ──────────────────────────────────── */}
-      <div className="flex items-center justify-between">
+    <div className="max-w-7xl mx-auto space-y-5 animate-slide-up">
+      {/* ── MOBILE HEADER ──────────────────────────────── */}
+      <div className="sm:hidden flex items-center gap-3 px-4 pt-4">
+        <div className="flex-1">
+          <h2 className="text-lg font-extrabold text-slate-900 dark:text-white">Clientes</h2>
+          <p className="text-[11px] text-slate-500 dark:text-slate-400">
+            {store.clientes.length} {store.clientes.length === 1 ? "cliente registado" : "clientes registados"}
+          </p>
+        </div>
+        <button
+          onClick={() => { setEditingId(null); setShowModal(true); }}
+          className="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-md shadow-blue-600/20"
+        >
+          <Plus size={18} />
+        </button>
+      </div>
+
+      {/* ── MOBILE SEGMENTED TIPO FILTER ────────────────── */}
+      <div className="sm:hidden flex gap-2 px-4">
+        {([
+          { label: "Todos", value: "Todos", count: totalClientes },
+          { label: "Empresa", value: "PJ", count: clientesPJ },
+          { label: "P. Singular", value: "PF", count: store.clientes.filter((c) => c.tipo === "PF").length },
+        ] as const).map((t) => (
+          <button
+            key={t.value}
+            onClick={() => setTipoFiltro(tipoFiltro === t.value ? "Todos" : t.value)}
+            className={`flex-1 py-2.5 rounded-xl text-xs font-bold transition-all ${
+              tipoFiltro === t.value
+                ? "bg-blue-600 text-white shadow-md shadow-blue-600/20"
+                : "bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400"
+            }`}
+          >
+            {t.label} ({t.count})
+          </button>
+        ))}
+      </div>
+
+      {/* ── MOBILE SEARCH + FILTER TOGGLE ───────────────── */}
+      <div className="sm:hidden flex items-center gap-2 px-4">
+        <div className="flex-1 flex items-center gap-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3.5 py-2.5 shadow-sm">
+          <Search size={15} className="text-slate-400 shrink-0" />
+          <input
+            type="text"
+            placeholder="Pesquisar clientes…"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="flex-1 border-none outline-none text-xs text-slate-900 dark:text-white bg-transparent placeholder-slate-400 dark:placeholder-slate-500"
+          />
+          {searchTerm && (
+            <button onClick={() => setSearchTerm("")} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+          )}
+        </div>
+        <button
+          onClick={() => setShowMobileFilters(!showMobileFilters)}
+          className={`w-10 h-10 rounded-xl border flex items-center justify-center shrink-0 transition-all ${
+            showMobileFilters || estadoFiltro !== "Todos"
+              ? "bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800 text-blue-600 dark:text-blue-400"
+              : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-500"
+          }`}
+        >
+          <SlidersHorizontal size={15} />
+        </button>
+      </div>
+
+      {/* ── MOBILE EXPANDABLE ESTADO FILTER ──────────────── */}
+      <div className={`sm:hidden overflow-hidden transition-all duration-300 ${showMobileFilters ? "max-h-40 opacity-100" : "max-h-0 opacity-0"}`}>
+        <div className="mx-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-3.5 shadow-sm space-y-3">
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Estado</p>
+            <div className="grid grid-cols-3 gap-1.5">
+              {(["Todos", "Ativos", "Inativos"] as const).map((e) => (
+                <button
+                  key={e}
+                  onClick={() => setEstadoFiltro(e)}
+                  className={`h-9 rounded-xl text-[13px] font-semibold transition-all ${
+                    estadoFiltro === e
+                      ? "bg-blue-600 text-white shadow-md shadow-blue-600/20"
+                      : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400"
+                  }`}
+                >
+                  {e}
+                </button>
+              ))}
+            </div>
+          </div>
+          {estadoFiltro !== "Todos" && (
+            <button
+              onClick={() => setEstadoFiltro("Todos")}
+              className="w-full py-2 rounded-lg text-[11px] font-semibold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 transition-colors"
+            >
+              Limpar estado
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* ── MOBILE RESULT COUNT ──────────────────────────── */}
+      <div className="sm:hidden flex items-center justify-between px-4">
+        <span className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
+          {filteredClientes.length} {filteredClientes.length === 1 ? "resultado" : "resultados"}
+        </span>
+        {hasActiveFilters && (
+          <button
+            onClick={() => { setSearchTerm(""); setTipoFiltro("Todos"); setEstadoFiltro("Todos"); setShowMobileFilters(false); }}
+            className="text-[11px] text-blue-600 dark:text-blue-400 font-semibold"
+          >
+            Limpar filtros
+          </button>
+        )}
+      </div>
+
+      {/* ── DESKTOP HEADER ──────────────────────────────── */}
+      <div className="hidden sm:flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-900/30">
             <Users size={20} className="text-blue-600 dark:text-blue-400" />
@@ -100,8 +215,8 @@ export default function ClientesPage() {
         </button>
       </div>
 
-      {/* ── MÉTRICAS ─────────────────────────────────── */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* ── MÉTRICAS (DESKTOP ONLY) ──────────────────────── */}
+      <div className="hidden sm:grid grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4">
           <div className="flex items-start justify-between">
             <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
@@ -171,8 +286,8 @@ export default function ClientesPage() {
         </div>
       </div>
 
-      {/* ── FILTROS ──────────────────────────────────── */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 shadow-sm">
+      {/* ── FILTROS (DESKTOP ONLY) ──────────────────────── */}
+      <div className="hidden sm:block bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 shadow-sm">
         <ClienteFilters
           searchTerm={searchTerm}
           onSearchTermChange={setSearchTerm}

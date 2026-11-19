@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useAppStore } from "@/lib/store";
-import { Cliente, FaturaLinha, TipoDocumento, Documento, FormaPagamento } from "@/lib/types";
+import { Cliente, FaturaLinha, TipoDocumento, Documento } from "@/lib/types";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -17,12 +17,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { formatMoedaAOA, formatData } from "@/lib/formatters";
 import { FORMAS_PAGAMENTO, DIAS_VENCIMENTO_DEFAULT, LABELS_DOCUMENTO } from "@/lib/constants";
-import { addDays, format } from "date-fns";
+import { format } from "date-fns";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   CheckCircle2,
-  ArrowLeft,
   Send,
   Loader2,
   PencilLine,
@@ -184,33 +183,33 @@ export function Passo3Emitir({
       </div>
 
       {/* Preview do documento */}
-      <div className="border border-slate-200 dark:border-slate-800 rounded-[14px] overflow-hidden bg-white dark:bg-slate-900">
+      <div className="overflow-hidden rounded-[14px] border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
         {/* Cabeçalho do documento */}
-        <div className="flex justify-between items-start p-5 bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-700">
+        <div className="flex items-start justify-between border-b border-slate-200 bg-slate-50 p-4 sm:p-5 dark:border-slate-700 dark:bg-slate-800/50">
           <div>
             <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
               {rotulo}
             </p>
-            <h3 className="text-base font-bold text-slate-900 dark:text-white mt-0.5">
+            <h3 className="mt-0.5 text-base font-bold text-slate-900 dark:text-white">
               {store.empresa?.nomeEmpresa || "Empresa Demonstrativa"}
             </h3>
-            <p className="text-xs text-slate-500 mt-0.5">
+            <p className="mt-0.5 text-xs text-slate-500">
               NIF: {store.empresa?.nif || "5417082910"}
             </p>
           </div>
           <Badge
             variant="outline"
-            className="bg-white dark:bg-slate-900 border-emerald-300 dark:border-emerald-700 text-emerald-700 dark:text-emerald-400 text-xs"
+            className="border-emerald-300 bg-white text-xs text-emerald-700 dark:border-emerald-700 dark:bg-slate-900 dark:text-emerald-400"
           >
             Pré-visualização
           </Badge>
         </div>
 
-        <div className="p-5 space-y-4">
+        <div className="space-y-4 p-4 sm:p-5">
           {/* Dados do cliente e vencimento/pagamento */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             <div className="sm:col-span-2">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
+              <p className="mb-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">
                 Faturado a
               </p>
               <p className="text-sm font-bold text-slate-900 dark:text-white">
@@ -223,7 +222,7 @@ export function Passo3Emitir({
             <div>
               {temVencimento ? (
                 <>
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
+                  <p className="mb-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">
                     Vencimento
                   </p>
                   <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">
@@ -233,7 +232,7 @@ export function Passo3Emitir({
                 </>
               ) : temPagamentoDireto ? (
                 <>
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 mb-1">
+                  <p className="mb-1 text-[10px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
                     Termos de Pagamento
                   </p>
                   <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-300">
@@ -243,7 +242,7 @@ export function Passo3Emitir({
                 </>
               ) : (
                 <>
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
+                  <p className="mb-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">
                     Data Emissão
                   </p>
                   <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">
@@ -255,7 +254,7 @@ export function Passo3Emitir({
           </div>
 
           {/* Itens */}
-          <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800">
+          <div className="hidden overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800 md:block">
             <Table>
               <TableHeader className="bg-slate-50 dark:bg-slate-800/50">
                 <TableRow>
@@ -287,9 +286,35 @@ export function Passo3Emitir({
             </Table>
           </div>
 
+          <div className="space-y-3 md:hidden">
+            {linhas.map((linha) => {
+              const totalLinhaComIVA = linha.total + (linha.total * linha.taxaIVA) / 100;
+              return (
+                <div key={linha.id} className="rounded-2xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-800/40">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-semibold text-slate-900 dark:text-white">{linha.descricao}</p>
+                      <div className="mt-2 flex items-center gap-2 text-[11px] text-slate-500 dark:text-slate-400">
+                        <span>Qtd: {linha.quantidade}</span>
+                        <span>·</span>
+                        <span>{formatMoedaAOA(linha.preco)} / uni</span>
+                      </div>
+                    </div>
+                    <span className="text-sm font-bold text-slate-900 dark:text-white">{formatMoedaAOA(totalLinhaComIVA)}</span>
+                  </div>
+
+                  <div className="mt-2 flex items-center justify-between border-t border-slate-200 pt-2 text-[11px] dark:border-slate-700">
+                    <span className="text-slate-500 dark:text-slate-400">IVA</span>
+                    <span className="font-mono font-semibold text-slate-700 dark:text-slate-300">{linha.taxaIVA}%</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
           {/* Totais */}
           <div className="flex justify-end">
-            <div className="w-full sm:w-64 space-y-1 text-sm">
+            <div className="w-full space-y-1 text-sm sm:w-64">
               <div className="flex justify-between text-slate-500 dark:text-slate-400">
                 <span>Subtotal Imponível:</span>
                 <span className="font-mono">{formatMoedaAOA(subtotal)}</span>
@@ -298,7 +323,7 @@ export function Passo3Emitir({
                 <span>Total IVA:</span>
                 <span className="font-mono">{formatMoedaAOA(totalIVA)}</span>
               </div>
-              <div className="flex justify-between font-bold text-base text-slate-900 dark:text-white border-t border-slate-200 dark:border-slate-700 pt-2 mt-1">
+              <div className="mt-1 flex justify-between border-t border-slate-200 pt-2 text-base font-bold text-slate-900 dark:border-slate-700 dark:text-white">
                 <span>TOTAL A PAGAR:</span>
                 <span className="font-mono text-blue-600 dark:text-blue-400">
                   {formatMoedaAOA(total)}
@@ -309,7 +334,7 @@ export function Passo3Emitir({
 
           {/* Observações (se preenchidas) */}
           {observacoes && (
-            <div className="text-xs text-slate-500 dark:text-slate-400 border-t border-slate-100 dark:border-slate-800 pt-3">
+            <div className="border-t border-slate-100 pt-3 text-xs text-slate-500 dark:border-slate-800 dark:text-slate-400">
               <span className="font-semibold text-slate-600 dark:text-slate-300">Observações: </span>
               {observacoes}
             </div>
@@ -318,18 +343,18 @@ export function Passo3Emitir({
       </div>
 
       {/* Condições de Pagamento e Observações */}
-      <div className="border border-slate-200 dark:border-slate-800 rounded-[14px] p-5 bg-white dark:bg-slate-900 space-y-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="space-y-4 rounded-[14px] border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900 sm:p-5">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           {temPagamentoDireto || tipoDocumento === "Fatura" ? (
             <div>
-              <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1.5">
+              <label className="mb-1.5 block text-xs font-semibold text-slate-700 dark:text-slate-300">
                 Forma de pagamento <span className="text-red-500">*</span>
               </label>
               <Select
                 value={formaPagamento}
                 onValueChange={(v) => setFormaPagamento(v ?? "Transferência")}
               >
-                <SelectTrigger className="bg-white dark:bg-slate-950 border-slate-300 dark:border-slate-700 h-10 text-sm">
+                <SelectTrigger className="h-10 border-slate-300 bg-white text-sm dark:border-slate-700 dark:bg-slate-950">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -345,7 +370,7 @@ export function Passo3Emitir({
 
           {temVencimento ? (
             <div>
-              <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1.5">
+              <label className="mb-1.5 block text-xs font-semibold text-slate-700 dark:text-slate-300">
                 Data de Vencimento
               </label>
               <Input
@@ -357,9 +382,9 @@ export function Passo3Emitir({
                     onChangeDataVencimento(new Date(y, m - 1, d));
                   }
                 }}
-                className="bg-white dark:bg-slate-950 border-slate-300 dark:border-slate-700 h-10 text-xs font-medium text-slate-900 dark:text-white"
+                className="h-10 border-slate-300 bg-white text-xs font-medium text-slate-900 dark:border-slate-700 dark:bg-slate-950 dark:text-white"
               />
-              <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
+              <p className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">
                 {formatData(dataVencimento)}
               </p>
             </div>
@@ -367,40 +392,40 @@ export function Passo3Emitir({
         </div>
 
         <div>
-          <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1.5">
+          <label className="mb-1.5 block text-xs font-semibold text-slate-700 dark:text-slate-300">
             Observações / Notas no Documento{" "}
-            <span className="text-slate-400 font-normal">(opcional)</span>
+            <span className="font-normal text-slate-400">(opcional)</span>
           </label>
           <Textarea
             placeholder="Adicione observações ou instruções bancárias adicionais para o cliente..."
             value={observacoes}
             onChange={(e) => setObservacoes(e.target.value)}
-            className="h-20 text-xs border-slate-300 dark:border-slate-700"
+            className="h-20 border-slate-300 text-xs dark:border-slate-700"
           />
         </div>
 
         {/* Data da Operação (Art. 8º — DP 71/25) */}
         <div>
-          <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1.5">
+          <label className="mb-1.5 block text-xs font-semibold text-slate-700 dark:text-slate-300">
             Data da Operação{" "}
-            <span className="text-slate-400 font-normal">(prazo de emissão: 5 dias úteis)</span>
+            <span className="font-normal text-slate-400">(prazo de emissão: 5 dias úteis)</span>
           </label>
           <Input
             type="date"
             value={dataOperacao}
             max={format(new Date(), "yyyy-MM-dd")}
             onChange={(e) => setDataOperacao(e.target.value)}
-            className="bg-white dark:bg-slate-950 border-slate-300 dark:border-slate-700 h-10 text-xs font-medium text-slate-900 dark:text-white"
+            className="h-10 border-slate-300 bg-white text-xs font-medium text-slate-900 dark:border-slate-700 dark:bg-slate-950 dark:text-white"
           />
         </div>
 
         {/* Motivo da não liquidação do IVA (Art. 10º, alínea f — DP 71/25) */}
         {semIVA && (
-          <div className="p-3.5 rounded-xl border border-amber-200 dark:border-amber-900/60 bg-amber-50/50 dark:bg-amber-950/20">
-            <label className="text-xs font-semibold text-amber-900 dark:text-amber-300 block mb-1">
+          <div className="rounded-xl border border-amber-200 bg-amber-50/50 p-3.5 dark:border-amber-900/60 dark:bg-amber-950/20">
+            <label className="mb-1 block text-xs font-semibold text-amber-900 dark:text-amber-300">
               Motivo da não liquidação do IVA <span className="text-red-500">*</span>
             </label>
-            <p className="text-[11px] text-amber-800 dark:text-amber-400 mb-2">
+            <p className="mb-2 text-[11px] text-amber-800 dark:text-amber-400">
               Este documento tem IVA não liquidado. Indique o motivo justificativo e a norma legal que o fundamenta
               (obrigatório por lei — Art. 10º, alínea f).
             </p>
@@ -408,7 +433,7 @@ export function Passo3Emitir({
               placeholder="ex: Isento ao abrigo do Art. 19º do CIVA (exportação)"
               value={motivoIsencaoIVA}
               onChange={(e) => setMotivoIsencaoIVA(e.target.value)}
-              className="bg-white dark:bg-slate-950 border-slate-300 dark:border-slate-700 h-10 text-xs"
+              className="h-10 border-slate-300 bg-white text-xs dark:border-slate-700 dark:bg-slate-950"
             />
           </div>
         )}

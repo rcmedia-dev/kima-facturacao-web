@@ -13,9 +13,12 @@ import {
   ChevronLeft,
   ChevronRight,
   BarChart3,
+  UserCog,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ProfileDropdown } from "@/components/profile-dropdown";
+import { usePermissions } from "@/hooks/use-permissions";
+import type { Permission } from "@/lib/types";
 
 interface SidebarProps {
   collapsed: boolean;
@@ -24,33 +27,41 @@ interface SidebarProps {
   onCloseMobile: () => void;
 }
 
-const navItems = [
+interface NavItem {
+  href: string;
+  label: string;
+  icon: any;
+  permission?: Permission;
+}
+
+const navItems: { section: string; items: NavItem[] }[] = [
   {
     section: "Principal",
     items: [
-      { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-      { href: "/faturas",   label: "Documentos", icon: FileText },
+      { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, permission: "dashboard.view" },
+      { href: "/faturas",   label: "Documentos", icon: FileText, permission: "invoices.view" },
     ],
   },
   {
     section: "Gestão",
     items: [
-      { href: "/clientes",      label: "Clientes",           icon: Users },
-      { href: "/fornecedores",  label: "Fornecedores",       icon: Truck },
-      { href: "/artigos",       label: "Artigos & Serviços", icon: Package },
+      { href: "/clientes",      label: "Clientes",           icon: Users, permission: "customers.view" },
+      { href: "/fornecedores",  label: "Fornecedores",       icon: Truck, permission: "suppliers.view" },
+      { href: "/artigos",       label: "Artigos & Serviços", icon: Package, permission: "articles.view" },
     ],
   },
   {
     section: "Financeiro",
     items: [
-      { href: "/despesas", label: "Despesas", icon: Wallet },
-      { href: "/relatorios", label: "Relatórios & SAF-T", icon: BarChart3 },
+      { href: "/despesas",    label: "Despesas",           icon: Wallet, permission: "expenses.view" },
+      { href: "/relatorios",  label: "Relatórios & SAF-T", icon: BarChart3, permission: "reports.view" },
     ],
   },
   {
     section: "Sistema",
     items: [
-      { href: "/configuracoes", label: "Configurações", icon: Settings },
+      { href: "/configuracoes", label: "Configurações", icon: Settings, permission: "settings.manage" },
+      { href: "/utilizadores",  label: "Utilizadores",  icon: UserCog, permission: "users.manage" },
     ],
   },
 ];
@@ -62,6 +73,20 @@ export function Sidebar({
   onCloseMobile,
 }: SidebarProps) {
   const pathname = usePathname();
+  const { permissions, loaded } = usePermissions();
+
+  // Filtrar itens por permissão
+  const filteredNavItems = navItems
+    .map((group) => ({
+      ...group,
+      items: group.items.filter((item) => {
+        if (!item.permission) return true;
+        if (!loaded) return false;
+        if (!permissions) return false;
+        return permissions.includes(item.permission);
+      }),
+    }))
+    .filter((group) => group.items.length > 0);
 
   return (
     <>
@@ -91,11 +116,9 @@ export function Sidebar({
             className="flex items-center gap-3 overflow-hidden font-bold transition-opacity hover:opacity-90"
             onClick={onCloseMobile}
           >
-            {/* Logo Mark */}
             <div className="flex items-center justify-center w-9 h-9 rounded-xl bg-white text-blue-700 font-extrabold text-base shadow-md shrink-0">
               K
             </div>
-
             {!collapsed && (
               <div className="flex flex-col min-w-0">
                 <span className="text-sm font-bold tracking-tight text-white truncate">
@@ -105,7 +128,6 @@ export function Sidebar({
             )}
           </Link>
 
-          {/* Toggle Desktop */}
           <button
             onClick={onToggleCollapse}
             className="hidden md:flex items-center justify-center w-7 h-7 rounded-lg text-blue-100 hover:text-white hover:bg-white/10 transition-colors"
@@ -117,9 +139,8 @@ export function Sidebar({
 
         {/* ── NAVEGAÇÃO PRINCIPAL ────────────────────────── */}
         <nav className="flex-1 px-4 py-4 space-y-6 overflow-y-auto">
-          {navItems.map((group) => (
+          {filteredNavItems.map((group) => (
             <div key={group.section}>
-              {/* Título de secção */}
               {!collapsed && (
                 <p className="text-[10px] font-semibold text-blue-100/90 uppercase tracking-wider px-3 mb-2">
                   {group.section}
@@ -166,7 +187,6 @@ export function Sidebar({
 
         {/* ── RODAPÉ ─────────────────────────────────────── */}
         <div className="px-4 py-4 border-t border-white/10">
-          {/* Menu de perfil do utilizador com logout */}
           <ProfileDropdown collapsed={collapsed} variant="sidebar" />
         </div>
       </aside>
