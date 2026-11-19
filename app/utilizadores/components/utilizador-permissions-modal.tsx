@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Dialog as DialogPrimitive } from "@base-ui/react/dialog";
-import { X, Shield, Save, Loader2, Check } from "lucide-react";
+import { X, Shield, Save, Loader2 } from "lucide-react";
 import { useToastContext } from "@/components/ui/toast";
 import type { UtilizadorData } from "../types";
 import {
@@ -62,7 +62,9 @@ export function UtilizadorPermissionsModal({
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          userId: utilizador.id,
+          userId: utilizador.userId,
+          authSource: utilizador.authSource,
+          status: utilizador.status,
           permissions: Array.from(selected),
         }),
       });

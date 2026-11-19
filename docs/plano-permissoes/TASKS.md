@@ -2,6 +2,11 @@
 
 ## Kima Facturação Web
 
+> **Estado:** esta lista é histórica e contém passos do fluxo de autenticação
+> próprio que deixou de ser usado. Não executar a migration 005. A gestão atual
+> usa Supabase Auth partilhado e tabelas de funcionários locais em
+> `kima_facturas`; consultar `Kima Center/KIMA_SUBAPP_INTEGRATION_GUIDE.md`.
+
 ---
 
 ## Legenda
@@ -37,8 +42,8 @@
 | # | Task | Descrição |
 |---|------|-----------|
 | 3.1 | ⬜ lib/auth.ts | Criar: `hashSenha()`, `verificarSenha()`, `criarSessao()`, `obterSessao()`, `terminarSessao()` — sessão via cookie criptografado |
-| 3.2 | ⬜ API login | Criar `app/api/auth/login/route.ts` — POST: company_code + email + password → sessão |
-| 3.3 | ⬜ API primeiro-acesso | Criar `app/api/auth/primeiro-acesso/route.ts` — POST: company_code + email + nova_senha → actualiza password_hash |
+| 3.2 | ⬜ API login | POST: email + password; se válidos em várias empresas, devolver opções e aceitar companyId escolhido → sessão |
+| 3.3 | ⬜ API primeiro-acesso | POST: email + companyId + nova_senha → actualiza password_hash; localizar contas pendentes pelo email |
 | 3.4 | ⬜ API permissions | Criar `app/api/auth/permissions/route.ts` — GET: devolve permissões finais (Admin: todas; Funcionário: lista) |
 
 ---
@@ -47,8 +52,8 @@
 
 | # | Task | Descrição |
 |---|------|-----------|
-| 4.1 | ⬜ /login (reescrita) | Reescrever `app/login/page.tsx`: campos código empresa + email + senha; link "primeiro acesso"; chamar `/api/auth/login` |
-| 4.2 | ⬜ /primeiro-acesso | Criar `app/primeiro-acesso/page.tsx`: campos nova senha + confirmar; chamar `/api/auth/primeiro-acesso` |
+| 4.1 | ⬜ /login (reescrita) | `app/login/page.tsx`: email + senha, sem código de empresa; permitir escolher empresa quando aplicável |
+| 4.2 | ⬜ /primeiro-acesso | `app/primeiro-acesso/page.tsx`: localizar pelo email, escolher conta pendente e definir/confirmar senha |
 | 4.3 | ⬜ app/page.tsx | Alterar redirect de `/dashboard` para `/login` |
 
 ---

@@ -1,106 +1,185 @@
-/**
- * POST /api/auth/primeiro-acesso
- *
- * Define senha para utilizador sem password (primeiro acesso).
- *
- * Body: { companyCode: string, email: string, password: string }
- *
- * Respostas:
- *   200 { success: true, message: "Senha criada com sucesso" }
- *   400 { error: "Campos obrigatórios" }
- *   400 { error: "As senhas não coincidem" }
- *   401 { error: "Empresa não encontrada" }
- *   401 { error: "Colaborador não encontrado" }
- *   401 { error: "Este utilizador já tem senha definida" }
- */
-
+import { createHash } from 'node:crypto';
 import { NextResponse } from 'next/server';
-import {
-  buscarEmpresaPorCodigo,
-  buscarUtilizador,
-  hashSenha,
-  atualizarSenha,
-} from '@/lib/auth';
+import { z } from 'zod';
+
+import { db } from '@/db/client';
+import { hasActiveCompanyModuleAccess } from '@/lib/auth-context';
+import { createSupabaseRequestClient } from '@/lib/supabase-request';
+import { createSupabaseAdminClient } from '@/lib/supabase-admin';
+
+const acceptSchema = z.object({
+  token: z.string().regex(/^[A-Za-z0-9_-]{43}$/),
+  password: z.string().min(8).max(128).optional(),
+});
 
 export async function POST(request: Request) {
   try {
-    const body = await request.json();
-    const { companyCode, email, password, confirmPassword } = body;
+    let body: unknown;
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json({ error: 'Pedido inválido.' }, { status: 400 });
+    }
 
-    // ── Validação de campos obrigatórios ──────────────────────────────────
-    if (!companyCode || !email || !password) {
+    const parsed = acceptSchema.safeParse(body);
+    if (!parsed.success) {
       return NextResponse.json(
-        { error: 'Código da empresa, email e senha são obrigatórios.' },
+        { error: 'O link ou a palavra-passe não são válidos.' },
         { status: 400 }
       );
     }
 
-    // ── Validação de confirmação ──────────────────────────────────────────
-    if (confirmPassword && password !== confirmPassword) {
+    const tokenHash = createHash('sha256')
+      .update(parsed.data.token)
+      .digest('hex');
+    const { data: invitation, error: invitationError } = await db
+      .from('employee_invitations')
+      .select('email, full_name, company_id')
+      .eq('token_hash', tokenHash)
+      .is('accepted_at', null)
+      .is('revoked_at', null)
+      .gt('expires_at', new Date().toISOString())
+      .maybeSingle();
+
+    if (invitationError) throw invitationError;
+    if (!invitation) {
       return NextResponse.json(
-        { error: 'As senhas não coincidem.' },
-        { status: 400 }
+        { error: 'Este convite é inválido, expirou ou já foi utilizado.' },
+        { status: 410 }
+      );
+    }
+    if (!(await hasActiveCompanyModuleAccess(invitation.company_id))) {
+      return NextResponse.json(
+        { error: 'A empresa não tem uma subscrição ativa do módulo Faturas.' },
+        { status: 403 }
       );
     }
 
-    // ── Validação de força da senha ───────────────────────────────────────
-    if (password.length < 6) {
-      return NextResponse.json(
-        { error: 'A senha deve ter pelo menos 6 caracteres.' },
-        { status: 400 }
-      );
+    const requestSupabase = createSupabaseRequestClient(
+      request,
+      undefined,
+      'faturas'
+    );
+    const { data: authData, error: authError } =
+      await requestSupabase.auth.getUser();
+
+    if (
+      authError &&
+      authError.status !== 401 &&
+      authError.name !== 'AuthSessionMissingError'
+    ) {
+      throw authError;
     }
 
-    const cleanCompanyCode = String(companyCode).trim().toUpperCase();
-    const cleanEmail = String(email).trim().toLowerCase();
-    const cleanPassword = String(password).trim();
+    let userId = authData.user?.id;
+    let userEmail = authData.user?.email;
+    if (authData.user) {
+      if (
+        (authData.user.email || '').trim().toLowerCase() !==
+        invitation.email.trim().toLowerCase()
+      ) {
+        return NextResponse.json(
+          { error: 'Inicie sessão com a conta indicada no convite.' },
+          { status: 403 }
+        );
+      }
+    } else {
+      if (!parsed.data.password) {
+        return NextResponse.json(
+          { error: 'Defina uma palavra-passe para ativar a conta.' },
+          { status: 400 }
+        );
+      }
 
-    // ── 1. Buscar empresa por código ──────────────────────────────────────
-    const empresa = await buscarEmpresaPorCodigo(cleanCompanyCode);
-    if (!empresa) {
-      return NextResponse.json(
-        { error: 'Empresa não encontrada. Verifique o código da empresa.' },
-        { status: 401 }
-      );
+      const adminSupabase = createSupabaseAdminClient('faturas');
+      const { data: createdUser, error: createUserError } =
+        await adminSupabase.auth.admin.createUser({
+          email: invitation.email,
+          password: parsed.data.password,
+          email_confirm: true,
+          user_metadata: { full_name: invitation.full_name },
+        });
+
+      if (createUserError) {
+        const message = createUserError.message.toLowerCase();
+        if (
+          createUserError.code === 'email_exists' ||
+          message.includes('already registered') ||
+          message.includes('already exists') ||
+          message.includes('email_exists')
+        ) {
+          return NextResponse.json(
+            {
+              code: 'account_exists',
+              email: invitation.email,
+              error:
+                'Este email já tem uma conta Kima. Inicie sessão com a palavra-passe existente para aceitar o convite.',
+            },
+            { status: 409 }
+          );
+        }
+        throw createUserError;
+      }
+
+      if (!createdUser.user) {
+        throw new Error('O Supabase não devolveu a identidade criada.');
+      }
+      userId = createdUser.user.id;
+      userEmail = createdUser.user.email;
     }
 
-    // ── 2. Buscar utilizador por company_id + email ───────────────────────
-    const utilizador = await buscarUtilizador(empresa.id, cleanEmail);
-    if (!utilizador) {
-      return NextResponse.json(
-        { error: 'Colaborador não encontrado. Verifique o código da empresa e o email.' },
-        { status: 401 }
-      );
+    if (!userId) {
+      throw new Error('Não foi possível identificar a conta convidada.');
     }
 
-    // ── 3. Verificar se já tem senha ──────────────────────────────────────
-    if (utilizador.passwordHash) {
-      return NextResponse.json(
-        { error: 'Este utilizador já tem senha definida. Use o login normal.' },
-        { status: 401 }
-      );
+    const { data: accepted, error: acceptError } = await db.rpc(
+      'accept_employee_invitation',
+      {
+        p_token_hash: tokenHash,
+        p_user_id: userId,
+        p_email: userEmail || '',
+      }
+    );
+
+    if (acceptError) {
+      if (
+        acceptError.message.includes('invitation_invalid_or_expired')
+      ) {
+        return NextResponse.json(
+          { error: 'Este convite é inválido, expirou ou já foi utilizado.' },
+          { status: 410 }
+        );
+      }
+      if (acceptError.message.includes('invitation_email_mismatch')) {
+        return NextResponse.json(
+          { error: 'A conta autenticada não corresponde ao email do convite.' },
+          { status: 403 }
+        );
+      }
+      throw acceptError;
     }
 
-    // ── 4. Gerar hash e actualizar ────────────────────────────────────────
-    const passwordHash = await hashSenha(cleanPassword);
-    const actualizado = await atualizarSenha(utilizador.id, passwordHash);
-
-    if (!actualizado) {
-      return NextResponse.json(
-        { error: 'Erro ao guardar senha. Tente novamente.' },
-        { status: 500 }
-      );
+    const acceptedInvite = Array.isArray(accepted) ? accepted[0] : accepted;
+    if (!acceptedInvite?.company_id) {
+      throw new Error('A aceitação do convite não devolveu a empresa.');
     }
 
-    // ── 5. Resposta ──────────────────────────────────────────────────────
     return NextResponse.json({
       success: true,
-      message: 'Senha criada com sucesso! Já pode fazer login.',
+      companyId: acceptedInvite.company_id,
+      email: invitation.email,
+      accountCreated: !authData.user,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[API /auth/primeiro-acesso]', error);
+    if (error instanceof Error && error.message.includes('não está configurada')) {
+      return NextResponse.json(
+        { error: error.message },
+        { status: 503 }
+      );
+    }
     return NextResponse.json(
-      { error: 'Erro ao processar pedido.' },
+      { error: 'Não foi possível ativar o convite. Tente novamente.' },
       { status: 500 }
     );
   }

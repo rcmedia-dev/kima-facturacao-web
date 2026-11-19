@@ -9,9 +9,7 @@ const HUB_URL = process.env.NEXT_PUBLIC_KIMA_HUB_URL || 'https://kima-hub.vercel
 /**
  * KimaEventListener — Escuta eventos do Kima Hub via BroadcastChannel.
  *
- * NOTA: Com o sistema de auth próprio, já não usamos Supabase Auth.
- * Este componente mantém-se para suportar eventos futuros do Kima Hub
- * (ex: empresa mudou, módulo desactivado).
+ * Sincroniza eventos de sessão e subscrição do Kima Hub.
  */
 export function KimaEventListener() {
   const router = useRouter();
@@ -36,14 +34,14 @@ export function KimaEventListener() {
         channel = supabase.channel('kima-events') as ReturnType<typeof supabase.channel>;
 
         channel
-          .on('broadcast', { event: 'LOGOUT' }, () => {
-            // Limpar nossa sessão e redirecionar
-            document.cookie = 'kima-session=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax';
-            if (typeof window !== 'undefined') {
-              const path = window.location.pathname;
-              if (path !== '/login' && !path.startsWith('/primeiro-acesso')) {
-                window.location.href = '/login';
-              }
+          .on('broadcast', { event: 'LOGOUT' }, async () => {
+            const { error } = await supabase.auth.signOut();
+            if (error) {
+              console.error('[KimaEventListener] Erro ao terminar sessão.', error);
+            }
+            const path = window.location.pathname;
+            if (path !== '/login' && !path.startsWith('/primeiro-acesso')) {
+              window.location.href = '/login';
             }
           })
           .on('broadcast', { event: 'COMPANY_SWITCHED' }, () => {
@@ -70,13 +68,14 @@ export function KimaEventListener() {
     setup();
 
     return () => {
-      if (channel) {
+      const activeChannel = channel;
+      if (activeChannel) {
         try {
           const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
           if (supabaseUrl) {
             import('@/lib/supabase-ssr').then(({ createBrowserClient }) => {
               const supabase = createBrowserClient(supabaseUrl, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
-              supabase.removeChannel(channel);
+              supabase.removeChannel(activeChannel);
             });
           }
         } catch {

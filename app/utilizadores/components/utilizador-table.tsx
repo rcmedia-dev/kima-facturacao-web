@@ -14,8 +14,6 @@ import { Menu as MenuPrimitive } from "@base-ui/react/menu";
 import {
   UserCog,
   MoreVertical,
-  Pencil,
-  Trash2,
   Shield,
   ShieldCheck,
   ChevronLeft,
@@ -28,9 +26,8 @@ import type { UtilizadorData } from "../types";
 
 interface UtilizadorTableProps {
   utilizadores: UtilizadorData[];
-  onEdit: (utilizador: UtilizadorData) => void;
-  onDelete: (id: string) => void;
   onManagePermissions: (utilizador: UtilizadorData) => void;
+  onToggleStatus: (utilizador: UtilizadorData) => void;
   itemsPerPage?: number;
 }
 
@@ -70,9 +67,8 @@ export function getInitials(name: string | null, email: string) {
 
 export function UtilizadorTable({
   utilizadores,
-  onEdit,
-  onDelete,
   onManagePermissions,
+  onToggleStatus,
   itemsPerPage = 20,
 }: UtilizadorTableProps) {
   const [currentPage, setCurrentPage] = useState(1);
@@ -203,19 +199,10 @@ export function UtilizadorTable({
                               Permissões
                             </MenuPrimitive.Item>
                             <MenuPrimitive.Item
-                              onClick={() => onEdit(user)}
+                              onClick={() => onToggleStatus(user)}
                               className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 outline-none cursor-pointer transition-colors data-highlighted:bg-slate-100 dark:data-highlighted:bg-slate-800"
                             >
-                              <Pencil size={14} className="text-slate-400" />
-                              Editar
-                            </MenuPrimitive.Item>
-                            <MenuPrimitive.Separator className="my-1 h-px bg-slate-100 dark:bg-slate-800" />
-                            <MenuPrimitive.Item
-                              onClick={() => onDelete(user.id)}
-                              className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold text-red-600 dark:text-red-400 outline-none cursor-pointer transition-colors data-highlighted:bg-red-50 dark:data-highlighted:bg-red-950/40"
-                            >
-                              <Trash2 size={14} />
-                              Remover
+                              {user.status === "ativo" ? "Desativar acesso" : "Reativar acesso"}
                             </MenuPrimitive.Item>
                           </MenuPrimitive.Popup>
                         </MenuPrimitive.Positioner>

@@ -1219,16 +1219,32 @@ export async function obterKPIsEmpresa(companyId: string) {
 export async function obterEmpresa(
   companyId: string
 ): Promise<ConfiguracaoEmpresa | null> {
-  // Query única com JOINs (reduz 3 queries para 1)
-  const { data: company, error } = await publicDb
-    .from('companies')
-    .select('id, name, nif, created_at, settings:company_settings(morada, telefone, email, website, logo_url, modelo_documento, cor_primaria, conta_bancaria, banco, inscricao_social, nif_regional, software_nome, software_certificacao_numero, dias_vencimento_padrao, updated_at), series:series_numeracao(id, serie, tipo_documento, proximo_numero, ultimo_numero_utilizado, ano, predefinida)')
-    .eq('id', companyId)
-    .maybeSingle();
-  if (error) throw new Error(error.message);
+  const [
+    { data: company, error: companyError },
+    { data: settingsRow, error: settingsError },
+    { data: series, error: seriesError },
+  ] = await Promise.all([
+    publicDb
+      .from('companies')
+      .select('id, name, nif, created_at')
+      .eq('id', companyId)
+      .maybeSingle(),
+    db
+      .from('company_settings')
+      .select('settings')
+      .eq('company_id', companyId)
+      .maybeSingle(),
+    db
+      .from('series_numeracao')
+      .select('id, serie, tipo_documento, proximo_numero, ultimo_numero_utilizado, ano, predefinida')
+      .eq('company_id', companyId),
+  ]);
+  if (companyError) throw new Error(companyError.message);
+  if (settingsError) throw new Error(settingsError.message);
+  if (seriesError) throw new Error(seriesError.message);
   if (!company) return null;
 
-  const s = (company.settings as any)?.settings || company.settings || {};
+  const s = (settingsRow as any)?.settings || {};
 
   return {
     id: company.id,
@@ -1248,7 +1264,7 @@ export async function obterEmpresa(
     softwareNome: s.software_nome || undefined,
     softwareCertificacaoNumero: s.software_certificacao_numero || undefined,
     diasVencimentoPadrao: s.dias_vencimento_padrao || 30,
-    seriesPorTipo: ((company as any).series || []).map((sr: any): SerieNumeracao => ({
+    seriesPorTipo: (series || []).map((sr: any): SerieNumeracao => ({
       id: sr.id,
       serie: sr.serie,
       tipoDocumento: sr.tipo_documento,

@@ -1,197 +1,140 @@
-/**
- * POST /api/auth/check-subscription
- *
- * Verifica se a empresa do utilizador tem subscrição ativa no módulo Facturação.
- * Usa nossa tabela `users` (não mais `memberships` do Supabase Auth).
- */
-
 import { NextResponse } from 'next/server';
-import { obterSessaoDoRequest } from '@/lib/auth';
-import { db } from '@/db/client';
 
-const MODULE_KEYS = [
-  process.env.NEXT_PUBLIC_KIMA_MODULE_KEY || 'faturas',
-  'faturas',
-  'facturas',
-  'facturacao',
-  'fatura',
-  'factura',
-];
+import { db } from '@/db/client';
+import { getSupabaseAuthContext } from '@/lib/auth-context';
+
+const MODULE_KEYS = Array.from(
+  new Set([
+    process.env.NEXT_PUBLIC_KIMA_MODULE_KEY || 'faturas',
+    'faturas',
+    'facturas',
+    'facturacao',
+    'fatura',
+    'factura',
+  ])
+);
+
+function isActive(status: string | null, expiresAt: string | null): boolean {
+  const normalizedStatus = (status || '').trim().toLowerCase();
+  if (!['ativo', 'active', 'approved', 'aprovado'].includes(normalizedStatus)) {
+    return false;
+  }
+  if (!expiresAt) return true;
+
+  const expiration = new Date(expiresAt).getTime();
+  return Number.isFinite(expiration) && expiration >= Date.now();
+}
 
 export async function POST(request: Request) {
   try {
-    // 1. Ler sessão do cookie
-    const sessao = obterSessaoDoRequest(request);
-    if (!sessao) {
+    const context = await getSupabaseAuthContext(request);
+    if (!context.user) {
       return NextResponse.json(
         { success: false, error: 'Não autenticado.', hasAccess: false, status: 'error' },
         { status: 401 }
       );
     }
 
-    const companyId = sessao.companyId;
-
-    // 2. Obter nome da empresa
-    let companyName: string | null = null;
-    try {
-      const { data: companyData } = await db
-        .from('companies')
-        .select('name')
-        .eq('id', companyId)
-        .maybeSingle();
-
-      if (companyData) {
-        companyName = companyData.name || null;
-      }
-    } catch {
-      // Ignore company name lookup failure
+    if (!context.activeCompanyAccess) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Selecione uma empresa à qual tem acesso.',
+          hasAccess: false,
+          status: 'company_required',
+        },
+        { status: 409 }
+      );
     }
 
-    // 3. Consultar o módulo na tabela `company_modules`
-    const { data: moduleData, error: modErr } = await db
-      .from('company_modules')
-      .select('id, module_key, status, plan, expires_at, created_at')
-      .eq('company_id', companyId)
-      .in('module_key', MODULE_KEYS)
-      .maybeSingle();
-
-    if (modErr && modErr.code !== 'PGRST116') {
-      console.warn('Aviso ao consultar company_modules:', modErr.message);
-    }
-
-    // Se não tem registo em `company_modules`, verificar pedido em `subscription_requests`
-    if (!moduleData) {
-      try {
-        const { data: requestData } = await db
-          .from('subscription_requests')
-          .select('id, status, plan, created_at')
+    const companyId = context.activeCompanyAccess.company_id;
+    const [{ data: company, error: companyError }, { data: modules, error: moduleError }] =
+      await Promise.all([
+        db
+          .schema('public')
+          .from('companies')
+          .select('name, status')
+          .eq('id', companyId)
+          .maybeSingle(),
+        db
+          .schema('public')
+          .from('company_modules')
+          .select('module_key, status, plan, expires_at')
           .eq('company_id', companyId)
-          .in('module_key', MODULE_KEYS)
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .maybeSingle();
+          .in('module_key', MODULE_KEYS),
+      ]);
 
-        if (requestData) {
-          const reqStatus = (requestData.status || '').toString().toLowerCase();
-          if (['pendente', 'pending', 'aguardando', 'em_analise'].includes(reqStatus)) {
-            return NextResponse.json({
-              success: true,
-              hasAccess: false,
-              status: 'pending',
-              rawStatus: requestData.status,
-              companyId,
-              companyName,
-              planName: requestData.plan || 'Plano Facturação',
-              message:
-                'O seu pedido de subscrição para o módulo KIMA Facturação ainda está a aguardar aprovação pelo administrador.',
-            });
-          }
-        }
-      } catch {
-        // subscription_requests table might not exist
-      }
+    if (companyError) {
+      throw new Error(`Não foi possível carregar a empresa: ${companyError.message}`);
+    }
+    if (moduleError) {
+      throw new Error(`Não foi possível verificar a subscrição: ${moduleError.message}`);
+    }
 
+    const activeModule = (modules || []).find((item: {
+      status: string | null;
+      expires_at: string | null;
+    }) => isActive(item.status, item.expires_at));
+    const companyName = company?.name || null;
+    const companyStatus = (company?.status || '').trim().toLowerCase();
+
+    if (companyStatus && !['ativo', 'active'].includes(companyStatus)) {
       return NextResponse.json({
         success: true,
         hasAccess: false,
-        status: 'no_subscription',
+        status: 'company_inactive',
         companyId,
         companyName,
-        planName: null,
-        message: 'A sua empresa ainda não possui uma subscrição registada para o módulo KIMA Facturação.',
+        message: 'A empresa não está ativa no Kima Hub.',
       });
     }
 
-    const rawStatus = (moduleData.status || '').toString().trim();
-    const statusLower = rawStatus.toLowerCase();
-    const planName = moduleData.plan || 'Plano Facturação';
-    const expiresAt = moduleData.expires_at || null;
-
-    // Verificar se a subscrição expirou
-    if (expiresAt) {
-      const expDate = new Date(expiresAt);
-      if (!isNaN(expDate.getTime()) && expDate < new Date()) {
-        return NextResponse.json({
-          success: true,
-          hasAccess: false,
-          status: 'expired',
-          rawStatus,
-          companyId,
-          companyName,
-          planName,
-          expiresAt,
-          message: 'A sua subscrição para o módulo KIMA Facturação expirou.',
-        });
-      }
-    }
-
-    // Estados Aprovados / Ativos
-    if (['ativo', 'active', 'approved', 'aprovado'].includes(statusLower)) {
+    if (activeModule) {
       return NextResponse.json({
         success: true,
         hasAccess: true,
         status: 'active',
-        rawStatus,
+        rawStatus: activeModule.status,
         companyId,
         companyName,
-        planName,
-        expiresAt,
+        planName: activeModule.plan || 'Plano Facturação',
+        expiresAt: activeModule.expires_at || null,
         message: 'Subscrição ativa e aprovada.',
       });
     }
 
-    // Estados Pendentes de Aprovação
-    if (['pendente', 'pending', 'aguardando', 'em_analise', 'waiting'].includes(statusLower)) {
-      return NextResponse.json({
-        success: true,
-        hasAccess: false,
-        status: 'pending',
-        rawStatus,
-        companyId,
-        companyName,
-        planName,
-        expiresAt,
-        message:
-          'O seu pedido de subscrição para o módulo KIMA Facturação ainda está a aguardar aprovação pelo administrador.',
-      });
-    }
+    const latestModule = (modules || [])[0];
+    const rawStatus = latestModule?.status || null;
+    const normalizedStatus = (rawStatus || '').trim().toLowerCase();
+    const status = ['pendente', 'pending', 'aguardando', 'em_analise', 'waiting'].includes(
+      normalizedStatus
+    )
+      ? 'pending'
+      : ['expirado', 'expired'].includes(normalizedStatus)
+        ? 'expired'
+        : latestModule
+          ? 'inactive'
+          : 'no_subscription';
 
-    // Estados Expirados
-    if (['expirado', 'expired'].includes(statusLower)) {
-      return NextResponse.json({
-        success: true,
-        hasAccess: false,
-        status: 'expired',
-        rawStatus,
-        companyId,
-        companyName,
-        planName,
-        expiresAt,
-        message: 'A sua subscrição para o módulo KIMA Facturação expirou.',
-      });
-    }
-
-    // Estados Cancelados / Rejeitados / Inativos
     return NextResponse.json({
       success: true,
       hasAccess: false,
-      status: 'inactive',
+      status,
       rawStatus,
       companyId,
       companyName,
-      planName,
-      expiresAt,
-      message:
-        statusLower === 'rejeitado' || statusLower === 'rejected'
-          ? 'O pedido de subscrição para este módulo foi rejeitado pelo administrador.'
-          : 'A sua subscrição para o módulo KIMA Facturação foi cancelada ou está inativa.',
+      planName: latestModule?.plan || null,
+      expiresAt: latestModule?.expires_at || null,
+      message: latestModule
+        ? 'A subscrição do módulo KIMA Faturas não está ativa.'
+        : 'A empresa ainda não possui uma subscrição registada para o módulo KIMA Faturas.',
     });
-  } catch (error: any) {
-    console.error('Erro na rota /api/auth/check-subscription:', error);
+  } catch (error: unknown) {
+    console.error('[API /auth/check-subscription]', error);
     return NextResponse.json(
       {
         success: false,
-        error: error?.message || 'Erro ao verificar subscrição.',
+        error: 'Erro ao verificar subscrição.',
         hasAccess: false,
         status: 'error',
       },

@@ -9,7 +9,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import type { Permission, UserPermissions } from "@/lib/types";
-import { can, canAccessRoute, ROUTE_PERMISSIONS } from "@/lib/permissions";
+import { can, canAccessRoute, ALL_PERMISSIONS } from "@/lib/permissions";
 
 interface UsePermissionsReturn {
   /** Permissões do utilizador (null = ainda a carregar) */
@@ -22,8 +22,6 @@ interface UsePermissionsReturn {
   companyId: string | null;
   /** Email da sessão */
   email: string | null;
-  /** Código da empresa (apenas Admin) */
-  companyCode: string | null;
   /** true se terminou de carregar */
   loaded: boolean;
   /** true se não tem sessão */
@@ -50,11 +48,34 @@ export function usePermissions(): UsePermissionsReturn {
         setLoaded(true);
         return;
       }
-      const result: UserPermissions = await response.json();
-      setData(result);
+      const result = await response.json() as {
+        userId?: unknown;
+        companyId?: unknown;
+        isOwner?: unknown;
+        email?: unknown;
+        permissions?: unknown;
+        error?: unknown;
+      };
+      if (!response.ok || !Array.isArray(result.permissions)) {
+        throw new Error(typeof result.error === "string"
+          ? result.error
+          : "Não foi possível carregar as permissões.");
+      }
+      const validPermissions = new Set<string>(ALL_PERMISSIONS);
+      setData({
+        userId: typeof result.userId === "string" ? result.userId : "",
+        companyId: typeof result.companyId === "string" ? result.companyId : "",
+        isOwner: result.isOwner === true,
+        email: typeof result.email === "string" ? result.email : undefined,
+        permissions: result.permissions.filter(
+          (permission: unknown): permission is Permission =>
+            typeof permission === "string" && validPermissions.has(permission)
+        ),
+      });
       setUnauthenticated(false);
-    } catch {
-      setUnauthenticated(true);
+    } catch (error) {
+      console.error("[usePermissions]", error);
+      setUnauthenticated(false);
       setData(null);
     } finally {
       setLoaded(true);
@@ -62,6 +83,7 @@ export function usePermissions(): UsePermissionsReturn {
   }, []);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchPermissions();
   }, [fetchPermissions]);
 
@@ -87,7 +109,6 @@ export function usePermissions(): UsePermissionsReturn {
     userId: data?.userId ?? null,
     companyId: data?.companyId ?? null,
     email: data?.email ?? null,
-    companyCode: data?.companyCode ?? null,
     loaded,
     unauthenticated,
     can: canCheck,

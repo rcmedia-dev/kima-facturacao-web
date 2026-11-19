@@ -500,13 +500,34 @@ export const useAppStore = create<AppStore>((set, get) => ({
   loadAll: async () => {
     if (get()._loaded) return;
     try {
+      const permissionsResponse = await fetch("/api/auth/permissions", {
+        cache: "no-store",
+      });
+      const permissionsResult = await permissionsResponse.json();
+      if (!permissionsResponse.ok) {
+        throw new Error(
+          permissionsResult.error || "Não foi possível carregar as permissões."
+        );
+      }
+      const permissions = new Set<string>(permissionsResult.permissions || []);
+
       const [clientesRes, artigosRes, fornecedoresRes, despesasRes, documentosRes, empresa] =
         await Promise.all([
-          apiFetch<{ data: ClienteRaw[]; total: number }>("/api/clients?limit=200"),
-          apiFetch<{ data: ArtigoRaw[]; total: number }>("/api/products?limit=200"),
-          apiFetch<{ data: FornecedorRaw[]; total: number }>("/api/suppliers?limit=200"),
-          apiFetch<{ data: DespesaRaw[]; total: number }>("/api/expenses?limit=200"),
-          apiFetch<{ data: DocumentoRaw[]; total: number }>("/api/invoices?limit=50"),
+          permissions.has("customers.view")
+            ? apiFetch<{ data: ClienteRaw[]; total: number }>("/api/clients?limit=200")
+            : Promise.resolve({ data: [], total: 0 }),
+          permissions.has("articles.view")
+            ? apiFetch<{ data: ArtigoRaw[]; total: number }>("/api/products?limit=200")
+            : Promise.resolve({ data: [], total: 0 }),
+          permissions.has("suppliers.view")
+            ? apiFetch<{ data: FornecedorRaw[]; total: number }>("/api/suppliers?limit=200")
+            : Promise.resolve({ data: [], total: 0 }),
+          permissions.has("expenses.view")
+            ? apiFetch<{ data: DespesaRaw[]; total: number }>("/api/expenses?limit=200")
+            : Promise.resolve({ data: [], total: 0 }),
+          permissions.has("invoices.view")
+            ? apiFetch<{ data: DocumentoRaw[]; total: number }>("/api/invoices?limit=50")
+            : Promise.resolve({ data: [], total: 0 }),
           apiFetch<ConfiguracaoEmpresa | null>("/api/company"),
         ]);
 

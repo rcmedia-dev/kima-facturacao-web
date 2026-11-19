@@ -68,6 +68,14 @@ pnpm start
 
 O aplicativo estará disponível em `http://localhost:3000`
 
+## Autenticação de administradores e funcionários
+
+- Administradores continuam a usar a autenticação Supabase partilhada com o Kima Hub.
+- Funcionários aceitam o convite e definem a própria palavra-passe; o administrador não precisa de a criar nem conhecer. Podem usar o mesmo projeto Supabase partilhado, desde que o email do funcionário ainda não exista no Auth.
+- No `.env.local`, as variáveis `NEXT_PUBLIC_FATURAS_AUTH_SUPABASE_URL` e `NEXT_PUBLIC_FATURAS_AUTH_SUPABASE_ANON_KEY` podem ter os mesmos valores das variáveis Supabase partilhadas. `FATURAS_AUTH_SUPABASE_SERVICE_ROLE_KEY` também pode usar a chave administrativa desse projeto, apenas no servidor. Não é necessário criar outro projeto.
+- O Supabase só permite uma conta por email dentro do projeto: se o email do funcionário já existir no Auth, ele terá de entrar com a palavra-passe dessa conta para aceitar o convite; não é possível criar uma segunda palavra-passe para o mesmo email.
+- Depois da migration `006_funcionarios_kima_facturas.sql` já aplicada, execute `migrations/007_auth_separado_funcionarios.sql` na base de dados de negócio. A migration preserva os funcionários existentes como Hub, identifica os novos como Faturas e mantém as permissões separadas por origem.
+
 ## Estrutura de Pastas
 
 ```

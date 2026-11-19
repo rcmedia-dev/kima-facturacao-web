@@ -1,29 +1,28 @@
 /**
  * Proxy — Kima Facturação (Next.js 16.3.0)
  *
- * Edge Runtime: apenas verifica existência do cookie kima-session.
- * Nunca consulta BD. A validação real da sessão é feita no servidor.
+ * Valida a sessão Supabase antes de permitir acesso às páginas e APIs.
  */
 
 import { NextResponse, type NextRequest } from 'next/server';
-
-const SESSION_COOKIE = 'kima-session';
+import { createServerClient } from '@supabase/ssr';
+import { getKimaCookieDomain } from '@/lib/kima-cookie-domain';
 
 const PUBLIC_PATHS = [
   '/login',
   '/primeiro-acesso',
   '/acesso-negado',
-  '/api/auth/login',
+  '/auth/callback',
+  '/api/auth/context',
+  '/api/auth/logout',
   '/api/auth/primeiro-acesso',
-  '/api/auth/permissions',
-  '/api/auth/check-subscription',
 ];
 
 export async function proxy(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
 
   // Rotas públicas → sempre permite
-  if (PUBLIC_PATHS.some((p) => pathname.startsWith(p))) {
+  if (PUBLIC_PATHS.some((path) => pathname === path || pathname.startsWith(`${path}/`))) {
     return NextResponse.next();
   }
 
@@ -36,9 +35,79 @@ export async function proxy(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // Verificar se existe cookie de sessão
-  const session = request.cookies.get(SESSION_COOKIE);
-  if (!session) {
+  if (process.env.NEXT_PUBLIC_USE_MOCK_DB === 'true') {
+    return NextResponse.next();
+  }
+
+  let response = NextResponse.next({ request });
+  const authSource =
+    request.cookies.get('kima-auth-source')?.value === 'faturas'
+      ? 'faturas'
+      : 'hub';
+  const supabaseUrl =
+    authSource === 'faturas'
+      ? process.env.NEXT_PUBLIC_FATURAS_AUTH_SUPABASE_URL
+      : process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseKey =
+    authSource === 'faturas'
+      ? process.env.NEXT_PUBLIC_FATURAS_AUTH_SUPABASE_ANON_KEY
+      : process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!supabaseUrl || !supabaseKey) {
+    console.error(`[Proxy Supabase Auth] Configuração ${authSource} não encontrada.`);
+    return NextResponse.json(
+      {
+        error:
+          authSource === 'faturas'
+            ? 'A autenticação do Kima Faturas não está configurada.'
+            : 'A autenticação partilhada não está configurada.',
+      },
+      { status: 503 }
+    );
+  }
+
+  const cookieDomain = getKimaCookieDomain(request.nextUrl.hostname);
+  const supabase = createServerClient(supabaseUrl, supabaseKey, {
+    db: { schema: 'public' },
+    cookies: {
+      getAll() {
+        return request.cookies.getAll();
+      },
+      setAll(cookiesToSet, headers) {
+        cookiesToSet.forEach(({ name, value }) =>
+          request.cookies.set(name, value)
+        );
+        response = NextResponse.next({ request });
+        cookiesToSet.forEach(({ name, value, options }) =>
+          response.cookies.set(name, value, {
+            ...options,
+            ...(cookieDomain ? { domain: cookieDomain } : {}),
+          })
+        );
+        Object.entries(headers).forEach(([name, value]) =>
+          response.headers.set(name, value)
+        );
+      },
+    },
+  });
+
+  const {
+    data: { user },
+    error,
+  } = await supabase.auth.getUser();
+
+  if (
+    error &&
+    error.status !== 401 &&
+    error.name !== 'AuthSessionMissingError'
+  ) {
+    console.error('[Proxy Supabase Auth]', error.message);
+    return NextResponse.json(
+      { error: 'Não foi possível validar a sessão. Tente novamente.' },
+      { status: 503 }
+    );
+  }
+
+  if (!user) {
     // API routes → 401 JSON
     if (pathname.startsWith('/api/')) {
       return NextResponse.json(
@@ -46,13 +115,16 @@ export async function proxy(request: NextRequest) {
         { status: 401 }
       );
     }
-    // Pages → redirect para login
+
     const loginUrl = new URL('/login', request.url);
-    loginUrl.searchParams.set('redirect', pathname);
+    loginUrl.searchParams.set(
+      'redirect',
+      `${pathname}${request.nextUrl.search}`
+    );
     return NextResponse.redirect(loginUrl);
   }
 
-  return NextResponse.next();
+  return response;
 }
 
 export const config = {

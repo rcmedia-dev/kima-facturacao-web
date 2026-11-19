@@ -7,7 +7,7 @@ import { agtEmSimulacao } from '@/lib/agt-client';
 /** GET /api/agt/fila — lista a fila de envio e o estado de simulação. */
 export async function GET(request: Request) {
   try {
-    const companyId = requireCompanyId(request);
+    const companyId = await requireCompanyId(request, 'agt.manage');
     const fila = await obterFilaEnvioAGT(companyId);
 
     return NextResponse.json({
@@ -32,7 +32,7 @@ export async function GET(request: Request) {
 /** POST /api/agt/fila — processa os documentos pendentes de envio (T2.2). */
 export async function POST(request: Request) {
   try {
-    const companyId = requireCompanyId(request);
+    const companyId = await requireCompanyId(request, 'agt.manage');
     const body = await request.json().catch(() => ({}));
     const limite = Math.min(Number(body?.limite) || 10, 50);
 

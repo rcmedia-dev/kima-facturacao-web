@@ -620,7 +620,7 @@ export const MOCK_USER = {
 
 // ══════════════════════════════════════════════════════════════════════════════
 // SISTEMA DE PERMISSÕES — Kima Facturação
-// Login próprio: código da empresa + email + senha
+// Login próprio: email + senha
 // ══════════════════════════════════════════════════════════════════════════════
 
 // ─── Tabela: users (login próprio) ──────────────────────────────────────────

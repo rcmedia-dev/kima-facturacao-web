@@ -4,19 +4,18 @@
  * Devolve as permissões finais do utilizador autenticado.
  *
  * Respostas:
- *   200 { userId, companyId, isOwner, email, companyCode, permissions: Permission[] }
+ *   200 { userId, companyId, isOwner, email, permissions: Permission[] }
  *   401 { error: "Não autenticado" }
  */
 
 import { NextResponse } from 'next/server';
-import { obterSessaoDoRequest } from '@/lib/auth';
+import { getSessaoDoRequest } from '@/lib/company';
 import { buscarPermissoes } from '@/lib/auth';
-import { db } from '@/db/client';
 
 export async function GET(request: Request) {
   try {
     // ── 1. Ler sessão do cookie ───────────────────────────────────────────
-    const sessao = obterSessaoDoRequest(request);
+    const sessao = await getSessaoDoRequest(request);
     if (!sessao) {
       return NextResponse.json(
         { error: 'Não autenticado.' },
@@ -28,25 +27,9 @@ export async function GET(request: Request) {
     const permissoes = await buscarPermissoes(
       sessao.userId,
       sessao.companyId,
-      sessao.isOwner
+      sessao.isOwner,
+      sessao.authSource
     );
-
-    // ── 3. Buscar company_code (apenas para Admin) ────────────────────────
-    let companyCode: string | null = null;
-    if (sessao.isOwner) {
-      try {
-        const { data: company } = await db
-          .from('companies')
-          .select('company_code')
-          .eq('id', sessao.companyId)
-          .maybeSingle();
-        if (company) {
-          companyCode = company.company_code || null;
-        }
-      } catch {
-        // Ignore
-      }
-    }
 
     // ── 4. Resposta ──────────────────────────────────────────────────────
     return NextResponse.json({
@@ -54,10 +37,9 @@ export async function GET(request: Request) {
       companyId: sessao.companyId,
       isOwner: sessao.isOwner,
       email: sessao.email,
-      companyCode,
       permissions: permissoes,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[API /auth/permissions]', error);
     return NextResponse.json(
       { error: 'Erro ao buscar permissões.' },

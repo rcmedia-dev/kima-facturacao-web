@@ -5,7 +5,7 @@ import { requireCompanyId } from "@/lib/company";
 
 export async function GET(request: Request) {
   try {
-    const companyId = requireCompanyId(request);
+    const companyId = await requireCompanyId(request, 'dashboard.view');
 
     const agora = new Date();
     const inicioMes = new Date(agora.getFullYear(), agora.getMonth(), 1);

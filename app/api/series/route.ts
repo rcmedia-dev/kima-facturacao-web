@@ -13,7 +13,7 @@ const serieSchema = z.object({
 
 export async function GET(request: Request) {
   try {
-    const companyId = requireCompanyId(request);
+    const companyId = await requireCompanyId(request);
     const series = await obterSeries(companyId);
     return NextResponse.json({ success: true, data: series });
   } catch (error: unknown) {
@@ -26,7 +26,7 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const companyId = requireCompanyId(request);
+    const companyId = await requireCompanyId(request, 'settings.manage');
     const body = await request.json();
     const dados = serieSchema.parse(body);
     const criada = await criarSerie(companyId, dados);
@@ -47,7 +47,7 @@ export async function POST(request: Request) {
 
 export async function PUT(request: Request) {
   try {
-    const companyId = requireCompanyId(request);
+    const companyId = await requireCompanyId(request, 'settings.manage');
     const body = await request.json();
     const { id, ...dados } = body;
     if (!id) throw Object.assign(new Error("ID da série é obrigatório"), { status: 400 });
@@ -69,7 +69,7 @@ export async function PUT(request: Request) {
 
 export async function DELETE(request: Request) {
   try {
-    const companyId = requireCompanyId(request);
+    const companyId = await requireCompanyId(request, 'settings.manage');
     const { searchParams } = new URL(request.url);
     const id = searchParams.get("id");
     if (!id) throw Object.assign(new Error("ID da série é obrigatório"), { status: 400 });

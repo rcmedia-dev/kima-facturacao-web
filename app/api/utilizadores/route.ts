@@ -1,335 +1,283 @@
-/**
- * /api/utilizadores — CRUD de utilizadores (só Admin)
- *
- * GET    → lista utilizadores da empresa
- * POST   → cria novo funcionário
- * PUT    → atualiza utilizador (nome, email, permissões)
- * DELETE → remove utilizador (não Admin)
- */
-
+import { createHash, randomBytes } from 'node:crypto';
 import { NextResponse } from 'next/server';
-import { obterSessaoDoRequest, hashSenha, buscarPermissoes } from '@/lib/auth';
-import { db } from '@/db/client';
-import type { Permission } from '@/lib/types';
+import { z } from 'zod';
 
-// ══════════════════════════════════════════════════════════════════════════════
-// GET — Listar utilizadores da empresa
-// ══════════════════════════════════════════════════════════════════════════════
+import { db } from '@/db/client';
+import { hasActiveCompanyModuleAccess } from '@/lib/auth-context';
+import { getSessaoDoRequest } from '@/lib/company';
+import { ALL_PERMISSIONS } from '@/lib/permissions';
+
+const PRIVATE_NO_STORE_HEADERS = {
+  'Cache-Control': 'private, no-store, max-age=0',
+};
+
+const inviteSchema = z.object({
+  email: z.string().trim().email().max(254),
+  fullName: z.string().trim().min(2).max(120),
+  permissions: z.array(z.string()).max(ALL_PERMISSIONS.length),
+});
+
+const updateSchema = z.object({
+  userId: z.string().uuid(),
+  authSource: z.enum(['hub', 'faturas']),
+  status: z.enum(['ativo', 'inativo']),
+  permissions: z.array(z.string()).max(ALL_PERMISSIONS.length),
+});
+
+async function getAdminSession(request: Request) {
+  const session = await getSessaoDoRequest(request);
+  if (!session) {
+    return {
+      session: null,
+      response: NextResponse.json({ error: 'Não autenticado.' }, { status: 401 }),
+    };
+  }
+  if (!session.isOwner) {
+    return {
+      session: null,
+      response: NextResponse.json(
+        { error: 'Só o administrador da empresa pode gerir funcionários.' },
+        { status: 403 }
+      ),
+    };
+  }
+  if (!(await hasActiveCompanyModuleAccess(session.companyId))) {
+    return {
+      session: null,
+      response: NextResponse.json(
+        { error: 'A empresa não tem uma subscrição ativa do módulo Faturas.' },
+        { status: 403 }
+      ),
+    };
+  }
+  return { session, response: null };
+}
+
+function validPermissions(permissions: string[]): boolean {
+  return (
+    new Set(permissions).size === permissions.length &&
+    permissions.every((permission) =>
+      ALL_PERMISSIONS.includes(permission as (typeof ALL_PERMISSIONS)[number])
+    )
+  );
+}
 
 export async function GET(request: Request) {
   try {
-    const sessao = obterSessaoDoRequest(request);
-    if (!sessao) {
-      return NextResponse.json({ error: 'Não autenticado.' }, { status: 401 });
-    }
+    const { session, response } = await getAdminSession(request);
+    if (response || !session) return response;
 
-    // Buscar utilizadores da empresa
-    const { data: users, error } = await db
-      .from('users')
-      .select('id, email, full_name, is_owner, status, created_at, updated_at')
-      .eq('company_id', sessao.companyId)
-      .order('created_at', { ascending: false });
+    const [
+      { data: employees, error: employeesError },
+      { data: permissions, error: permissionsError },
+      { data: invitations, error: invitationsError },
+    ] = await Promise.all([
+      db
+        .from('employees')
+        .select('id, user_id, auth_source, email, full_name, status, created_at')
+        .eq('company_id', session.companyId)
+        .order('created_at', { ascending: false }),
+      db
+        .from('employee_permissions')
+        .select('user_id, auth_source, permission_code')
+        .eq('company_id', session.companyId),
+      db
+        .from('employee_invitations')
+        .select('id, email, full_name, expires_at, created_at')
+        .eq('company_id', session.companyId)
+        .is('accepted_at', null)
+        .is('revoked_at', null)
+        .gt('expires_at', new Date().toISOString())
+        .order('created_at', { ascending: false }),
+    ]);
 
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
-    }
+    if (employeesError) throw employeesError;
+    if (permissionsError) throw permissionsError;
+    if (invitationsError) throw invitationsError;
 
-    // Buscar permissões de cada funcionário
-    const usersWithPermissions = await Promise.all(
-      (users || []).map(async (user: any) => {
-        const permissions = await buscarPermissoes(
-          user.id,
-          sessao.companyId,
-          user.is_owner
-        );
-        return {
-          id: user.id,
-          email: user.email,
-          fullName: user.full_name,
-          isOwner: user.is_owner,
-          status: user.status,
-          permissions,
-          createdAt: user.created_at,
-          updatedAt: user.updated_at,
-        };
-      })
-    );
-
-    return NextResponse.json({ users: usersWithPermissions });
-  } catch (error: any) {
-    console.error('[API GET /utilizadores]', error);
-    return NextResponse.json({ error: 'Erro ao listar utilizadores.' }, { status: 500 });
-  }
-}
-
-// ══════════════════════════════════════════════════════════════════════════════
-// POST — Criar novo funcionário
-// ══════════════════════════════════════════════════════════════════════════════
-
-export async function POST(request: Request) {
-  try {
-    const sessao = obterSessaoDoRequest(request);
-    if (!sessao) {
-      return NextResponse.json({ error: 'Não autenticado.' }, { status: 401 });
-    }
-
-    // Só Admin pode criar utilizadores
-    if (!sessao.isOwner) {
-      return NextResponse.json(
-        { error: 'Sem permissão. Apenas administradores podem criar utilizadores.' },
-        { status: 403 }
-      );
-    }
-
-    const body = await request.json();
-    const { email, fullName, permissions } = body;
-
-    if (!email || !email.trim()) {
-      return NextResponse.json({ error: 'Email é obrigatório.' }, { status: 400 });
-    }
-
-    const cleanEmail = email.trim().toLowerCase();
-
-    // Verificar se já existeutilizador com este email na empresa
-    const { data: existing } = await db
-      .from('users')
-      .select('id')
-      .eq('company_id', sessao.companyId)
-      .eq('email', cleanEmail)
-      .maybeSingle();
-
-    if (existing) {
-      return NextResponse.json(
-        { error: 'Já existe um utilizador com este email nesta empresa.' },
-        { status: 409 }
-      );
-    }
-
-    // Criar utilizador (password_hash = NULL → primeiro acesso)
-    const userId = crypto.randomUUID();
-    const now = new Date().toISOString();
-
-    const { error: insertError } = await db.from('users').insert({
-      id: userId,
-      company_id: sessao.companyId,
-      email: cleanEmail,
-      full_name: fullName?.trim() || null,
-      password_hash: null,
-      is_owner: false,
-      status: 'pendente',
-      created_at: now,
-      updated_at: now,
-    });
-
-    if (insertError) {
-      return NextResponse.json({ error: insertError.message }, { status: 500 });
-    }
-
-    // Guardar permissões
-    if (permissions && Array.isArray(permissions) && permissions.length > 0) {
-      const permRows = permissions.map((code: string) => ({
-        user_id: userId,
-        company_id: sessao.companyId,
-        permission_code: code,
-      }));
-
-      const { error: permError } = await db.from('user_permissions').insert(permRows);
-      if (permError) {
-        console.error('Erro ao guardar permissões:', permError);
-      }
+    const permissionsByUser = new Map<string, string[]>();
+    for (const row of permissions || []) {
+      const key = `${row.auth_source}:${row.user_id}`;
+      const current = permissionsByUser.get(key) || [];
+      current.push(row.permission_code);
+      permissionsByUser.set(key, current);
     }
 
     return NextResponse.json({
-      success: true,
-      user: {
-        id: userId,
-        email: cleanEmail,
-        fullName: fullName?.trim() || null,
-        isOwner: false,
-        status: 'pendente',
-        permissions: permissions || [],
-      },
-    });
-  } catch (error: any) {
-    console.error('[API POST /utilizadores]', error);
-    return NextResponse.json({ error: 'Erro ao criar utilizador.' }, { status: 500 });
+      employees: (employees || []).map((employee: {
+        id: string;
+        user_id: string;
+        auth_source: 'hub' | 'faturas';
+        email: string;
+        full_name: string | null;
+        status: 'ativo' | 'inativo';
+        created_at: string;
+      }) => ({
+        ...employee,
+        permissions:
+          permissionsByUser.get(`${employee.auth_source}:${employee.user_id}`) ||
+          [],
+      })),
+      invitations: invitations || [],
+    }, { headers: PRIVATE_NO_STORE_HEADERS });
+  } catch (error: unknown) {
+    console.error('[API /utilizadores GET]', error);
+    return NextResponse.json(
+      { error: 'Não foi possível carregar os funcionários.' },
+      { status: 500 }
+    );
   }
 }
 
-// ══════════════════════════════════════════════════════════════════════════════
-// PUT — Atualizar utilizador
-// ══════════════════════════════════════════════════════════════════════════════
-
-export async function PUT(request: Request) {
+export async function POST(request: Request) {
   try {
-    const sessao = obterSessaoDoRequest(request);
-    if (!sessao) {
-      return NextResponse.json({ error: 'Não autenticado.' }, { status: 401 });
+    const { session, response } = await getAdminSession(request);
+    if (response || !session) return response;
+
+    let body: unknown;
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json({ error: 'Pedido inválido.' }, { status: 400 });
     }
 
-    if (!sessao.isOwner) {
+    const parsed = inviteSchema.safeParse(body);
+    if (!parsed.success || !validPermissions(parsed.data?.permissions || [])) {
       return NextResponse.json(
-        { error: 'Sem permissão. Apenas administradores podem editar utilizadores.' },
-        { status: 403 }
+        { error: 'Verifique o email, nome e permissões selecionadas.' },
+        { status: 400 }
       );
     }
 
-    const body = await request.json();
-    const { userId, fullName, email, status, permissions } = body;
+    const token = randomBytes(32).toString('base64url');
+    const tokenHash = createHash('sha256').update(token).digest('hex');
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+    const { data: invitationId, error } = await db.rpc(
+      'create_employee_invitation',
+      {
+        p_company_id: session.companyId,
+        p_email: parsed.data.email.toLowerCase(),
+        p_full_name: parsed.data.fullName,
+        p_token_hash: tokenHash,
+        p_expires_at: expiresAt,
+        p_invited_by: session.userId,
+        p_permission_codes: parsed.data.permissions,
+      }
+    );
 
-    if (!userId) {
-      return NextResponse.json({ error: 'ID do utilizador é obrigatório.' }, { status: 400 });
-    }
-
-    // Verificar que o utilizador pertence à mesma empresa
-    const { data: targetUser } = await db
-      .from('users')
-      .select('id, is_owner')
-      .eq('id', userId)
-      .eq('company_id', sessao.companyId)
-      .maybeSingle();
-
-    if (!targetUser) {
-      return NextResponse.json({ error: 'Utilizador não encontrado.' }, { status: 404 });
-    }
-
-    // Não permite editar o próprio utilizador admin
-    if (targetUser.is_owner) {
-      return NextResponse.json(
-        { error: 'Não é possível editar o administrador da empresa.' },
-        { status: 403 }
-      );
-    }
-
-    // Actualizar dados do utilizador
-    const updateData: Record<string, any> = {
-      updated_at: new Date().toISOString(),
-    };
-
-    if (fullName !== undefined) updateData.full_name = fullName?.trim() || null;
-    if (email !== undefined) {
-      const cleanEmail = email.trim().toLowerCase();
-      // Verificar se o email já está em uso por outro utilizador
-      const { data: emailConflict } = await db
-        .from('users')
-        .select('id')
-        .eq('company_id', sessao.companyId)
-        .eq('email', cleanEmail)
-        .neq('id', userId)
-        .maybeSingle();
-
-      if (emailConflict) {
+    if (error) {
+      if (error.message.includes('employee_already_exists')) {
         return NextResponse.json(
-          { error: 'Já existe outro utilizador com este email.' },
+          { error: 'Este email já pertence a um funcionário ativo da empresa.' },
           { status: 409 }
         );
       }
-      updateData.email = cleanEmail;
-    }
-    if (status !== undefined && ['ativo', 'inativo', 'pendente'].includes(status)) {
-      updateData.status = status;
+      throw error;
     }
 
-    const { error: updateError } = await db
-      .from('users')
-      .update(updateData)
-      .eq('id', userId);
+    const inviteUrl = new URL('/primeiro-acesso', request.url);
+    inviteUrl.searchParams.set('token', token);
 
-    if (updateError) {
-      return NextResponse.json({ error: updateError.message }, { status: 500 });
-    }
-
-    // Actualizar permissões (substituir todas)
-    if (permissions !== undefined && Array.isArray(permissions)) {
-      // Remover permissões antigas
-      await db
-        .from('user_permissions')
-        .delete()
-        .eq('user_id', userId)
-        .eq('company_id', sessao.companyId);
-
-      // Inserir novas permissões
-      if (permissions.length > 0) {
-        const permRows = permissions.map((code: string) => ({
-          user_id: userId,
-          company_id: sessao.companyId,
-          permission_code: code,
-        }));
-        await db.from('user_permissions').insert(permRows);
-      }
-    }
-
-    return NextResponse.json({ success: true });
-  } catch (error: any) {
-    console.error('[API PUT /utilizadores]', error);
-    return NextResponse.json({ error: 'Erro ao atualizar utilizador.' }, { status: 500 });
+    return NextResponse.json({
+      invitationId,
+      inviteUrl: inviteUrl.toString(),
+      expiresAt,
+    }, { headers: PRIVATE_NO_STORE_HEADERS });
+  } catch (error: unknown) {
+    console.error('[API /utilizadores POST]', error);
+    return NextResponse.json(
+      { error: 'Não foi possível criar o convite.' },
+      { status: 500 }
+    );
   }
 }
 
-// ══════════════════════════════════════════════════════════════════════════════
-// DELETE — Remover funcionário
-// ══════════════════════════════════════════════════════════════════════════════
+export async function PUT(request: Request) {
+  try {
+    const { session, response } = await getAdminSession(request);
+    if (response || !session) return response;
+
+    let body: unknown;
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json({ error: 'Pedido inválido.' }, { status: 400 });
+    }
+
+    const parsed = updateSchema.safeParse(body);
+    if (!parsed.success || !validPermissions(parsed.data?.permissions || [])) {
+      return NextResponse.json(
+        { error: 'Verifique o estado e as permissões selecionadas.' },
+        { status: 400 }
+      );
+    }
+
+    const { error } = await db.rpc('update_employee_access', {
+      p_company_id: session.companyId,
+      p_user_id: parsed.data.userId,
+      p_auth_source: parsed.data.authSource,
+      p_status: parsed.data.status,
+      p_permission_codes: parsed.data.permissions,
+    });
+    if (error) throw error;
+
+    return NextResponse.json({ success: true });
+  } catch (error: unknown) {
+    console.error('[API /utilizadores PUT]', error);
+    return NextResponse.json(
+      { error: 'Não foi possível atualizar o acesso do funcionário.' },
+      { status: 500 }
+    );
+  }
+}
 
 export async function DELETE(request: Request) {
   try {
-    const sessao = obterSessaoDoRequest(request);
-    if (!sessao) {
-      return NextResponse.json({ error: 'Não autenticado.' }, { status: 401 });
+    const { session, response } = await getAdminSession(request);
+    if (response || !session) return response;
+
+    let body: unknown;
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json({ error: 'Pedido inválido.' }, { status: 400 });
     }
 
-    if (!sessao.isOwner) {
+    const invitationId =
+      typeof body === 'object' && body !== null && 'invitationId' in body
+        ? body.invitationId
+        : null;
+    if (typeof invitationId !== 'string') {
       return NextResponse.json(
-        { error: 'Sem permissão. Apenas administradores podem remover utilizadores.' },
-        { status: 403 }
+        { error: 'Identificador de convite inválido.' },
+        { status: 400 }
       );
     }
 
-    const { searchParams } = new URL(request.url);
-    const userId = searchParams.get('userId');
-
-    if (!userId) {
-      return NextResponse.json({ error: 'ID do utilizador é obrigatório.' }, { status: 400 });
-    }
-
-    // Verificar que o utilizador pertence à mesma empresa e não é owner
-    const { data: targetUser } = await db
-      .from('users')
-      .select('id, is_owner')
-      .eq('id', userId)
-      .eq('company_id', sessao.companyId)
+    const { data, error } = await db
+      .from('employee_invitations')
+      .update({ revoked_at: new Date().toISOString() })
+      .eq('id', invitationId)
+      .eq('company_id', session.companyId)
+      .is('accepted_at', null)
+      .is('revoked_at', null)
+      .select('id')
       .maybeSingle();
 
-    if (!targetUser) {
-      return NextResponse.json({ error: 'Utilizador não encontrado.' }, { status: 404 });
-    }
-
-    if (targetUser.is_owner) {
+    if (error) throw error;
+    if (!data) {
       return NextResponse.json(
-        { error: 'Não é possível remover o administrador da empresa.' },
-        { status: 403 }
+        { error: 'O convite já foi usado, expirou ou não existe.' },
+        { status: 404 }
       );
-    }
-
-    // Remover permissões
-    await db
-      .from('user_permissions')
-      .delete()
-      .eq('user_id', userId)
-      .eq('company_id', sessao.companyId);
-
-    // Remover utilizador
-    const { error: deleteError } = await db
-      .from('users')
-      .delete()
-      .eq('id', userId);
-
-    if (deleteError) {
-      return NextResponse.json({ error: deleteError.message }, { status: 500 });
     }
 
     return NextResponse.json({ success: true });
-  } catch (error: any) {
-    console.error('[API DELETE /utilizadores]', error);
-    return NextResponse.json({ error: 'Erro ao remover utilizador.' }, { status: 500 });
+  } catch (error: unknown) {
+    console.error('[API /utilizadores DELETE]', error);
+    return NextResponse.json(
+      { error: 'Não foi possível cancelar o convite.' },
+      { status: 500 }
+    );
   }
 }

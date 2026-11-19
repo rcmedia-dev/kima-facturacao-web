@@ -3,10 +3,10 @@
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Menu as MenuPrimitive } from "@base-ui/react/menu";
-import { User as UserIcon, Settings, LogOut, ChevronDown, Shield, Copy, Check } from "lucide-react";
+import { User as UserIcon, Settings, LogOut, ChevronDown, Shield } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { usePermissions } from "@/hooks/use-permissions";
-import { useState } from "react";
+import { useToastContext } from "@/components/ui/toast";
 
 interface ProfileDropdownProps {
   collapsed?: boolean;
@@ -24,45 +24,33 @@ function getInitials(name: string, email: string) {
 
 export function ProfileDropdown({ collapsed = false, variant = "default" }: ProfileDropdownProps) {
   const router = useRouter();
-  const { email, isOwner, companyCode, loaded } = usePermissions();
-  const [copied, setCopied] = useState(false);
+  const { email, isOwner, loaded } = usePermissions();
+  const { error } = useToastContext();
 
   const displayName = email?.split("@")[0] || "Utilizador";
   const initials = getInitials(displayName, email || "");
 
-  const handleCopyCode = async () => {
-    if (!companyCode) return;
-    try {
-      await navigator.clipboard.writeText(companyCode);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch {
-      // Fallback
-      const input = document.createElement("input");
-      input.value = companyCode;
-      document.body.appendChild(input);
-      input.select();
-      document.execCommand("copy");
-      document.body.removeChild(input);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    }
-  };
-
   const handleLogout = async () => {
-    // Limpar cookie kima-session
-    document.cookie = "kima-session=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax";
+    try {
+      const response = await fetch('/api/auth/logout', { method: 'POST' });
+      if (!response.ok) {
+        const result = await response.json();
+        error('Erro ao terminar sessão', result.error || 'Tente novamente.');
+        return;
+      }
+    } catch {
+      error('Erro ao terminar sessão', 'Não foi possível contactar o servidor.');
+      return;
+    }
 
-    // Limpar store se existir
     try {
       const { useAppStore } = await import("@/lib/store");
       useAppStore.getState().clearAllData();
-    } catch {
-      // Ignora se o store não estiver montado
+    } catch (storeError) {
+      console.error('[Logout] Não foi possível limpar os dados locais.', storeError);
     }
 
-    router.push("/login");
-    router.refresh();
+    router.replace("/login");
   };
 
   return (
@@ -135,26 +123,6 @@ export function ProfileDropdown({ collapsed = false, variant = "default" }: Prof
                     {isOwner ? "Administrador" : "Funcionário"}
                   </span>
                 </div>
-                {/* Badge do código da empresa — apenas Admin */}
-                {isOwner && companyCode && (
-                  <button
-                    onClick={handleCopyCode}
-                    className="flex items-center gap-1.5 mt-1.5 px-2 py-1 rounded-md bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/40 hover:bg-amber-100 dark:hover:bg-amber-900/30 transition-colors group"
-                    title="Clique para copiar"
-                  >
-                    <span className="text-[10px] text-amber-600/80 dark:text-amber-400/70 font-medium">
-                      Código da Empresa:
-                    </span>
-                    <span className="text-[11px] font-bold text-amber-700 dark:text-amber-400 tracking-widest">
-                      {companyCode}
-                    </span>
-                    {copied ? (
-                      <Check size={10} className="text-emerald-500 shrink-0" />
-                    ) : (
-                      <Copy size={10} className="text-amber-400 dark:text-amber-500 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
-                    )}
-                  </button>
-                )}
               </div>
             </div>
 

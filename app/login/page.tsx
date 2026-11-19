@@ -1,117 +1,133 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { createBrowserClient } from "@/lib/supabase-ssr";
+import {
+  getSupabaseAuthConfig,
+  type SupabaseAuthSource,
+} from "@/lib/auth-source";
 import {
   Loader2,
   Eye,
   EyeOff,
   ShieldCheck,
   Building2,
-  Lock,
-  KeyRound,
   ArrowLeft,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 
-type Step = "credentials" | "password";
+type Step = "credentials" | "password" | "select-company";
+
+interface CompanyOption {
+  id: string;
+  name: string;
+}
 
 export default function LoginPage() {
   const router = useRouter();
 
-  const redirectTo =
+  const requestedRedirect =
     typeof window !== "undefined"
-      ? new URLSearchParams(window.location.search).get("redirect") || "/dashboard"
+      ? new URLSearchParams(window.location.search).get("redirect")
+      : null;
+  const redirectTo =
+    requestedRedirect?.startsWith("/") && !requestedRedirect.startsWith("//")
+      ? requestedRedirect
       : "/dashboard";
 
   const [step, setStep] = useState<Step>("credentials");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [errorMsg, setErrorMsg] = useState<string | null>(() => {
+    if (typeof window === "undefined") return null;
+    return new URLSearchParams(window.location.search).get("error") === "sso_failed"
+      ? "Não foi possível validar a sessão recebida do Kima Hub. Tente iniciar sessão novamente."
+      : null;
+  });
 
-  // Campos
-  const [companyCode, setCompanyCode] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [companyName, setCompanyName] = useState("");
+  const [companies, setCompanies] = useState<CompanyOption[]>([]);
+  const [selectedCompanyId, setSelectedCompanyId] = useState("");
+  const [authSource, setAuthSource] = useState<SupabaseAuthSource>("hub");
 
   const hubUrl = process.env.NEXT_PUBLIC_KIMA_HUB_URL || "https://kima-hub.vercel.app";
 
-  // ── Passo 1: Validar código + email ──────────────────────────────────────
-  const handleCheckUser = async (e: React.FormEvent) => {
+  const handleCheckUser = (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
     setErrorMsg(null);
-
-    try {
-      const response = await fetch("/api/auth/check-user", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          companyCode: companyCode.trim(),
-          email: email.trim(),
-        }),
-      });
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        setErrorMsg(result.error || "Erro ao verificar dados.");
-        return;
-      }
-
-      // Primeiro acesso: redirecionar para definir senha
-      if (result.needsPassword) {
-        const params = new URLSearchParams({
-          companyCode: companyCode.trim(),
-          email: result.email || email.trim(),
-          companyName: result.companyName || "",
-        });
-        router.push(`/primeiro-acesso?${params.toString()}`);
-        return;
-      }
-
-      // Utilizador tem senha: avançar para passo 2
-      setCompanyName(result.companyName || "");
-      setStep("password");
-    } catch {
-      setErrorMsg("Não foi possível conectar ao servidor. Tente novamente.");
-    } finally {
-      setIsLoading(false);
+    if (!email.trim() || !email.includes("@")) {
+      setErrorMsg("Introduza um email válido.");
+      return;
     }
+    setStep("password");
   };
 
-  // ── Passo 2: Login com senha ────────────────────────────────────────────
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     setErrorMsg(null);
-
     try {
-      const response = await fetch("/api/auth/login", {
+      const { url, anonKey } = getSupabaseAuthConfig(authSource);
+      const supabase = createBrowserClient(url, anonKey);
+
+      if (step === "password") {
+        const { error: authError } = await supabase.auth.signInWithPassword({
+          email: email.trim().toLowerCase(),
+          password,
+        });
+
+        if (authError) {
+          setErrorMsg(
+            authError.message.toLowerCase().includes("email not confirmed")
+              ? "Confirme o seu email antes de iniciar sessão."
+              : "Email ou palavra-passe inválidos."
+          );
+          return;
+        }
+      }
+
+      const response = await fetch("/api/auth/context", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          companyCode: companyCode.trim(),
-          email: email.trim(),
-          password,
-        }),
+        body: JSON.stringify(
+          step === "select-company"
+            ? { companyId: selectedCompanyId, authSource }
+            : { authSource }
+        ),
       });
 
       const result = await response.json();
 
       if (!response.ok) {
-        setErrorMsg(result.error || "Erro ao fazer login.");
+        setErrorMsg(result.error || "Não foi possível validar o acesso.");
         return;
       }
 
-      // Login bem-sucedido
+      if (result.requiresCompanySelection) {
+        const options: CompanyOption[] = result.companies || [];
+        setCompanies(options);
+        setSelectedCompanyId(options[0]?.id || "");
+        setStep("select-company");
+        return;
+      }
+
+      if (!result.success) {
+        setErrorMsg(result.error || "Não foi possível iniciar sessão.");
+        return;
+      }
+
       router.push(redirectTo);
       router.refresh();
-    } catch {
-      setErrorMsg("Não foi possível conectar ao servidor. Tente novamente.");
+    } catch (error: unknown) {
+      setErrorMsg(
+        error instanceof Error &&
+          error.message.includes("não está configurada")
+          ? error.message
+          : "Não foi possível conectar ao servidor. Tente novamente."
+      );
     } finally {
       setIsLoading(false);
     }
@@ -230,37 +246,35 @@ export default function LoginPage() {
           {/* Card do formulário */}
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-md shadow-sm dark:shadow-black/20 p-6 sm:p-9">
             <div className="flex justify-end mb-6">
-              <p className="text-sm text-slate-500 dark:text-slate-400">
-                Não tem conta?{" "}
-                <a
-                  href={`${hubUrl}/signup?app=hub`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-blue-600 dark:text-blue-400 font-semibold hover:underline"
-                >
-                  Criar conta
-                </a>
-              </p>
+              {authSource === "hub" && (
+                <p className="text-sm text-slate-500 dark:text-slate-400">
+                  Não tem conta?{" "}
+                  <a
+                    href={`${hubUrl}/signup?app=hub`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-blue-600 dark:text-blue-400 font-semibold hover:underline"
+                  >
+                    Criar conta
+                  </a>
+                </p>
+              )}
             </div>
 
             <div className="mb-6">
               <h2 className="text-2xl sm:text-[28px] font-bold tracking-tight text-slate-900 dark:text-white">
-                {step === "credentials" ? "Entrar na sua conta" : "Bem-vindo(a)"}
+                {step === "credentials"
+                  ? "Entrar na sua conta"
+                  : step === "select-company"
+                    ? "Escolha a empresa"
+                    : "Bem-vindo(a)"}
               </h2>
               <p className="text-sm text-slate-400 dark:text-slate-500 mt-1.5">
                 {step === "credentials"
-                  ? "Introduza o código da empresa e o email para começar."
-                  : (
-                    <>
-                      Introduza a sua senha para aceder ao sistema.
-                      {companyName && (
-                        <span className="block mt-1 text-xs text-slate-500 dark:text-slate-400">
-                          {companyName} · {email}
-                        </span>
-                      )}
-                    </>
-                  )
-                }
+                  ? "Introduza o seu email para continuar."
+                  : step === "select-company"
+                    ? "Selecione a empresa onde pretende trabalhar."
+                    : `Introduza a sua palavra-passe para ${email}.`}
               </p>
             </div>
 
@@ -270,29 +284,52 @@ export default function LoginPage() {
                 {errorMsg}
               </div>
             )}
-
-            {/* ── PASSO 1: Código + Email ─────────────────────────── */}
+            {/* ── PASSO 1: Email ──────────────────────────────────── */}
             {step === "credentials" && (
               <form onSubmit={handleCheckUser} className="space-y-5" noValidate>
-                {/* Código da Empresa */}
-                <div className="relative">
-                  <input
-                    id="companyCode"
-                    type="text"
-                    autoComplete="organization"
-                    placeholder=" "
-                    value={companyCode}
-                    onChange={(e) => setCompanyCode(e.target.value)}
-                    className="peer w-full h-[52px] rounded-xl border bg-white dark:bg-slate-900 px-4 pt-5 pb-1.5 text-sm text-slate-900 dark:text-white outline-none transition-all duration-200 focus:border-blue-600 focus:ring-2 focus:ring-blue-500/30 uppercase tracking-widest font-mono border-slate-300 dark:border-slate-700"
-                  />
-                  <label
-                    htmlFor="companyCode"
-                    className="absolute left-4 top-1/2 -translate-y-1/2 text-sm text-slate-400 dark:text-slate-500 transition-all duration-200 pointer-events-none peer-focus:top-3.5 peer-focus:text-xs peer-focus:text-blue-600 peer-focus:font-semibold peer-[:not(:placeholder-shown)]:top-3.5 peer-[:not(:placeholder-shown)]:text-xs peer-[:not(:placeholder-shown)]:text-slate-500"
-                  >
-                    Código da Empresa*
-                  </label>
-                </div>
-
+                <fieldset className="grid gap-2 sm:grid-cols-2">
+                  <legend className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                    Tipo de acesso
+                  </legend>
+                  {([
+                    {
+                      value: "hub",
+                      title: "Administrador",
+                      description: "Conta do Kima Hub",
+                    },
+                    {
+                      value: "faturas",
+                      title: "Colaborador",
+                      description: "Convite do Kima Faturas",
+                    },
+                  ] as const).map((option) => (
+                    <label
+                      key={option.value}
+                      className={`flex cursor-pointer items-start gap-3 rounded-xl border p-3 transition-colors ${
+                        authSource === option.value
+                          ? "border-blue-600 bg-blue-50 dark:bg-blue-900/20"
+                          : "border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900"
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="authSource"
+                        value={option.value}
+                        checked={authSource === option.value}
+                        onChange={() => setAuthSource(option.value)}
+                        className="mt-1 accent-blue-600"
+                      />
+                      <span>
+                        <span className="block text-sm font-semibold text-slate-800 dark:text-slate-100">
+                          {option.title}
+                        </span>
+                        <span className="block text-xs text-slate-500 dark:text-slate-400">
+                          {option.description}
+                        </span>
+                      </span>
+                    </label>
+                  ))}
+                </fieldset>
                 {/* Email */}
                 <div className="relative">
                   <input
@@ -313,62 +350,94 @@ export default function LoginPage() {
                 </div>
 
                 <Button
-                  disabled={isLoading || !companyCode.trim() || !email.trim()}
+                  disabled={isLoading || !email.trim()}
                   type="submit"
                   className="w-full h-[52px] text-base font-semibold rounded-xl bg-none bg-blue-600 hover:bg-blue-700"
                 >
                   {isLoading ? (
                     <>
                       <Loader2 size={18} className="animate-spin" />
-                      A verificar...
+                      A entrar...
                     </>
                   ) : (
                     "Continuar"
                   )}
                 </Button>
+
+                <p className="text-center text-sm text-slate-500 dark:text-slate-400">
+                  {authSource === "faturas"
+                    ? "Primeiro acesso? Abra o link de convite enviado pelo administrador da empresa."
+                    : "Acesso de administrador através da conta partilhada do Kima Hub."}
+                </p>
               </form>
             )}
 
             {/* ── PASSO 2: Senha ─────────────────────────────────── */}
-            {step === "password" && (
+            {(step === "password" || step === "select-company") && (
               <form onSubmit={handleLogin} className="space-y-5" noValidate>
-                {/* Password */}
-                <div className="relative">
-                  <input
-                    id="password"
-                    type={showPassword ? "text" : "password"}
-                    autoComplete="current-password"
-                    placeholder=" "
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="peer w-full h-[52px] rounded-xl border bg-white dark:bg-slate-900 px-4 pt-5 pb-1.5 pr-11 text-sm text-slate-900 dark:text-white outline-none transition-all duration-200 focus:border-blue-600 focus:ring-2 focus:ring-blue-500/30 border-slate-300 dark:border-slate-700"
-                  />
-                  <label
-                    htmlFor="password"
-                    className="absolute left-4 top-1/2 -translate-y-1/2 text-sm text-slate-400 dark:text-slate-500 transition-all duration-200 pointer-events-none peer-focus:top-3.5 peer-focus:text-xs peer-focus:text-blue-600 peer-focus:font-semibold peer-[:not(:placeholder-shown)]:top-3.5 peer-[:not(:placeholder-shown)]:text-xs peer-[:not(:placeholder-shown)]:text-slate-500"
-                  >
-                    Palavra-passe*
-                  </label>
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword((v) => !v)}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
-                    aria-label={showPassword ? "Ocultar palavra-passe" : "Mostrar palavra-passe"}
-                  >
-                    {showPassword ? <EyeOff size={17} /> : <Eye size={17} />}
-                  </button>
-                </div>
+                {step === "password" && (
+                  <>
+                    <p className="text-sm text-slate-500 dark:text-slate-400">
+                      Conta: <span className="font-medium text-slate-700 dark:text-slate-300">{email}</span>
+                    </p>
+                    <div className="relative">
+                      <input
+                        id="password"
+                        type={showPassword ? "text" : "password"}
+                        autoComplete="current-password"
+                        placeholder=" "
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        className="peer w-full h-[52px] rounded-xl border bg-white dark:bg-slate-900 px-4 pt-5 pb-1.5 pr-11 text-sm text-slate-900 dark:text-white outline-none transition-all duration-200 focus:border-blue-600 focus:ring-2 focus:ring-blue-500/30 border-slate-300 dark:border-slate-700"
+                      />
+                      <label
+                        htmlFor="password"
+                        className="absolute left-4 top-1/2 -translate-y-1/2 text-sm text-slate-400 dark:text-slate-500 transition-all duration-200 pointer-events-none peer-focus:top-3.5 peer-focus:text-xs peer-focus:text-blue-600 peer-focus:font-semibold peer-[:not(:placeholder-shown)]:top-3.5 peer-[:not(:placeholder-shown)]:text-xs peer-[:not(:placeholder-shown)]:text-slate-500"
+                      >
+                        Palavra-passe*
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword((v) => !v)}
+                        className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
+                        aria-label={showPassword ? "Ocultar palavra-passe" : "Mostrar palavra-passe"}
+                      >
+                        {showPassword ? <EyeOff size={17} /> : <Eye size={17} />}
+                      </button>
+                    </div>
+                  </>
+                )}
 
-                {/* Link: esqueceu senha */}
+                {step === "select-company" && (
+                  <div className="relative">
+                    <Building2 size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                    <select
+                      id="companyId"
+                      value={selectedCompanyId}
+                      onChange={(e) => setSelectedCompanyId(e.target.value)}
+                      required
+                      className="w-full h-[52px] rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 pl-11 pr-4 text-sm text-slate-900 dark:text-white outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-500/30"
+                    >
+                      {companies.map((company) => (
+                        <option key={company.id} value={company.id}>
+                          {company.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
                 <div className="flex items-center justify-end pt-1">
-                  <a
-                    href={`${hubUrl}/forgot-password`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-sm text-blue-600 dark:text-blue-400 font-medium hover:underline"
-                  >
-                    Esqueceu a palavra-passe?
-                  </a>
+                  {authSource === "hub" && (
+                    <a
+                      href={`${hubUrl}/forgot-password`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-sm text-blue-600 dark:text-blue-400 font-medium hover:underline"
+                    >
+                      Esqueceu a palavra-passe?
+                    </a>
+                  )}
                 </div>
 
                 <div className="flex gap-3">
@@ -376,8 +445,14 @@ export default function LoginPage() {
                     type="button"
                     variant="outline"
                     onClick={() => {
-                      setStep("credentials");
-                      setPassword("");
+                      if (step === "select-company") {
+                        setStep("password");
+                        setCompanies([]);
+                        setSelectedCompanyId("");
+                      } else {
+                        setStep("credentials");
+                        setPassword("");
+                      }
                       setErrorMsg(null);
                     }}
                     className="h-[52px] px-4 rounded-xl"
@@ -385,7 +460,7 @@ export default function LoginPage() {
                     <ArrowLeft size={18} />
                   </Button>
                   <Button
-                    disabled={isLoading || !password.trim()}
+                    disabled={isLoading || (step === "password" && !password.trim()) || (step === "select-company" && !selectedCompanyId)}
                     type="submit"
                     className="flex-1 h-[52px] text-base font-semibold rounded-xl bg-none bg-blue-600 hover:bg-blue-700"
                   >

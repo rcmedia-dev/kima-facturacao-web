@@ -60,7 +60,7 @@ async function proximoNumero(companyId: string, tipo: string, serie: string): Pr
 
 export async function GET(request: Request) {
   try {
-    const companyId = await requireCompanyId(request);
+    const companyId = await requireCompanyId(request, 'invoices.view');
     const { searchParams } = new URL(request.url);
     const tipo = searchParams.get("tipo") || undefined;
     const status = searchParams.get("status");
@@ -109,7 +109,7 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const companyId = await requireCompanyId(request);
+    const companyId = await requireCompanyId(request, 'invoices.create');
     const body = await request.json();
     const validatedData = criarDocumentoSchema.parse(body);
 

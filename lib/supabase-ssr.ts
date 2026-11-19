@@ -9,6 +9,7 @@
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { getKimaCookieDomain } from '@/lib/kima-cookie-domain';
 
 const useMock = process.env.NEXT_PUBLIC_USE_MOCK_DB === 'true';
 
@@ -35,7 +36,19 @@ export function createBrowserClient(
   // Lazy require do módulo real (síncrono)
   // eslint-disable-next-line @typescript-eslint/no-var-requires
   const { createBrowserClient: realCreateBrowserClient } = require('@supabase/ssr');
-  return realCreateBrowserClient(_supabaseUrl!, _supabaseKey!);
+  const hostname =
+    typeof window !== 'undefined' ? window.location.hostname : '';
+  const domain = hostname ? getKimaCookieDomain(hostname) : undefined;
+  const secure =
+    typeof window !== 'undefined' && window.location.protocol === 'https:';
+  return realCreateBrowserClient(_supabaseUrl!, _supabaseKey!, {
+    cookieOptions: {
+      path: '/',
+      sameSite: 'lax',
+      secure,
+      ...(domain ? { domain } : {}),
+    },
+  });
 }
 
 /**

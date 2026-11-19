@@ -22,7 +22,7 @@ export async function GET(request: Request) {
 
 export async function PUT(request: Request) {
   try {
-    const companyId = await requireCompanyId(request);
+    const companyId = await requireCompanyId(request, 'settings.manage');
     const body = await request.json();
     const validatedData = empresaSchema.parse(body);
 
@@ -50,7 +50,7 @@ export async function PUT(request: Request) {
     }
     return NextResponse.json(
       { success: false, error: normalizarErro(error).mensagem || "Erro ao atualizar empresa" },
-      { status: 500 }
+      { status: normalizarErro(error).status || 500 }
     );
   }
 }

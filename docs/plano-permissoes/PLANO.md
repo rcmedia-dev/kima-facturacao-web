@@ -2,11 +2,21 @@
 
 ## Kima Facturação Web
 
+> **Nota de arquitetura atual:** este documento descreve o fluxo legado e não
+> deve ser usado para executar a migration `005_auth_e_permissoes.sql`. O login
+> de administradores usa a identidade Supabase Auth partilhada com o Hub. Os
+> funcionários são convidados no Kima Faturas, autenticam-se por Supabase Auth
+> e ficam associados apenas em `kima_facturas.employees`; permissões ficam em
+> `kima_facturas.employee_permissions`. Não se cria `public.users` nem
+> `public.memberships` para funcionários. A implementação atual está descrita
+> em `Kima Center/KIMA_SUBAPP_INTEGRATION_GUIDE.md`, e a migration nova é
+> `migrations/006_funcionarios_kima_facturas.sql`.
+
 ---
 
 ## Resumo
 
-O Kima Facturação passa a ter **login próprio** com código da empresa + email + senha, seguindo o mesmo fluxo do Kima RH. O Kima Hub continua como origem da empresa e da subscrição, mas deixa de ser o login operacional. Existem dois tipos de utilizador: o **Admin** (criador da empresa, acesso total) e os **Funcionários** (permissões individuais atribuídas pelo Admin). O Admin dá ou tira permissões caixinha a caixinha. Não há cargos nem níveis.
+O Kima Facturação tem **login próprio por email e senha**, sem código da empresa. Se as credenciais forem válidas em mais de uma empresa, o utilizador escolhe onde iniciar sessão. No primeiro acesso, informa o email e escolhe entre as contas pendentes. O Kima Hub continua como origem da empresa e da subscrição, mas deixa de ser o login operacional. Existem dois tipos de utilizador: o **Admin** (criador da empresa, acesso total) e os **Funcionários** (permissões individuais atribuídas pelo Admin). O Admin dá ou tira permissões caixinha a caixinha. Não há cargos nem níveis.
 
 ---
 
@@ -47,7 +57,6 @@ O Kima Facturação passa a ter **login próprio** com código da empresa + emai
 ┌─────────────────────────────────────┐
 │              LOGIN                  │
 ├─────────────────────────────────────┤
-│  Código da empresa: [__________]    │
 │  Email:             [__________]    │
 │  Senha:             [__________]    │
 │                                     │
@@ -60,48 +69,28 @@ O Kima Facturação passa a ter **login próprio** com código da empresa + emai
 ### 2.2 Validação
 
 ```
-Código da empresa → company_code → company_id
-                              │
-Email + company_id → utilizador existe?
-                              │
-                ┌─────────────┴─────────────┐
-                │                           │
-           Não existe                   Existe
-                │                           │
-                ▼                           ▼
-     "Colaborador não              Tem senha?
-      encontrado.                       │
-      Verifique o código           ┌─────┴─────┐
-      e o email."                  │           │
-                                  NÃO         SIM
-                                   │           │
-                                   ▼           │
-                            /primeiro-acesso   │
-                                   │           │
-                                   ▼           │
-                            Definir senha      │
-                                   │           │
-                                   ▼           │
-                            Senha criada       │
-                                   │           │
-                                   ▼           │
-                            [Voltar ao login]  │
-                                               │
-                                    ◄──────────┘
-                                        │
-                                        ▼
-                                  Validar senha
-                                        │
-                                 ┌──────┴──────┐
-                                 │             │
-                               Erro        Sucesso
-                                 │             │
-                                 ▼             ▼
-                          "Senha         Criar sessão
-                           inválida"     (cookie)
-                                              │
-                                              ▼
-                                        /dashboard
+Email → procurar contas associadas em todas as empresas
+  │
+  ├─ Conta pendente → escolher empresa (se necessário) → definir senha
+  │
+  └─ Conta com senha → validar senha
+                         │
+                  ┌──────┴──────┐
+                  │             │
+                Erro        Sucesso
+                                │
+                    Mais de uma empresa?
+                         │             │
+                        Sim           Não
+                         │             │
+                 Escolher empresa     │
+                         └──────┬──────┘
+                                ▼
+                         Criar sessão
+                         (cookie)
+                                │
+                                ▼
+                          /dashboard
 ```
 
 ### 2.3 Quem é Admin?
@@ -455,7 +444,7 @@ export function middleware(req: NextRequest) {
 | 2 | `lib/permissions.ts` | Tipos, `can()`, `ROUTE_PERMISSIONS`, `ALL_PERMISSIONS` |
 | 3 | `lib/auth.ts` | `login()`, `definirSenha()`, `obterSessao()`, `terminarSessao()`, `hashSenha()`, `verificarSenha()` |
 | 4 | `middleware.ts` | Verifica sessão (cookie), exclui rotas públicas |
-| 5 | `app/api/auth/login/route.ts` | POST: valida company_code + email + password |
+| 5 | `app/api/auth/login/route.ts` | POST: valida email + password; pode pedir escolha de empresa |
 | 6 | `app/api/auth/primeiro-acesso/route.ts` | POST: define senha para utilizador sem password |
 | 7 | `app/api/auth/permissions/route.ts` | GET: devolve permissões finais |
 | 8 | `app/primeiro-acesso/page.tsx` | Tela de Definir Senha |
@@ -475,7 +464,7 @@ export function middleware(req: NextRequest) {
 | 4 | `components/sidebar.tsx` | Filtrar itens por permissão |
 | 5 | `components/profile-dropdown.tsx` | Mostrar "Admin" ou "Funcionário" |
 | 6 | `app/layout-client.tsx` | Integrar `ProtectedRoute` |
-| 7 | `app/login/page.tsx` | Login com código + email + senha |
+| 7 | `app/login/page.tsx` | Login com email + senha, sem código de empresa |
 | 8 | `app/page.tsx` | Redirect para /login (não mais /dashboard) |
 | 9 | `db/mocks/mock-data.ts` | Adicionar mocks para `users`, `permissions`, `user_permissions` |
 | 10 | `db/mocks/mock-client.ts` | Registar novas tabelas |

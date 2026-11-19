@@ -245,7 +245,7 @@ export type Permission =
   | 'agt.manage'
   | 'users.manage';
 
-/** Utilizador do Kima Facturação (tabela public.users) */
+/** Dados de membro carregados para a interface de gestão de acesso. */
 export interface Utilizador {
   id: string;
   companyId: string;
@@ -258,12 +258,13 @@ export interface Utilizador {
   updatedAt: Date;
 }
 
-/** Sessão codificada no cookie kima-session */
+/** Contexto autenticado derivado da sessão Supabase e da membership ativa. */
 export interface Sessao {
   userId: string;
   companyId: string;
   isOwner: boolean;
   email: string;
+  authSource: 'hub' | 'faturas';
 }
 
 /** Permissões finais de um utilizador */
@@ -272,4 +273,5 @@ export interface UserPermissions {
   companyId: string;
   isOwner: boolean;
   permissions: Permission[];
+  email?: string;
 }
